@@ -1,0 +1,25 @@
+name: Deploy to Linode
+
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.LINODE_HOST }}
+          username: ${{ secrets.LINODE_USER }}
+          key: ${{ secrets.LINODE_SSH_KEY }}
+          script: |
+            set -e
+            cd /var/www/astrotattwa-web
+            git fetch origin
+            git reset --hard origin/main
+            /home/deploy/.nvm/versions/node/v20.20.0/bin/npm install
+            /home/deploy/.nvm/versions/node/v20.20.0/bin/npm run build
+            /home/deploy/.nvm/versions/node/v20.20.0/bin/pm2 restart astrotattwa-web
+            /home/deploy/.nvm/versions/node/v20.20.0/bin/pm2 save
