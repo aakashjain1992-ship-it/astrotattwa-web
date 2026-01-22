@@ -1,0 +1,25 @@
+name: Deploy to Linode
+
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.LINODE_HOST }}
+          username: ${{ secrets.LINODE_USER }}
+          key: ${{ secrets.LINODE_SSH_KEY }}
+          script: |
+            set -e
+            cd /var/www/astrotattwa-web
+            git fetch origin
+            git reset --hard origin/main
+            npm install
+            npm run build
+            pm2 restart astrotattwa-web
+            pm2 save
