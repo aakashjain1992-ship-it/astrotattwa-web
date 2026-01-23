@@ -1,20 +1,16 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: '*.supabase.co',
-        port: '',
-        pathname: '/storage/v1/object/**',
-      },
-    ],
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      // Externalize swisseph for server-side only
+      config.externals = config.externals || [];
+      config.externals.push('swisseph');
+    }
+    return config;
   },
   experimental: {
-    serverActions: {
-      allowedOrigins: ['localhost:3000'],
-    },
-  },
-}
+    serverComponentsExternalPackages: ['swisseph']
+  }
+};
 
-module.exports = nextConfig
+module.exports = nextConfig;
