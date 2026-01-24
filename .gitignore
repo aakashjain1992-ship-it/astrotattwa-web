@@ -19,3 +19,7 @@ astrotattwa-code.tar.gz
 tsconfig.tsbuildinfo
 node_modules/
 .next/
+
+# local artifacts
+astrotattwa-code.tar.gz
+tsconfig.tsbuildinfo
