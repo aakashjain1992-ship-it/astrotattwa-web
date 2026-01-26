@@ -118,6 +118,41 @@ Open [http://localhost:3000](http://localhost:3000)
 
 ## 📁 Project Structure
 
+🧠 Architecture Overview (Important)
+
+Astrotattwa is structured with a clear separation between astrology computation, UI formatting, and presentation layers to ensure correctness, maintainability, and future extensibility.
+
+Key Principles
+	•	Astrology calculations ≠ UI formatting
+	•	Swiss Ephemeris logic is isolated
+	•	KP system formatting is treated as presentation logic
+	•	App Router and API routes remain thin
+
+Core Layers
+
+1. Astrology Engine (Domain Logic) - src/lib/astrology/
+	•	Low-level Swiss Ephemeris integration
+	•	Planetary positions, house cusps, dashas
+	•	Pure calculation logic (no UI concerns)
+
+2. KP UI Formatter (Presentation Logic) - src/lib/ui/formatKP.ts
+	•	Formats raw astrological output into KP-friendly UI structures
+	•	Responsible for:
+	•	Sign / Nakshatra / Sub-lord labelling
+	•	Degree-minute-second formatting
+	•	Human-readable KP sequences
+	•	Does not perform calculations
+	•	Designed to be reusable across charts, tables, and reports
+
+This separation ensures:
+	•	Calculation accuracy is never affected by UI changes
+	•	KP rules can evolve without touching core math
+	•	Future support for other systems (Parashari, Jaimini) remains possible
+
+3. UI & Forms - src/components/
+	•	Reusable UI primitives (buttons, inputs, toasts)
+	•	Form components for birth data and city selection
+	•	No astrology logic embedded in components
 ```
 astrotattwa/
 ├── src/
@@ -128,14 +163,15 @@ astrotattwa/
 │   │   ├── layout.tsx         # Root layout
 │   │   └── page.tsx           # Landing page
 │   ├── components/
-│   │   ├── ui/                # shadcn/ui components
+│   │   ├── ui/                # Reusable UI primitives (button, input, toast)
 │   │   ├── charts/            # Astrology chart components (to be built)
-│   │   ├── forms/             # Form components (to be built)
+│   │   ├── forms/             # Birth data & city search forms
 │   │   └── theme-provider.tsx
 │   ├── lib/
-│   │   ├── supabase/          # Supabase clients
-│   │   ├── astrology/         # Swiss Ephemeris calculation engine (to be built)
-│   │   └── utils.ts           # Utility functions
+│   │   ├── supabase/          # Supabase clients (client/server/middleware)
+│   │   ├── ui/                # UI-level formatters (KP formatting)
+│   │   ├── astrology/         # Swiss Ephemeris calculation engine
+│   │   └── utils.ts           # Shared utility functions
 │   ├── hooks/                 # Custom React hooks
 │   ├── stores/                # Zustand stores
 │   ├── types/                 # TypeScript types
@@ -284,7 +320,7 @@ After deployment, add your production URL to:
 3. **Priority 3 (INTEGRATION):** Create /api/calculate endpoint
 
 ## 🔬 Swiss Ephemeris Accuracy
-
+Note: KP-specific presentation logic is handled separately in `src/lib/ui/formatKP.ts` and does not affect core Swiss Ephemeris calculations.
 All calculations are verified against Jagannatha Hora (JHora) software:
 - **Planetary positions:** < 1 arcminute deviation
 - **Ascendant:** < 2 arcminute deviation
