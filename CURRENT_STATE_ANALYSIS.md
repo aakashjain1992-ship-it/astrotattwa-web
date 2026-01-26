@@ -1,5 +1,5 @@
 # 📊 Astrotattwa - Current State Analysis
-**Last Updated:** January 23, 2026
+**Last Updated:** January 26, 2026
 **Status:** ✅ **Swiss Ephemeris Integration Complete - Phase 1A Done**
 
 ---
@@ -96,6 +96,36 @@ src/app/api/test-calc/
 - ✅ PM2 process management stable
 - ✅ All files deployed to production server
 
+
+✅ Completed (January 26, 2026)
+
+4. KP UI Formatting Layer ✅
+
+Status: Implemented and integrated
+Scope: Presentation logic only (no calculations)
+
+Achievements:
+	•	✅ Implemented KP-specific UI formatter
+	•	✅ Clear separation between calculation logic and UI presentation
+	•	✅ Formatter designed for reuse across tables, charts, and reports
+	•	✅ Verified alignment with existing Swiss Ephemeris outputs
+
+File Added: src/lib/ui/formatKP.ts
+
+Responsibilities:
+	•	Formats planetary positions into KP-readable output
+	•	Handles:
+	•	Sign, Nakshatra, Sub-lord labelling
+	•	Degree–minute–second formatting
+	•	Human-readable KP sequences
+	•	Explicitly does not perform astrology calculations
+
+Architectural Impact:
+	•	Prevents UI concerns from polluting core astrology logic
+	•	Enables future support for multiple astrology systems
+	•	Establishes a stable contract between the calculation and presentation layers
+
+
 ---
 
 ## 📦 What Actually Exists Now
@@ -147,11 +177,13 @@ src/app/api/test-calc/
 | `/api/charts` | ⏳ Todo | CRUD for saved charts |
 | `/api/cities/search` | ✅ Done | City autocomplete |
 
-### ⏳ UI Components (0%)
+### ⏳ UI Components (30%)
 | Component | Status | Purpose |
 |-----------|--------|---------|
 | Landing Page | ⏳ Stub | Homepage shell exists |
-| Birth Data Form | ⏳ Todo | Chart creation form |
+| Birth Data Form | ⏳ Partial | UI structure ready, logic pending |
+| City Search | ✅ Done | Autocomplete not working, but city API is ready (need to check) |
+| KP Formatter | ⏳ Partial | Presentation formatting |
 | North Indian Chart | ⏳ Todo | D1 visualization |
 | Planetary Positions | ⏳ Todo | Table display |
 | Dasha Timeline | ⏳ Todo | Period visualization |
@@ -216,13 +248,13 @@ src/app/api/test-calc/
 
 ## 📈 Progress Metrics
 
-### Overall MVP Progress: ~45%
+### Overall MVP Progress: ~50%
 
 **Breakdown:**
 - Infrastructure & DevOps: 100% ✅
 - Calculation Engine Core: 40% ⏳
-- API Layer: 20% ⏳
-- UI Components: 0% ⏳
+- API Layer: 30% ⏳
+- UI Components: 30% ⏳
 - Authentication: 60% ⏳ (Supabase configured, flows incomplete)
 - Database: 80% ⏳ (Schema ready, not using yet)
 
@@ -248,6 +280,7 @@ src/app/api/test-calc/
 3. Create test endpoints before production endpoints
 4. Document API response formats clearly
 5. Keep calculation logic separate from API routes
+6. Treat astrology formatting as a UI concern, not a calculation concern
 
 ---
 
