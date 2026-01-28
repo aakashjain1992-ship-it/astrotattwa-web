@@ -1,4 +1,4 @@
-export const AYANAMSHA_LABEL = "KP (Krishnamurti)" as const;
+export const AYANAMSHA_LABEL = "Lahiri" as const;
 
 export const SIGNS = ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"] as const;
 

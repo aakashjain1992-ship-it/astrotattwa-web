@@ -1,4 +1,4 @@
-import { DASHA_ORDER, DASHA_YEARS, ZODIAC_DEG } from "./constants";
+import { DASHA_ORDER, DASHA_YEARS } from "./constants";
 
 type DashaLord = (typeof DASHA_ORDER)[number];
 
@@ -58,34 +58,35 @@ function balanceText(
 
 /**
  * Calculate all mahadasha periods from birth
+ * Uses 365.25 days per year for actual calendar date calculations
  */
 function calculateMahadashas(
   birthDateUtc: Date,
+  nakLord: DashaLord,
   balanceYears: number,
   yearDays: number
 ): MahadashaPeriod[] {
   const mahadashas: MahadashaPeriod[] = [];
   
-  // Find starting mahadasha lord from balance
-  const balanceLord = Object.entries(DASHA_YEARS).find(
-    ([_, years]) => Math.abs(years - balanceYears) < 0.1
-  )?.[0] as DashaLord;
+  // Use 365.25 days for calendar calculations (actual solar year)
+  const CALENDAR_DAYS_PER_YEAR = 365.25;
   
-  if (!balanceLord) {
-    throw new Error(`Could not determine mahadasha lord for balance: ${balanceYears} years`);
-  }
-
-  // Find the index of starting lord
-  const startIndex = DASHA_ORDER.indexOf(balanceLord);
+  // Find the index of starting lord (from nakshatra)
+  const startIndex = DASHA_ORDER.indexOf(nakLord);
   
-  // Calculate 120-year cycle starting from birth
+  // Start from birth date
   let currentDate = new Date(birthDateUtc);
   
+  // Calculate all 9 mahadashas
   for (let i = 0; i < DASHA_ORDER.length; i++) {
     const lordIndex = (startIndex + i) % DASHA_ORDER.length;
     const lord = DASHA_ORDER[lordIndex];
-    const durationYears = DASHA_YEARS[lord];
-    const durationDays = durationYears * yearDays;
+    
+    // First mahadasha uses balance years, rest use full years
+    const durationYears = i === 0 ? balanceYears : DASHA_YEARS[lord];
+    
+    // Convert to calendar days using 365.25 days per year
+    const durationDays = durationYears * CALENDAR_DAYS_PER_YEAR;
     
     const startUtc = new Date(currentDate);
     const endUtc = new Date(currentDate.getTime() + durationDays * 24 * 60 * 60 * 1000);
@@ -139,6 +140,7 @@ export function vimshottariDasha(
   // Calculate all 9 mahadasha periods from birth
   const allMahadashas = calculateMahadashas(
     birthDateUtc,
+    nakLord,
     balance.classical360.remainingYearsFloat,
     yearDays
   );

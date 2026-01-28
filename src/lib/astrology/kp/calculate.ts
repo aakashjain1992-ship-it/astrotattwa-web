@@ -2,7 +2,7 @@ import { getBodyIds, sweAscendantSidereal, sweCalcSidereal, sweJuldayUTC } from 
 import { localDateTimeToUtc, parseBirth } from "@/lib/astrology/time";
 import { AYANAMSHA_LABEL, norm360 } from "./constants";
 import { buildPlanet } from "./planets";
-import { computeKpDasa } from "./dasa";
+import { vimshottariDasha } from "./dasa";
 
 export async function calculateKpChart(input: {
   name?: string;
@@ -56,7 +56,14 @@ export async function calculateKpChart(input: {
     lord: planets.Moon.kp.nakshatraLord,
   };
 
-  const dasa = computeKpDasa(birthUtc, planets.Moon.longitude);
+  // NEW: Call vimshottariDasha directly with Moon's KP data
+  const dasa = vimshottariDasha(
+    planets.Moon.longitude,
+    birthUtc,
+    planets.Moon.kp.elapsedFractionOfNakshatra,
+    planets.Moon.kp.nakshatraLord,
+    360
+  );
 
   return {
     input: {
