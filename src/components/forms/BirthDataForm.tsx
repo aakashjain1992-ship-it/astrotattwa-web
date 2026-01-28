@@ -89,8 +89,18 @@ export default function BirthDataForm() {
       if (!response.ok) throw new Error('Calculation failed')
 
       const result = await response.json()
-      console.log('Chart calculated:', result)
-      alert('Chart calculated successfully! (View will be implemented next)')
+      
+      if (result.success) {
+        console.log('Chart calculated:', result)
+        
+        // Store chart data in localStorage
+        localStorage.setItem('lastChart', JSON.stringify(result.chart))
+        
+        // Navigate to chart page
+        window.location.href = '/chart'
+      } else {
+        alert(`Error: ${result.error || 'Calculation failed'}`)
+      }
     } catch (error) {
       console.error('Error:', error)
       alert('Failed to calculate chart. Please try again.')
