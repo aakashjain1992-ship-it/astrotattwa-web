@@ -45,6 +45,8 @@ function buildNine(lord: (typeof DASHA_ORDER)[number], totalYears: number, start
   return out;
 }
 
+
+
 function indexAt(periods: { startUtc: string; endUtc: string }[], at: Date) {
   const t = at.getTime();
   for (let i = 0; i < periods.length; i++) {
@@ -75,6 +77,18 @@ function buildMahadashaCyclesFromStart(startLord: (typeof DASHA_ORDER)[number], 
   }
   return cycles;
 }
+
+
+export function buildNineChildren(
+  startLord: (typeof DASHA_ORDER)[number],
+  parentDurationYears: number,
+  parentStartUtc: Date,
+  yearDays: number
+) {
+  return buildNine(startLord, parentDurationYears, parentStartUtc, yearDays);
+}
+
+
 
 export function computeKpDasa(birthUtc: Date, moonLonSidereal: number) {
   const moonKp = kpFromLongitude(moonLonSidereal);
