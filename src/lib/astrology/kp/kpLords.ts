@@ -44,7 +44,7 @@ export function kpFromLongitude(lon: number) {
   const x = norm360(lon);
   const rasiLord = RASI_LORDS_12[Math.floor(x / 30)];
 
-  let sec = Math.round(3600 * x) % ZODIAC_SEC;
+  let sec = Math.floor(3600 * x) % ZODIAC_SEC;
   if (sec < 0) sec += ZODIAC_SEC;
 
   const nakIndex = Math.floor(sec / NAK_SEC);
