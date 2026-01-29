@@ -2,7 +2,8 @@ import { getBodyIds, sweAscendantSidereal, sweCalcSidereal, sweJuldayUTC } from 
 import { localDateTimeToUtc, parseBirth } from "@/lib/astrology/time";
 import { AYANAMSHA_LABEL, norm360 } from "./constants";
 import { buildPlanet } from "./planets";
-import { computeKpDasa } from "./dasa";
+import { vimshottariDasha } from "./dasa";
+import { calculateAvakahada } from "./avakahada";
 
 export async function calculateKpChart(input: {
   name?: string;
@@ -56,7 +57,23 @@ export async function calculateKpChart(input: {
     lord: planets.Moon.kp.nakshatraLord,
   };
 
-  const dasa = computeKpDasa(birthUtc, planets.Moon.longitude);
+  const dasa = vimshottariDasha(
+    planets.Moon.longitude,
+    birthUtc,
+    planets.Moon.kp.elapsedFractionOfNakshatra,
+    planets.Moon.kp.nakshatraLord,
+    360
+  );
+
+  // Calculate Avakahada Chakra attributes
+  const avakahada = calculateAvakahada(
+    ascLon,
+    planets.Moon.longitude,
+    planets.Sun.longitude,
+    planets.Moon.kp.nakshatraIndex,
+    planets.Moon.kp.nakshatraPada,
+    planets.Moon.kp.nakshatraLord
+  );
 
   return {
     input: {
@@ -73,5 +90,6 @@ export async function calculateKpChart(input: {
     ascendant,
     nakshatra,
     dasa,
+    avakahada,
   };
 }

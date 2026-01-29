@@ -8,8 +8,8 @@ export async function getSwe(): Promise<SwissEph> {
     swe = await import("swisseph");
     const ephePath = path.join(process.cwd(), "public", "ephe");
     swe.swe_set_ephe_path(ephePath);
-    // KP / Krishnamurti
-    swe.swe_set_sid_mode(swe.SE_SIDM_KRISHNAMURTI, 0, 0);
+    // Lahiri ayanamsa (standard Vedic astrology)
+    swe.swe_set_sid_mode(swe.SE_SIDM_LAHIRI, 0, 0);
   }
   return swe;
 }
