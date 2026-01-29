@@ -1,8 +1,9 @@
 /**
  * Chart Helper Utilities
  * 
- * Functions for calculating house placements, status flags, 
- * and transforming API data for chart visualization.
+ * Supports multiple house systems:
+ * - Whole Sign Houses (traditional Vedic)
+ * - Equal Houses (Lagna-Chalit)
  */
 
 import type {
@@ -16,28 +17,18 @@ import type {
 } from '@/types/chart-display';
 import { PLANET_SYMBOLS, RASHI_NAMES, HOUSE_SIGNIFICATIONS } from '@/types/chart-display';
 
+export type HouseSystem = 'whole-sign' | 'equal-house';
+
 /**
- * Calculate which house a planet is in using WHOLE SIGN HOUSES (Vedic system)
- * 
- * In Whole Sign Houses, each sign = one house completely
- * Example: If Ascendant is in Gemini, entire Gemini = House 1
- * 
- * @param planetLongitude - Absolute longitude of the planet (0-360)
- * @param ascendantLongitude - Absolute longitude of the ascendant (0-360)
- * @returns House number (1-12)
+ * Calculate house using WHOLE SIGN HOUSES (Rasi Bhava)
+ * Each complete sign = one house
  */
-export function getPlanetHouse(planetLongitude: number, ascendantLongitude: number): number {
-  // Get the sign number (1-12) for both planet and ascendant
-  // Each sign spans 30 degrees: Aries (0-30) = 1, Taurus (30-60) = 2, etc.
+function getPlanetHouseWholeSign(planetLongitude: number, ascendantLongitude: number): number {
   const planetSign = Math.floor(planetLongitude / 30) + 1;
   const ascendantSign = Math.floor(ascendantLongitude / 30) + 1;
   
-  // Calculate house number from sign difference
-  // House 1 = Ascendant sign
-  // House 2 = Next sign after Ascendant, etc.
   let house = planetSign - ascendantSign + 1;
   
-  // Handle wrap-around (signs 1-12 are circular)
   if (house <= 0) house += 12;
   if (house > 12) house -= 12;
   
@@ -45,11 +36,44 @@ export function getPlanetHouse(planetLongitude: number, ascendantLongitude: numb
 }
 
 /**
- * Calculate which rashi (sign) is in a given house
+ * Calculate house using EQUAL HOUSES (Lagna-Chalit)
+ * 30° houses starting from exact ascendant degree
+ */
+function getPlanetHouseEqual(planetLongitude: number, ascendantLongitude: number): number {
+  // Normalize longitudes to 0-360
+  const normalizedPlanet = ((planetLongitude % 360) + 360) % 360;
+  const normalizedAsc = ((ascendantLongitude % 360) + 360) % 360;
+  
+  // Calculate difference
+  let diff = normalizedPlanet - normalizedAsc;
+  if (diff < 0) diff += 360;
+  
+  // Each house spans 30 degrees from ascendant
+  const house = Math.floor(diff / 30) + 1;
+  
+  return house > 12 ? 1 : house;
+}
+
+/**
+ * Calculate which house a planet is in
  * 
- * @param houseNumber - House number (1-12)
- * @param ascendantSignNumber - Sign number of the ascendant (1-12)
- * @returns Rashi number (1-12)
+ * @param planetLongitude - Absolute longitude (0-360)
+ * @param ascendantLongitude - Absolute longitude (0-360)
+ * @param system - House system to use
+ */
+export function getPlanetHouse(
+  planetLongitude: number, 
+  ascendantLongitude: number,
+  system: HouseSystem = 'whole-sign'
+): number {
+  if (system === 'equal-house') {
+    return getPlanetHouseEqual(planetLongitude, ascendantLongitude);
+  }
+  return getPlanetHouseWholeSign(planetLongitude, ascendantLongitude);
+}
+
+/**
+ * Calculate which rashi (sign) is in a given house
  */
 export function getHouseRashi(houseNumber: number, ascendantSignNumber: number): number {
   const rashi = ((ascendantSignNumber + houseNumber - 2) % 12) + 1;
@@ -57,7 +81,7 @@ export function getHouseRashi(houseNumber: number, ascendantSignNumber: number):
 }
 
 /**
- * Generate status flags for a planet based on its conditions
+ * Generate status flags for a planet
  */
 export function getPlanetStatusFlags(planet: PlanetData): StatusFlag[] {
   const flags: StatusFlag[] = [];
@@ -92,7 +116,7 @@ export function transformPlanetForDisplay(
 /**
  * Build all 12 houses with their planets
  */
-export function buildHouses(chartData: ChartData): HouseInfo[] {
+export function buildHouses(chartData: ChartData, system: HouseSystem = 'whole-sign'): HouseInfo[] {
   const ascendantLongitude = chartData.ascendant.longitude;
   const ascendantSignNumber = chartData.ascendant.signNumber;
   
@@ -114,7 +138,7 @@ export function buildHouses(chartData: ChartData): HouseInfo[] {
   });
   
   for (const planet of planetDisplays) {
-    const houseNumber = getPlanetHouse(planet.longitude, ascendantLongitude);
+    const houseNumber = getPlanetHouse(planet.longitude, ascendantLongitude, system);
     const house = houses[houseNumber - 1];
     house.planets.push(planet);
   }
@@ -171,4 +195,12 @@ export function getStatusFlagExplanation(flag: StatusFlag): string {
   };
   
   return explanations[flag] || '';
+}
+
+export function getHouseSystemName(system: HouseSystem): string {
+  const names: Record<HouseSystem, string> = {
+    'whole-sign': 'Whole Sign (Rasi Bhava)',
+    'equal-house': 'Equal House (Lagna-Chalit)',
+  };
+  return names[system];
 }

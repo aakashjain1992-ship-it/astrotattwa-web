@@ -2,7 +2,7 @@
 
 import { cn } from '@/lib/utils';
 import type { ChartData } from '@/types/chart-display';
-import { buildHouses } from '@/lib/utils/chartHelpers';
+import { buildHouses, type HouseSystem } from '@/lib/utils/chartHelpers';
 import { HouseBlock } from './HouseBlock';
 
 interface NorthIndianChartProps {
@@ -10,6 +10,7 @@ interface NorthIndianChartProps {
   onPlanetClick?: (planetKey: string) => void;
   onHouseClick?: (houseNumber: number) => void;
   showHouseNumbers?: boolean;
+  houseSystem?: HouseSystem;
   className?: string;
 }
 
@@ -18,9 +19,10 @@ export function NorthIndianChart({
   onPlanetClick,
   onHouseClick,
   showHouseNumbers = false,
+  houseSystem = 'whole-sign',
   className,
 }: NorthIndianChartProps) {
-  const houses = buildHouses(chartData);
+  const houses = buildHouses(chartData, houseSystem);
   const getHouse = (num: number) => houses[num - 1];
   
   return (
