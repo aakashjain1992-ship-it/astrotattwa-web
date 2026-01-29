@@ -3,7 +3,6 @@
 import { cn } from '@/lib/utils';
 import type { ChartData } from '@/types/chart-display';
 import { buildHouses, type HouseSystem } from '@/lib/utils/chartHelpers';
-import { PlanetDisplay } from './PlanetDisplay';
 
 interface NorthIndianChartProps {
   chartData: ChartData;
@@ -24,58 +23,81 @@ export function NorthIndianChart({
 }: NorthIndianChartProps) {
   const houses = buildHouses(chartData, houseSystem);
   
-  // Coordinates extracted from Figma SVG (viewBox: 606x604)
-  // Positions for planet areas (center of each house diamond)
-  const planetPositions: Record<number, { x: number; y: number }> = {
-    1: { x: 303, y: 180 },   // Top center (Lagna)
-    2: { x: 165, y: 90 },    // Top left
-    3: { x: 75, y: 205 },    // Mid-left top
-    4: { x: 165, y: 320 },   // Mid-left bottom
-    5: { x: 75, y: 435 },    // Bottom left
-    6: { x: 165, y: 530 },   // Bottom left-center
-    7: { x: 303, y: 470 },   // Bottom center
-    8: { x: 441, y: 530 },   // Bottom right-center
-    9: { x: 531, y: 435 },   // Bottom right
-    10: { x: 441, y: 320 },  // Mid-right bottom
-    11: { x: 531, y: 205 },  // Mid-right top
-    12: { x: 441, y: 90 },   // Top right
+  // Coordinates for 600x600 viewBox
+  // Square corners: A(0,600), B(600,600), C(600,0), D(0,0)
+  // Center: O(300,300)
+  // Midpoints: M1(300,600), M2(600,300), M3(300,0), M4(0,300)
+  
+  // House positions calculated from geometric intersections
+  const housePositions: Record<number, { x: number; y: number }> = {
+    1: { x: 300, y: 450 },   // Top center
+    2: { x: 150, y: 525 },   // Top left
+    3: { x: 75, y: 450 },    // Left top
+    4: { x: 75, y: 300 },    // Left center
+    5: { x: 75, y: 150 },    // Left bottom
+    6: { x: 150, y: 75 },    // Bottom left
+    7: { x: 300, y: 150 },   // Bottom center
+    8: { x: 450, y: 75 },    // Bottom right
+    9: { x: 525, y: 150 },   // Right bottom
+    10: { x: 525, y: 300 },  // Right center
+    11: { x: 525, y: 450 },  // Right top
+    12: { x: 450, y: 525 },  // Top right
   };
   
-  // Positions for rashi numbers
+  // Rashi numbers at edges
   const rashiPositions: Record<number, { x: number; y: number }> = {
-    1: { x: 303, y: 60 },    // Top center
-    2: { x: 120, y: 50 },    // Top left
-    3: { x: 30, y: 90 },     // Left side top
-    4: { x: 120, y: 245 },   // Left side
-    5: { x: 30, y: 390 },    // Left side bottom
-    6: { x: 120, y: 500 },   // Bottom left
-    7: { x: 303, y: 370 },   // Bottom center
-    8: { x: 486, y: 500 },   // Bottom right
-    9: { x: 576, y: 390 },   // Right side bottom
-    10: { x: 486, y: 245 },  // Right side
-    11: { x: 576, y: 90 },   // Right side top
-    12: { x: 486, y: 50 },   // Top right
+    1: { x: 300, y: 560 },
+    2: { x: 120, y: 540 },
+    3: { x: 40, y: 450 },
+    4: { x: 40, y: 300 },
+    5: { x: 40, y: 150 },
+    6: { x: 120, y: 60 },
+    7: { x: 300, y: 40 },
+    8: { x: 480, y: 60 },
+    9: { x: 560, y: 150 },
+    10: { x: 560, y: 300 },
+    11: { x: 560, y: 450 },
+    12: { x: 480, y: 540 },
   };
   
-  const ascPosition = { x: 303, y: 260 }; // ASC label for house 1
+  const getPlanetColor = (key: string) => {
+    if (['Moon', 'Mercury', 'Jupiter', 'Venus'].includes(key)) {
+      return 'text-blue-600 dark:text-blue-400';
+    }
+    if (['Rahu', 'Ketu'].includes(key)) {
+      return 'text-purple-600 dark:text-purple-400';
+    }
+    return 'text-orange-600 dark:text-orange-400';
+  };
   
   return (
     <div className={cn('w-full max-w-[600px] mx-auto', 'aspect-square', className)}>
-      <svg viewBox="0 0 606 604" className="w-full h-full">
+      <svg viewBox="0 0 600 600" className="w-full h-full">
         {/* Background */}
-        <rect width="606" height="604" fill="currentColor" className="text-slate-950 dark:text-slate-950" />
+        <rect width="600" height="600" fill="currentColor" className="text-slate-950 dark:text-slate-950" />
         
-        {/* Diamond lines from Figma */}
-        <line x1="602.707" y1="1.71374" x2="1.70714" y2="602.714" stroke="currentColor" strokeWidth="2" className="text-slate-400 dark:text-slate-500" />
-        <line x1="1.70593" y1="1.29836" x2="604.706" y2="602.298" stroke="currentColor" strokeWidth="2" className="text-slate-400 dark:text-slate-500" />
-        <line x1="3" y1="1" x2="603" y2="1" stroke="currentColor" strokeWidth="2" className="text-slate-400 dark:text-slate-500" />
-        <line x1="605" y1="2" x2="605" y2="602" stroke="currentColor" strokeWidth="2" className="text-slate-400 dark:text-slate-500" />
-        <line x1="604" y1="603" x2="4" y2="603" stroke="currentColor" strokeWidth="2" className="text-slate-400 dark:text-slate-500" />
-        <line x1="1" y1="602" x2="1" y2="2" stroke="currentColor" strokeWidth="2" className="text-slate-400 dark:text-slate-500" />
-        <line x1="303" y1="1" x2="303" y2="302" stroke="currentColor" strokeWidth="2" className="text-slate-400 dark:text-slate-500" />
-        <line x1="303" y1="302" x2="303" y2="603" stroke="currentColor" strokeWidth="2" className="text-slate-400 dark:text-slate-500" />
-        <line x1="1" y1="302" x2="303" y2="302" stroke="currentColor" strokeWidth="2" className="text-slate-400 dark:text-slate-500" />
-        <line x1="303" y1="302" x2="605" y2="302" stroke="currentColor" strokeWidth="2" className="text-slate-400 dark:text-slate-500" />
+        {/* 1. Outer square border */}
+        <rect x="0" y="0" width="600" height="600" fill="none" stroke="currentColor" strokeWidth="2" className="text-slate-400 dark:text-slate-500" />
+        
+        {/* 2. Two main diagonals */}
+        {/* A(0,600) to C(600,0) - top-left to bottom-right */}
+        <line x1="0" y1="600" x2="600" y2="0" stroke="currentColor" strokeWidth="2" className="text-slate-400 dark:text-slate-500" />
+        
+        {/* B(600,600) to D(0,0) - top-right to bottom-left */}
+        <line x1="600" y1="600" x2="0" y2="0" stroke="currentColor" strokeWidth="2" className="text-slate-400 dark:text-slate-500" />
+        
+        {/* 3. Four midpoint-to-opposite-vertex lines */}
+        {/* M1(300,600) to D(0,0) - top midpoint to bottom-left */}
+        <line x1="300" y1="600" x2="0" y2="0" stroke="currentColor" strokeWidth="2" className="text-slate-400 dark:text-slate-500" />
+        
+        {/* M2(600,300) to A(0,600) - right midpoint to top-left */}
+        <line x1="600" y1="300" x2="0" y2="600" stroke="currentColor" strokeWidth="2" className="text-slate-400 dark:text-slate-500" />
+        
+        {/* M3(300,0) to B(600,600) - bottom midpoint to top-right */}
+        <line x1="300" y1="0" x2="600" y2="600" stroke="currentColor" strokeWidth="2" className="text-slate-400 dark:text-slate-500" />
+        
+        {/* M4(0,300) to C(600,0) - left midpoint to bottom-right */}
+        <line x1="0" y1="300" x2="600" y2="0" stroke="currentColor" strokeWidth="2" className="text-slate-400 dark:text-slate-500" />
         
         {/* Render rashi numbers */}
         {houses.map((house) => {
@@ -85,54 +107,57 @@ export function NorthIndianChart({
               key={`rashi-${house.houseNumber}`}
               x={pos.x}
               y={pos.y}
-              fontSize="14"
+              fontSize="16"
+              fontWeight="500"
               fill="currentColor"
-              className="text-slate-400 dark:text-slate-500 font-medium"
+              className="text-slate-500 dark:text-slate-500"
               textAnchor="middle"
+              dominantBaseline="middle"
             >
               {house.rasiNumber}
             </text>
           );
         })}
         
-        {/* Render house numbers (debug mode) */}
+        {/* House numbers (debug) */}
         {showHouseNumbers && houses.map((house) => {
-          const pos = planetPositions[house.houseNumber];
+          const pos = housePositions[house.houseNumber];
           return (
             <text
               key={`house-num-${house.houseNumber}`}
-              x={pos.x - 50}
-              y={pos.y - 40}
-              fontSize="12"
+              x={pos.x - 60}
+              y={pos.y - 50}
+              fontSize="14"
               fill="currentColor"
-              className="text-slate-600 dark:text-slate-600 font-normal"
+              className="text-slate-600 dark:text-slate-600"
               textAnchor="middle"
             >
-              {house.houseNumber}
+              H{house.houseNumber}
             </text>
           );
         })}
         
-        {/* Render ASC label for house 1 */}
+        {/* ASC label */}
         {houses[0].isAscendant && (
           <text
-            x={ascPosition.x}
-            y={ascPosition.y}
-            fontSize="14"
+            x={300}
+            y={390}
+            fontSize="16"
+            fontWeight="bold"
             fill="currentColor"
-            className="text-blue-500 dark:text-blue-400 font-bold"
+            className="text-blue-500 dark:text-blue-400"
             textAnchor="middle"
           >
             ASC
           </text>
         )}
         
-        {/* Render planets in each house */}
+        {/* Planets */}
         {houses.map((house) => {
           if (house.planets.length === 0) return null;
           
-          const basePos = planetPositions[house.houseNumber];
-          const spacing = 60;
+          const basePos = housePositions[house.houseNumber];
+          const spacing = 50;
           const totalHeight = (house.planets.length - 1) * spacing;
           const startY = basePos.y - totalHeight / 2;
           
@@ -140,14 +165,7 @@ export function NorthIndianChart({
             <g key={`planets-${house.houseNumber}`}>
               {house.planets.map((planet, index) => {
                 const y = startY + (index * spacing);
-                
-                // Planet color based on type
-                let colorClass = 'text-orange-600 dark:text-orange-400';
-                if (['Moon', 'Mercury', 'Jupiter', 'Venus'].includes(planet.key)) {
-                  colorClass = 'text-blue-600 dark:text-blue-400';
-                } else if (['Rahu', 'Ketu'].includes(planet.key)) {
-                  colorClass = 'text-purple-600 dark:text-purple-400';
-                }
+                const colorClass = getPlanetColor(planet.key);
                 
                 return (
                   <g
@@ -155,40 +173,14 @@ export function NorthIndianChart({
                     onClick={() => onPlanetClick?.(planet.key)}
                     style={{ cursor: onPlanetClick ? 'pointer' : 'default' }}
                   >
-                    {/* Planet degree */}
-                    <text
-                      x={basePos.x}
-                      y={y - 10}
-                      fontSize="12"
-                      fill="currentColor"
-                      className="text-slate-400 dark:text-slate-400"
-                      textAnchor="middle"
-                    >
+                    <text x={basePos.x} y={y - 12} fontSize="13" fill="currentColor" className="text-slate-400 dark:text-slate-400" textAnchor="middle">
                       {planet.degree}
                     </text>
-                    
-                    {/* Planet symbol */}
-                    <text
-                      x={basePos.x}
-                      y={y + 8}
-                      fontSize="16"
-                      fill="currentColor"
-                      className={cn('font-bold', colorClass)}
-                      textAnchor="middle"
-                    >
+                    <text x={basePos.x} y={y + 5} fontSize="18" fontWeight="bold" fill="currentColor" className={cn('font-bold', colorClass)} textAnchor="middle">
                       {planet.symbol}
                     </text>
-                    
-                    {/* Status flags */}
                     {planet.statusFlags.length > 0 && (
-                      <text
-                        x={basePos.x}
-                        y={y + 24}
-                        fontSize="11"
-                        fill="currentColor"
-                        className="text-orange-600 dark:text-orange-400"
-                        textAnchor="middle"
-                      >
+                      <text x={basePos.x} y={y + 22} fontSize="12" fill="currentColor" className="text-orange-600 dark:text-orange-400" textAnchor="middle">
                         {planet.statusFlags.join(' ')}
                       </text>
                     )}
@@ -199,9 +191,9 @@ export function NorthIndianChart({
           );
         })}
         
-        {/* Clickable house areas (invisible overlays) */}
+        {/* Clickable overlays */}
         {onHouseClick && houses.map((house) => {
-          const pos = planetPositions[house.houseNumber];
+          const pos = housePositions[house.houseNumber];
           return (
             <circle
               key={`click-${house.houseNumber}`}
