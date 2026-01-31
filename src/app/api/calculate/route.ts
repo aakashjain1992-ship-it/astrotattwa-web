@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { calculateKpChart } from "@/lib/astrology/kp/calculate";
 import { chartCalculationSchema } from "@/lib/validation/chart-calculation";
 import { roundAllPlanets, roundAscendantDecimals } from "@/lib/utils";
+import { convert12to24 } from "@/lib/astrology/time";
+
 
 export async function GET() {
   return NextResponse.json(
@@ -30,7 +32,7 @@ export async function POST(req: Request) {
     // 1. Parse request body
     const body = await req.json();
 
-    // 2. Validate with Zod schema (NEW - Day 1, Task 1)
+    // 2. Validate with Zod schema
     const validationResult = chartCalculationSchema.safeParse(body);
 
     if (!validationResult.success) {
@@ -61,16 +63,19 @@ export async function POST(req: Request) {
       timezone,
     } = validationResult.data;
 
-    // 4. Calculate chart (existing logic)
+   // 4. Convert 12-hour time to 24-hour format
+    const birthTime24 = convert12to24(birthTime, timePeriod);
+    
+  // 5. Calculate chart with 24-hour time
     const chart = await calculateKpChart({
       birthDate,
-      birthTime,
+      birthTime: birthTime24,  // Use converted 24-hour time
       latitude,
       longitude,
       timezone,
     });
 
-    // 5. Round all decimals to 2 places (NEW - Day 1, Task 4)
+    // 6. Round all decimals to 2 places (NEW - Day 1, Task 4)
     const roundedChart = {
       ...chart,
       // Add new fields to response
@@ -86,7 +91,7 @@ export async function POST(req: Request) {
         : chart.ascendant,
     };
 
-    // 6. Return response
+    // 7. Return response
     return NextResponse.json({
       success: true,
       data: roundedChart,
