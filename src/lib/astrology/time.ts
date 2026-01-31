@@ -42,6 +42,41 @@ export function localDateTimeToUtc(
   return { utc: new Date(utcMs), offsetMinutes: secondOffset };
 }
 
+/**
+ * Convert 12-hour format to 24-hour format
+ * @param time12 - Time in HH:MM format (12-hour)
+ * @param period - "AM" or "PM"
+ * @returns Time in HH:MM format (24-hour)
+ *
+ * Examples:
+ * - convert12to24("11:55", "AM") → "11:55" (11:55 AM)
+ * - convert12to24("11:55", "PM") → "23:55" (11:55 PM)
+ * - convert12to24("12:00", "AM") → "00:00" (midnight)
+ * - convert12to24("12:30", "PM") → "12:30" (noon)
+ */
+export function convert12to24(time12: string, period: "AM" | "PM"): string {
+  const [hh12, mi] = time12.split(":").map(Number);
+  
+  if (hh12 < 1 || hh12 > 12) {
+    throw new Error("Hour must be between 1 and 12 for 12-hour format");
+  }
+  
+  let hh24: number;
+  
+  if (period === "AM") {
+    // 12:XX AM → 00:XX (midnight hour)
+    // 1-11 AM → same (1-11)
+    hh24 = hh12 === 12 ? 0 : hh12;
+  } else {
+    // 12:XX PM → 12:XX (noon hour)
+    // 1-11 PM → add 12 (13-23)
+    hh24 = hh12 === 12 ? 12 : hh12 + 12;
+  }
+  
+  return `${hh24.toString().padStart(2, "0")}:${mi.toString().padStart(2, "0")}`;
+}
+
+
 export function parseBirth(birthDate: string, birthTime: string) {
   const [yy, mm, dd] = birthDate.split("-").map(Number);
   const [hh, mi] = birthTime.split(":").map(Number);
