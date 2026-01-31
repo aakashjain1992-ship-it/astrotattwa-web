@@ -30,10 +30,11 @@ export const chartCalculationSchema = z.object({
     .max(100, 'Name must be 100 characters or less')
     .trim(),
 
-  gender: z.enum(['male', 'female'], {
+  gender: z.enum(['male', 'female', 'Male', 'Female'],
+ {
     required_error: 'Gender is required',
     invalid_type_error: 'Gender must be either "male" or "female"',
-  }),
+  }).transform(val => val.toLowerCase()),
 
   // Birth Details
   birthDate: z

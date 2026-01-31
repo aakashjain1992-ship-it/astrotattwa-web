@@ -41,9 +41,9 @@ export async function calculateKpChart(input: {
   // Node
   let nodeLon: number;
   try {
-    nodeLon = (await sweCalcSidereal(jdUt, bodies.MEAN_NODE)).lon;
-  } catch {
     nodeLon = (await sweCalcSidereal(jdUt, bodies.TRUE_NODE)).lon;
+  } catch {
+    nodeLon = (await sweCalcSidereal(jdUt, bodies.MEAN_NODE)).lon;
   }
   planets.Rahu = buildPlanet("Rahu", nodeLon, undefined, sunLon);
   planets.Ketu = buildPlanet("Ketu", norm360(nodeLon + 180), undefined, sunLon);
