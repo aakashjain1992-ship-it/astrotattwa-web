@@ -1,3 +1,4 @@
+
 // src/app/api/test/run-calculations/route.ts
 
 import { NextRequest } from 'next/server';
@@ -72,6 +73,9 @@ export async function GET(request: NextRequest) {
         for (let i = 0; i < testCases.length; i++) {
           const testCase = testCases[i] as TestCase;
           const currentTest = i + 1;
+		if (i > 0) {
+    await new Promise(resolve => setTimeout(resolve, 2000));
+  }
 
           // Send progress update
           controller.enqueue(
@@ -140,7 +144,7 @@ const requestBody = {
 
 console.log('🔍 Calling /api/calculate with:', JSON.stringify(requestBody, null, 2));
 
-const calculateResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/calculate`, {
+const calculateResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://172.236.176.107'}/api/calculate`, {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
@@ -183,8 +187,13 @@ console.log('📡 API Response Status:', calculateResponse.status);
                 ascendant: testCase.ascendant_tolerance_arcmin,
               }
             );
+	 if (comparison.dasha && actualData.dasa?.currentMahadasha?.lord) {
+		 comparison.dasha.actualMahadasha = actualData.dasa.currentMahadasha.lord;
+		}
 
-            // 5. Save result to database
+
+            
+// 5. Save result to database
             const { error: insertError } = await supabase
               .from('test_case_runs')
               .insert({

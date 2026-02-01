@@ -23,7 +23,7 @@ interface TestResult {
     passedChecks: number;
     failedChecks: number;
   };
-planets?: Array<{
+  planets?: Array<{
     planet: string;
     expected: number;
     actual: number;
@@ -43,7 +43,6 @@ planets?: Array<{
     actualMahadasha: string;
     passed: boolean;
   };
-
 }
 
 interface TestRun {
@@ -53,7 +52,6 @@ interface TestRun {
   differences: any;
   test_case_id: string;
   test_cases?: { name: string } | { name: string }[];
-
 }
 
 export default function AdminTestsPage() {
@@ -119,9 +117,9 @@ export default function AdminTestsPage() {
                 testCaseName: data.testName,
                 status: data.status,
                 summary: data.summary || { totalChecks: 0, passedChecks: 0, failedChecks: 0 },
-      planets: data.planets,
-      ascendant: data.ascendant,
-      dasha: data.dasha,
+                planets: data.planets,
+                ascendant: data.ascendant,
+                dasha: data.dasha,
               },
             ]);
             break;
@@ -295,48 +293,72 @@ export default function AdminTestsPage() {
                   </div>
 
                   {expandedTests.has(result.testCaseId) && result.planets && (
-  <div className="mt-4 pl-8 space-y-4">
-    {/* Failed Checks */}
-    {result.planets.filter(p => !p.passed).length > 0 && (
-      <div>
-        <p className="font-semibold text-red-600 mb-2">❌ Failures:</p>
-        <div className="space-y-1">
-          {result.planets.filter(p => !p.passed).map(planet => (
-            <div key={planet.planet} className="text-sm">
-              <span className="font-medium">{planet.planet}:</span> Expected {planet.expected.toFixed(2)}°, Got {planet.actual.toFixed(2)}°, 
-              <span className="text-red-600 font-semibold"> Diff: {planet.difference.toFixed(2)} arcmin</span> (tolerance: {planet.tolerance})
-            </div>
-          ))}
-        </div>
-      </div>
-    )}
-    
-    {result.ascendant && !result.ascendant.passed && (
-      <div>
-        <p className="font-semibold text-red-600 mb-2">❌ Ascendant Failed:</p>
-        <div className="text-sm">
-          Expected {result.ascendant.expected.toFixed(2)}°, Got {result.ascendant.actual.toFixed(2)}°,
-          <span className="text-red-600 font-semibold"> Diff: {result.ascendant.difference.toFixed(2)} arcmin</span>
-        </div>
-      </div>
-    )}
+                    <div className="mt-4 pl-8 space-y-4">
+                      {/* Failed Planet Checks */}
+                      {result.planets.filter(p => !p.passed).length > 0 && (
+                        <div>
+                          <p className="font-semibold text-red-600 mb-2">❌ Failed Planets:</p>
+                          <div className="space-y-1">
+                            {result.planets.filter(p => !p.passed).map(planet => (
+                              <div key={planet.planet} className="text-sm">
+                                <span className="font-medium">{planet.planet}:</span> Expected {planet.expected.toFixed(2)}°, Got {planet.actual.toFixed(2)}°, 
+                                <span className="text-red-600 font-semibold"> Diff: {planet.difference.toFixed(2)} arcmin</span> (tolerance: {planet.tolerance})
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Failed Ascendant */}
+                      {result.ascendant && !result.ascendant.passed && (
+                        <div>
+                          <p className="font-semibold text-red-600 mb-2">❌ Ascendant Failed:</p>
+                          <div className="text-sm">
+                            Expected {result.ascendant.expected.toFixed(2)}°, Got {result.ascendant.actual.toFixed(2)}°,
+                            <span className="text-red-600 font-semibold"> Diff: {result.ascendant.difference.toFixed(2)} arcmin</span> (tolerance: {result.ascendant.tolerance})
+                          </div>
+                        </div>
+                      )}
 
-    {/* Passed Checks */}
-    {result.planets.filter(p => p.passed).length > 0 && (
-      <div>
-        <p className="font-semibold text-green-600 mb-2">✅ Passed:</p>
-        <div className="grid grid-cols-2 gap-1 text-sm text-muted-foreground">
-          {result.planets.filter(p => p.passed).map(planet => (
-            <div key={planet.planet}>
-              {planet.planet}: {planet.difference.toFixed(2)} arcmin
-            </div>
-          ))}
-        </div>
-      </div>
-    )}
-  </div>
-)}
-                   
+                      {/* Failed Dasha */}
+                      {result.dasha && !result.dasha.passed && (
+                        <div>
+                          <p className="font-semibold text-red-600 mb-2">❌ Dasha Failed:</p>
+                          <div className="text-sm">
+                            Expected Mahadasha: <span className="font-medium">{result.dasha.expectedMahadasha}</span>, 
+                            Got: <span className="font-medium text-red-600">{result.dasha.actualMahadasha|| 'Unknown' }</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Passed Planets */}
+                      {result.planets.filter(p => p.passed).length > 0 && (
+                        <div>
+                          <p className="font-semibold text-green-600 mb-2">✅ Passed Planets:</p>
+                          <div className="grid grid-cols-2 gap-1 text-sm text-muted-foreground">
+                            {result.planets.filter(p => p.passed).map(planet => (
+                              <div key={planet.planet}>
+                                {planet.planet}: {planet.difference.toFixed(2)} arcmin
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Passed Ascendant */}
+                      {result.ascendant && result.ascendant.passed && (
+                        <div className="text-sm text-muted-foreground">
+                          ✅ Ascendant: {result.ascendant.difference.toFixed(2)} arcmin
+                        </div>
+                      )}
+
+                      {/* Passed Dasha */}
+                      {result.dasha && result.dasha.passed && (
+                        <div className="text-sm text-muted-foreground">
+                          ✅ Dasha: {result.dasha.actualMahadasha} (correct)
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
               ))}
@@ -368,7 +390,7 @@ export default function AdminTestsPage() {
                   <div>
                     <p className="font-medium">Test Run</p>
                     <p className="text-sm text-muted-foreground">
-                      {formatDate(run.run_at)}}
+                      {formatDate(run.run_at)}
                     </p>
                   </div>
                   <Badge variant={run.status === 'passed' ? 'default' : 'destructive'}>
