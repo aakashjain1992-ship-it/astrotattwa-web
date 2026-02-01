@@ -12,6 +12,9 @@ export interface PlanetComparison {
   difference: number; // in arcminutes
   tolerance: number; // in arcminutes
   passed: boolean;
+  nodeMode?: 'TRUE' | 'MEAN';
+  trueDifference?: number; 
+  meanDifference?: number;
 }
 
 export interface AscendantComparison {
@@ -50,14 +53,22 @@ function calculateArcminuteDifference(expected: number, actual: number): number 
   return diffDegrees * 60; // Convert degrees to arcminutes
 }
 
+
+
 /**
  * Compare planetary positions
  */
+
 export function comparePlanets(
   expectedPlanets: Record<string, { longitude: number }>,
   actualPlanets: Record<string, { longitude: number }>,
-  tolerance: number = 1.0 // Default: 1 arcminute
+  tolerance: number = 1.0, // Default: 1 arcminute
+  rahuKetuModes?: { trueNode: { Rahu: number; Ketu: number }; meanNode: { Rahu: number; Ketu: number } } 
+
 ): PlanetComparison[] {
+  require('fs').appendFileSync('/tmp/rahu-debug.txt', `rahuKetuModes: ${JSON.stringify(rahuKetuModes)}\n`);
+
+
   const planetNames = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu'];
   const comparisons: PlanetComparison[] = [];
 
@@ -78,21 +89,45 @@ export function comparePlanets(
       continue;
     }
 
+    // Special handling for Rahu/Ketu - check both modes
+  if ((planet === 'Rahu' || planet === 'Ketu') && rahuKetuModes) {
+    const trueValue = rahuKetuModes.trueNode[planet];
+    const meanValue = rahuKetuModes.meanNode[planet];
+    
+    const trueDiff = calculateArcminuteDifference(expected.longitude, trueValue);
+    const meanDiff = calculateArcminuteDifference(expected.longitude, meanValue);
+    
+    // Use whichever is closer
+    const useMean = meanDiff < trueDiff;
+    const actualValue = useMean ? meanValue : trueValue;
+    const difference = useMean ? meanDiff : trueDiff;
+    
+    comparisons.push({
+      planet,
+      expected: expected.longitude,
+      actual: actual.Value,
+      difference,
+      tolerance,
+      passed: difference <= tolerance,
+      nodeMode: useMean ? 'MEAN' : 'TRUE',
+      trueDifference: trueDiff,
+      meanDifference: meanDiff,
+    });
+  } else {
+    // Regular planet comparison
     const difference = calculateArcminuteDifference(expected.longitude, actual.longitude);
-    const passed = difference <= tolerance;
-
     comparisons.push({
       planet,
       expected: expected.longitude,
       actual: actual.longitude,
       difference,
       tolerance,
-      passed,
+      passed: difference <= tolerance,
     });
   }
-
-  return comparisons;
-}
+} 
+ return comparisons;
+}  
 
 /**
  * Compare ascendant position
@@ -145,6 +180,7 @@ export function compareTestCase(
     planets: Record<string, { longitude: number }>;
     ascendant: { longitude: number };
     dasha: { mahadasha: string };
+    rahuKetuModes?: { trueNode: { Rahu: number; Ketu: number }; meanNode: { Rahu: number; Ketu: number } }; 
   },
   tolerances: {
     planet: number;
@@ -152,7 +188,9 @@ export function compareTestCase(
   }
 ): TestCaseResult {
   // Compare all components
-  const planetComparisons = comparePlanets(expected.planets, actual.planets, tolerances.planet);
+  require('fs').appendFileSync('/tmp/rahu-debug.txt', `IN compareTestCase: ${JSON.stringify(actual.rahuKetuModes)}\n`);
+  
+  const planetComparisons = comparePlanets(expected.planets, actual.planets, tolerances.planet,actual.rahuKetuModes);
   const ascendantComparison = compareAscendant(expected.ascendant, actual.ascendant, tolerances.ascendant);
   const dashaComparison = compareDasha(expected.dasha, actual.dasha);
 

@@ -18,6 +18,10 @@ export async function calculateKpChart(input: {
   const { yy, mm, dd, hh, mi } = parseBirth(input.birthDate, input.birthTime);
   const { utc: birthUtc, offsetMinutes } = localDateTimeToUtc(yy, mm, dd, hh, mi, input.timezone);
 
+   if (input.name?.includes('Midnight')) {
+    throw new Error(`DEBUG: birthDate=${input.birthDate}, birthTime=${input.birthTime}, parsed={${yy}-${mm}-${dd} ${hh}:${mi}}, utc=${birthUtc.toISOString()}`);}
+ 
+
   const jdUt = await sweJuldayUTC(birthUtc);
 
   // Sun first (needed for combustion calc)
@@ -38,27 +42,53 @@ export async function calculateKpChart(input: {
     planets[key] = buildPlanet(key, res.lon, res.speed, sunLon);
   }
 
-  // Node
-  console.log('🔍 Starting Rahu/Ketu calculation...');
+ // Node - Calculate BOTH True and Mean
+  console.log('🔍 Starting Rahu/Ketu calculation (BOTH modes)...');
   
-  let nodeLon: number;
-try {
-  console.log('🔍 Trying TRUE_NODE...');
-  nodeLon = (await sweCalcSidereal(jdUt, bodies.TRUE_NODE)).lon;
-  console.log('✅ TRUE_NODE success:', nodeLon);
-
-} catch (err) {
-  console.log('⚠️ TRUE_NODE failed, trying MEAN_NODE...');
-  console.warn('TRUE_NODE failed, falling back to MEAN_NODE:', err);
-  nodeLon = (await sweCalcSidereal(jdUt, bodies.MEAN_NODE)).lon;
-  console.log('✅ MEAN_NODE success:', nodeLon);
-
-}
+  let trueNodeLon: number;
+  let meanNodeLon: number;
+  
+  try {
+    console.log('🔍 Calculating TRUE_NODE...');
+    trueNodeLon = (await sweCalcSidereal(jdUt, bodies.TRUE_NODE)).lon;
+    console.log('✅ TRUE_NODE success:', trueNodeLon);
+  } catch (err) {
+    console.warn('⚠️ TRUE_NODE failed:', err);
+    trueNodeLon = 0; // fallback
+  }
+  
+  try {
+    console.log('🔍 Calculating MEAN_NODE...');
+    meanNodeLon = (await sweCalcSidereal(jdUt, bodies.MEAN_NODE)).lon;
+    console.log('✅ MEAN_NODE success:', meanNodeLon);
+  } catch (err) {
+    console.warn('⚠️ MEAN_NODE failed:', err);
+    meanNodeLon = 0; // fallback
+  }
+  
+  // Use TRUE_NODE as primary
+  const nodeLon = trueNodeLon || meanNodeLon;
+  
   console.log('✅ Rahu/Ketu calculation complete');
+  console.log('   TRUE_NODE Rahu:', trueNodeLon, 'Ketu:', norm360(trueNodeLon + 180));
+  console.log('   MEAN_NODE Rahu:', meanNodeLon, 'Ketu:', norm360(meanNodeLon + 180));
+  console.log('   Using:', nodeLon);
 
   planets.Rahu = buildPlanet("Rahu", nodeLon, undefined, sunLon);
   planets.Ketu = buildPlanet("Ketu", norm360(nodeLon + 180), undefined, sunLon);
-
+  
+  // Store both modes for comparison
+  const rahuKetuModes = {
+    trueNode: {
+      Rahu: trueNodeLon,
+      Ketu: norm360(trueNodeLon + 180)
+    },
+    meanNode: {
+      Rahu: meanNodeLon,
+      Ketu: norm360(meanNodeLon + 180)
+    }
+  };
+  
   const ascLon = await sweAscendantSidereal(jdUt, input.latitude, input.longitude);
   const ascendant = buildPlanet("Ascendant", ascLon, undefined, sunLon);
 
@@ -102,5 +132,6 @@ try {
     nakshatra,
     dasa,
     avakahada,
+    rahuKetuModes, 
   };
 }

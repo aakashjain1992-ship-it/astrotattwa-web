@@ -143,6 +143,16 @@ const requestBody = {
            
 
 console.log('🔍 Calling /api/calculate with:', JSON.stringify(requestBody, null, 2));
+if (testCase.name.includes('Midnight')) {
+  console.log('🚨 MIDNIGHT TEST DEBUG:');
+  console.log('DB birth_date:', testCase.birth_date);
+  console.log('DB birth_time:', testCase.birth_time);
+  console.log('Converted time:', time);
+  console.log('Period:', period);
+  console.log('Request body:', JSON.stringify(requestBody, null, 2));
+}
+
+
 
 const calculateResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://172.236.176.107'}/api/calculate`, {
   method: 'POST',
@@ -179,8 +189,10 @@ console.log('📡 API Response Status:', calculateResponse.status);
               },
               {
                 planets: actualData.planets,
-                ascendant: actualData.ascendant,
-                dasha: actualData.dasa,
+                ascendant: actualData.ascendant, 
+                dasha: { mahadasha: actualData.dasa?.balance?.classical360?.mahadashaLord || 'Unknown' },
+		rahuKetuModes: actualData.rahuKetuModes,
+
               },
               {
                 planet: testCase.planet_tolerance_arcmin,
@@ -188,7 +200,7 @@ console.log('📡 API Response Status:', calculateResponse.status);
               }
             );
 	 if (comparison.dasha && actualData.dasa?.currentMahadasha?.lord) {
-		 comparison.dasha.actualMahadasha = actualData.dasa.currentMahadasha.lord;
+comparison.dasha.actualMahadasha = actualData.dasa.balance.classical360.mahadashaLord;
 		}
 
 
