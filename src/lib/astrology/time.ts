@@ -8,17 +8,25 @@ export function getTimezoneOffsetMinutes(date: Date, timeZone: string): number {
     minute: "2-digit",
     second: "2-digit",
     hour12: false,
+    hourCycle: "h23", // ✅ CRITICAL: ensures 00–23, not 24
   }).formatToParts(date);
-
-  const get = (t: string) => Number(parts.find((p) => p.type === t)?.value);
+  
+  const get = (t: string) => {
+    const v = parts.find((p) => p.type === t)?.value;
+    if (v == null) throw new Error(`Missing ${t} from Intl parts`);
+    return Number(v);
+  };
+  
   const yy = get("year");
   const mm = get("month");
   const dd = get("day");
-  const hh = get("hour");
+  let hh = get("hour");
   const mi = get("minute");
   const ss = get("second");
-
-  // offsetMinutes = (local - utc) in minutes
+  
+  // Extra safety: some environments can still produce 24
+  if (hh === 24) hh = 0;
+  
   return Math.round((Date.UTC(yy, mm - 1, dd, hh, mi, ss) - date.getTime()) / 60000);
 }
 
@@ -31,17 +39,20 @@ export function localDateTimeToUtc(
   timeZone: string
 ): { utc: Date; offsetMinutes: number } {
   const naiveUtcMs = Date.UTC(yy, mm - 1, dd, hh, mi, 0);
-  const firstOffset = getTimezoneOffsetMinutes(new Date(naiveUtcMs), timeZone);
 
-  let utcMs = naiveUtcMs - firstOffset * 60000;
-  const secondOffset = getTimezoneOffsetMinutes(new Date(utcMs), timeZone);
+  // Iterate to stabilize offset (handles DST boundaries more robustly)
+  let offset = getTimezoneOffsetMinutes(new Date(naiveUtcMs), timeZone);
+  let utcMs = naiveUtcMs - offset * 60000;
 
-  // DST boundary fix
-  if (secondOffset !== firstOffset) utcMs = naiveUtcMs - secondOffset * 60000;
+  for (let i = 0; i < 3; i++) {
+    const nextOffset = getTimezoneOffsetMinutes(new Date(utcMs), timeZone);
+    if (nextOffset === offset) break;
+    offset = nextOffset;
+    utcMs = naiveUtcMs - offset * 60000;
+  }
 
-  return { utc: new Date(utcMs), offsetMinutes: secondOffset };
+  return { utc: new Date(utcMs), offsetMinutes: offset };
 }
-
 /**
  * Convert 12-hour format to 24-hour format
  * @param time12 - Time in HH:MM format (12-hour)

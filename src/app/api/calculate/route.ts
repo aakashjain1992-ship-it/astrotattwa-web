@@ -74,8 +74,11 @@ export async function POST(req: Request) {
       longitude,
       timezone,
     });
+  // DEBUG: Log what calculateKpChart returned
+   console.log('🔍 calculateKpChart returned keys:', Object.keys(chart));
+    console.log('🔍 rahuKetuModes from chart:', JSON.stringify(chart.rahuKetuModes));
 
-    // 6. Round all decimals to 2 places (NEW - Day 1, Task 4)
+  // 6. Round all decimals to 2 places (NEW - Day 1, Task 4)
     const roundedChart = {
       ...chart,
       // Add new fields to response
@@ -89,7 +92,14 @@ export async function POST(req: Request) {
       ascendant: chart.ascendant
         ? roundAscendantDecimals(chart.ascendant)
         : chart.ascendant,
+      rahuKetuModes: chart.rahuKetuModes,
+
     };
+
+
+    // DEBUG: Verify rahuKetuModes is in roundedChart
+    console.log('🔍 roundedChart.rahuKetuModes:', JSON.stringify(roundedChart.rahuKetuModes));
+
 
     // 7. Return response
     return NextResponse.json({
