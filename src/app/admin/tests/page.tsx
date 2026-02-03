@@ -30,6 +30,9 @@ interface TestResult {
     difference: number;
     tolerance: number;
     passed: boolean;
+    nodeMode?: 'TRUE' | 'MEAN';
+    trueDifference?: number;
+    meanDifference?: number;
   }>;
   ascendant?: {
     expected: number;
@@ -260,6 +263,52 @@ export default function AdminTestsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {/* Rahu/Ketu Mode Summary */}
+            {(() => {
+              const rahuResults = results.flatMap(r => r.planets?.filter(p => p.planet === 'Rahu' && p.nodeMode) || []);
+              const ketuResults = results.flatMap(r => r.planets?.filter(p => p.planet === 'Ketu' && p.nodeMode) || []);
+              const trueCount = rahuResults.filter(p => p.nodeMode === 'TRUE').length + ketuResults.filter(p => p.nodeMode === 'TRUE').length;
+              const meanCount = rahuResults.filter(p => p.nodeMode === 'MEAN').length + ketuResults.filter(p => p.nodeMode === 'MEAN').length;
+              const noModeCount = results.flatMap(r => r.planets?.filter(p => (p.planet === 'Rahu' || p.planet === 'Ketu') && !p.nodeMode) || []).length;
+              
+              if (trueCount + meanCount + noModeCount === 0) return null;
+              
+              return (
+                <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <h4 className="font-semibold mb-2 text-blue-900 dark:text-blue-100">🔍 Rahu/Ketu Node Mode Analysis</h4>
+                  <div className="grid grid-cols-3 gap-4 text-sm">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-green-600">{trueCount}</div>
+                      <div className="text-muted-foreground">TRUE_NODE matches</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-purple-600">{meanCount}</div>
+                      <div className="text-muted-foreground">MEAN_NODE matches</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-orange-600">{noModeCount}</div>
+                      <div className="text-muted-foreground">No mode data</div>
+                    </div>
+                  </div>
+                  {noModeCount > 0 && (
+                    <p className="mt-2 text-xs text-orange-700 dark:text-orange-400">
+                      ⚠️ Some tests missing rahuKetuModes - check if API is returning this field
+                    </p>
+                  )}
+                  {meanCount > trueCount && trueCount + meanCount > 0 && (
+                    <p className="mt-2 text-sm text-purple-700 dark:text-purple-400 font-medium">
+                      📊 Test data appears to use MEAN_NODE values (Jagannatha Hora default)
+                    </p>
+                  )}
+                  {trueCount > meanCount && trueCount + meanCount > 0 && (
+                    <p className="mt-2 text-sm text-green-700 dark:text-green-400 font-medium">
+                      📊 Test data appears to use TRUE_NODE values
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
+            
             <div className="space-y-2">
               {results.map((result) => (
                 <div key={result.testCaseId} className="border rounded-lg p-4">
@@ -298,11 +347,33 @@ export default function AdminTestsPage() {
                       {result.planets.filter(p => !p.passed).length > 0 && (
                         <div>
                           <p className="font-semibold text-red-600 mb-2">❌ Failed Planets:</p>
-                          <div className="space-y-1">
+                          <div className="space-y-2">
                             {result.planets.filter(p => !p.passed).map(planet => (
-                              <div key={planet.planet} className="text-sm">
-                                <span className="font-medium">{planet.planet}:</span> Expected {planet.expected.toFixed(2)}°, Got {planet.actual.toFixed(2)}°, 
-                                <span className="text-red-600 font-semibold"> Diff: {planet.difference.toFixed(2)} arcmin</span> (tolerance: {planet.tolerance})
+                              <div key={planet.planet} className="text-sm border-l-2 border-red-300 pl-3 py-1">
+                                <div>
+                                  <span className="font-medium">{planet.planet}:</span> Expected {planet.expected.toFixed(3)}°, Got {planet.actual.toFixed(3)}°
+                                  <span className="text-red-600 font-semibold ml-2">Diff: {planet.difference.toFixed(2)}&apos;</span>
+                                  <span className="text-muted-foreground ml-1">(tol: {planet.tolerance}&apos;)</span>
+                                </div>
+                                {/* Show Rahu/Ketu mode comparison */}
+                                {(planet.planet === 'Rahu' || planet.planet === 'Ketu') && planet.nodeMode && (
+                                  <div className="mt-1 text-xs bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded">
+                                    <span className="font-semibold">Mode Used: {planet.nodeMode}_NODE</span>
+                                    <span className="ml-3">TRUE: {planet.trueDifference?.toFixed(2)}&apos;</span>
+                                    <span className="ml-2">MEAN: {planet.meanDifference?.toFixed(2)}&apos;</span>
+                                    {planet.trueDifference !== undefined && planet.meanDifference !== undefined && (
+                                      <span className="ml-2 text-blue-600">
+                                        ({planet.meanDifference < planet.trueDifference ? 'MEAN is closer' : 'TRUE is closer'})
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+                                {/* Show warning if Rahu/Ketu has no mode data */}
+                                {(planet.planet === 'Rahu' || planet.planet === 'Ketu') && !planet.nodeMode && (
+                                  <div className="mt-1 text-xs bg-orange-50 dark:bg-orange-900/20 p-2 rounded text-orange-700">
+                                    ⚠️ No TRUE/MEAN comparison data - rahuKetuModes may be missing from API response
+                                  </div>
+                                )}
                               </div>
                             ))}
                           </div>
@@ -335,10 +406,16 @@ export default function AdminTestsPage() {
                       {result.planets.filter(p => p.passed).length > 0 && (
                         <div>
                           <p className="font-semibold text-green-600 mb-2">✅ Passed Planets:</p>
-                          <div className="grid grid-cols-2 gap-1 text-sm text-muted-foreground">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
                             {result.planets.filter(p => p.passed).map(planet => (
-                              <div key={planet.planet}>
-                                {planet.planet}: {planet.difference.toFixed(2)} arcmin
+                              <div key={planet.planet} className="text-muted-foreground">
+                                <span className="font-medium text-foreground">{planet.planet}:</span> {planet.difference.toFixed(2)}&apos;
+                                {/* Show Rahu/Ketu mode for passed items too */}
+                                {(planet.planet === 'Rahu' || planet.planet === 'Ketu') && planet.nodeMode && (
+                                  <span className="ml-2 text-xs px-1.5 py-0.5 bg-green-100 dark:bg-green-900/30 rounded text-green-700 dark:text-green-400">
+                                    {planet.nodeMode}_NODE
+                                  </span>
+                                )}
                               </div>
                             ))}
                           </div>

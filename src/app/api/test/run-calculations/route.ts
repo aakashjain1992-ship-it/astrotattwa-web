@@ -1,6 +1,4 @@
 
-// src/app/api/test/run-calculations/route.ts
-
 import { NextRequest } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { compareTestCase } from '@/lib/test/compare-results';
@@ -33,9 +31,9 @@ export async function GET(request: NextRequest) {
     async start(controller) {
       try {
         // Send initial event
-	    console.log('🚀 TEST RUNNER STARTED');
+    console.log('🚀 TEST RUNNER STARTED');
        
- 	controller.enqueue(
+ controller.enqueue(
           encoder.encode(`data: ${JSON.stringify({ type: 'started', message: 'Starting test run...' })}\n\n`)
         );
 
@@ -73,7 +71,7 @@ export async function GET(request: NextRequest) {
         for (let i = 0; i < testCases.length; i++) {
           const testCase = testCases[i] as TestCase;
           const currentTest = i + 1;
-		if (i > 0) {
+if (i > 0) {
     await new Promise(resolve => setTimeout(resolve, 2000));
   }
 
@@ -93,7 +91,7 @@ export async function GET(request: NextRequest) {
           try {
             // 3. Call /api/calculate
             
-		const parseTime24to12 = (time24: string) => {
+const parseTime24to12 = (time24: string) => {
   const [hours, minutes] = time24.split(':');
   const hour = parseInt(hours, 10);
   const min = minutes || '00';
@@ -126,12 +124,12 @@ export async function GET(request: NextRequest) {
 };
 
 const { time, period } = parseTime24to12(testCase.birth_time);
-	
+
 
 
 const requestBody = {
-		name: testCase.name,
-		gender: 'Male',
+name: testCase.name,
+gender: 'Male',
                 birthDate: testCase.birth_date,
                 birthTime: time,
                 timePeriod: period,
@@ -178,6 +176,10 @@ console.log('📡 API Response Status:', calculateResponse.status);
             const calculateResult = await calculateResponse.json();
             const actualData = calculateResult.data;
 
+            // DEBUG: Log rahuKetuModes to verify it's being returned
+            console.log('🔍 DEBUG rahuKetuModes for', testCase.name, ':', JSON.stringify(actualData.rahuKetuModes));
+            console.log('🔍 DEBUG actualData keys:', Object.keys(actualData));
+
             // 4. Compare results
             const comparison = compareTestCase(
               testCase.id,
@@ -191,7 +193,7 @@ console.log('📡 API Response Status:', calculateResponse.status);
                 planets: actualData.planets,
                 ascendant: actualData.ascendant, 
                 dasha: { mahadasha: actualData.dasa?.balance?.classical360?.mahadashaLord || 'Unknown' },
-		rahuKetuModes: actualData.rahuKetuModes,
+rahuKetuModes: actualData.rahuKetuModes,
 
               },
               {
@@ -199,9 +201,9 @@ console.log('📡 API Response Status:', calculateResponse.status);
                 ascendant: testCase.ascendant_tolerance_arcmin,
               }
             );
-	 if (comparison.dasha && actualData.dasa?.currentMahadasha?.lord) {
+ if (comparison.dasha && actualData.dasa?.currentMahadasha?.lord) {
 comparison.dasha.actualMahadasha = actualData.dasa.balance.classical360.mahadashaLord;
-		}
+}
 
 
             
@@ -211,9 +213,9 @@ comparison.dasha.actualMahadasha = actualData.dasa.balance.classical360.mahadash
               .insert({
                 test_case_id: testCase.id,
                 status: comparison.status,
-		actual_planets: actualData.planets,
-    		actual_ascendant: actualData.ascendant,
-    		actual_dasha: actualData.dasa,
+actual_planets: actualData.planets,
+    actual_ascendant: actualData.ascendant,
+    actual_dasha: actualData.dasa,
                 differences: {
                   planets: comparison.planets,
                   ascendant: comparison.ascendant,

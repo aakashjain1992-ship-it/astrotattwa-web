@@ -18,10 +18,6 @@ export async function calculateKpChart(input: {
   const { yy, mm, dd, hh, mi } = parseBirth(input.birthDate, input.birthTime);
   const { utc: birthUtc, offsetMinutes } = localDateTimeToUtc(yy, mm, dd, hh, mi, input.timezone);
 
-   if (input.name?.includes('Midnight')) {
-    throw new Error(`DEBUG: birthDate=${input.birthDate}, birthTime=${input.birthTime}, parsed={${yy}-${mm}-${dd} ${hh}:${mi}}, utc=${birthUtc.toISOString()}`);}
- 
-
   const jdUt = await sweJuldayUTC(birthUtc);
 
   // Sun first (needed for combustion calc)
