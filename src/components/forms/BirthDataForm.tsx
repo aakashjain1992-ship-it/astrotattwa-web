@@ -150,7 +150,7 @@ export default function BirthDataForm() {
       const result = await response.json()
 
       if (result.success) {
-        localStorage.setItem('lastChart', JSON.stringify(result.chart))
+        localStorage.setItem('lastChart', JSON.stringify(result.data))
         window.location.href = '/chart'
       } else {
         alert(`Error: ${result.error || 'Calculation failed'}`)

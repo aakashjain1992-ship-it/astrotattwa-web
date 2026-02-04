@@ -24,7 +24,6 @@ export default function TestChartPage() {
             birthDate: '1992-03-25',
             birthTime: '11:55',
             timePeriod: 'AM',
-            cityId: '550e8400-e29b-41d4-a716-446655440000',
             latitude: 28.6139,
             longitude: 77.209,
             timezone: 'Asia/Kolkata',
