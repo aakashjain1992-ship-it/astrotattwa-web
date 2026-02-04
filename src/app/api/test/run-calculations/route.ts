@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 import { NextRequest } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
@@ -326,9 +328,12 @@ actual_planets: actualData.planets,
 
   return new Response(stream, {
     headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
+    "Content-Type": "text/event-stream; charset=utf-8",
+    "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+    "Pragma": "no-cache",
+    "Expires": "0",
+    "Connection": "keep-alive",
+    "X-Accel-Buffering": "no",
     },
   });
 }

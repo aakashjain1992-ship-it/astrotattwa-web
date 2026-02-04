@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 
 interface City {
-  id: number
+  id: number // int4 in Supabase
   city_name: string
   state_name: string
   country: string
@@ -26,6 +26,11 @@ export function CitySearch({ value, onSelect }: CitySearchProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const wrapperRef = useRef<HTMLDivElement>(null)
+
+  // keep input in sync when parent updates value (after selection / test data)
+  useEffect(() => {
+    setQuery(value || '')
+  }, [value])
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -85,13 +90,10 @@ export function CitySearch({ value, onSelect }: CitySearchProps) {
         />
       </div>
 
-      {/* Dropdown Results */}
       {isOpen && (
         <div className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-md border bg-popover p-1 shadow-md">
           {isLoading ? (
-            <div className="px-3 py-2 text-sm text-muted-foreground">
-              Searching...
-            </div>
+            <div className="px-3 py-2 text-sm text-muted-foreground">Searching...</div>
           ) : results.length > 0 ? (
             results.map((city) => (
               <button

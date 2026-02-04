@@ -86,3 +86,31 @@
     @apply min-h-[44px] min-w-[44px];
   }
 }
+/* ===== AstroTattwa: FIX react-day-picker vertical list bug (scoped, safe) ===== */
+/* Some CSS is collapsing the calendar table into a single column.
+   Force table semantics back ONLY inside .rdp (react-day-picker). */
+.rdp table { display: table !important; width: 100% !important; border-collapse: collapse !important; }
+.rdp thead { display: table-header-group !important; }
+.rdp tbody { display: table-row-group !important; }
+.rdp tr { display: table-row !important; }
+.rdp th, .rdp td { display: table-cell !important; padding: 0 !important; text-align: center !important; vertical-align: middle !important; }
+
+/* Make day buttons square + centered */
+.rdp .rdp-button,
+.rdp button {
+  width: 36px !important;
+  height: 36px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* Weekday header spacing */
+.rdp th { font-weight: 600 !important; }
+
+/* Keep our earlier visuals */
+.rdp { background: #fff; color: #000; }
+.rdp-day_outside { color: #cbd5e1 !important; opacity: 1 !important; }
+.rdp-day_disabled,
+.rdp-day[aria-disabled="true"] { color: #cbd5e1 !important; opacity: 1 !important; cursor: not-allowed !important; }
+.rdp-day_selected { background: #000 !important; color: #fff !important; }
