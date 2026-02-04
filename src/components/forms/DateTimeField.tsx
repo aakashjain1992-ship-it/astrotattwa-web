@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { format as formatDate } from "date-fns"
-import { CalendarIcon, Clock } from "lucide-react"
+import { CalendarIcon, Clock, ChevronLeft, ChevronRight } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -21,8 +21,8 @@ type TimePeriod = "AM" | "PM"
 
 export type DateTimeValue = {
   date?: Date
-  hour?: string // "01".."12"
-  minute?: string // "00".."59"
+  hour?: string
+  minute?: string
   period?: TimePeriod
 }
 
@@ -49,10 +49,8 @@ export function DateTimeField({
   const today = new Date()
   const toYear = today.getFullYear()
 
-  // Popover control for auto-close
   const [open, setOpen] = React.useState(false)
 
-  // Default open month/year = Jan 2000 if no date selected
   const initialMonth = value.date ? new Date(value.date.getFullYear(), value.date.getMonth(), 1) : new Date(2000, 0, 1)
   const [month, setMonth] = React.useState<Date>(initialMonth)
 
@@ -90,9 +88,29 @@ export function DateTimeField({
     setMonth(new Date(y, monthIndex, 1))
   }
 
+ // Navigation: go to previous month
+  const goToPrevMonth = () => {
+    const prevMonth = new Date(yearValue, monthIndex - 1, 1)
+    // Don't go before fromYear
+    if (prevMonth.getFullYear() >= fromYear) {
+      setMonth(prevMonth)
+    }
+  }
+  // Navigation: go to next month
+  const goToNextMonth = () => {
+    const nextMonth = new Date(yearValue, monthIndex + 1, 1)
+    // Don't go past current month if disabledFuture
+    if (!disabledFuture || nextMonth <= new Date(today.getFullYear(), today.getMonth(), 1)) {
+      setMonth(nextMonth)
+    }
+  }
+  // Check if prev/next should be disabled
+  const isPrevDisabled = yearValue <= fromYear && monthIndex === 0
+  const isNextDisabled = disabledFuture && yearValue >= today.getFullYear() && monthIndex >= today.getMonth()
+
+
   return (
     <div className="space-y-4">
-      {/* Date */}
       <div className="space-y-2">
         <Label className="flex items-center gap-2">
           <CalendarIcon className="h-4 w-4" />
@@ -113,13 +131,28 @@ export function DateTimeField({
             </Button>
           </PopoverTrigger>
 
-          <PopoverContent
-		className="w-[340px] p-3 bg-white text-black shadow-md border inline-block"
-                align="start">
-            {/* Month/Year controls */}
-            <div className="flex justify-around gap-2 mb-2">
+          <PopoverContent className="w-auto p-4 bg-white shadow-lg border rounded-lg"
+            align="start"  >
+         
+            {/* Navigation Header */}
+
+            <div className="flex items-center justify-between gap-1 mb-3">
+              {/* Previous Month Button */}
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 p-0 hover:bg-gray-100"
+                onClick={goToPrevMonth}
+                disabled={isPrevDisabled}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+
+              {/* Month Dropdown */}
+
               <Select value={String(monthIndex)} onValueChange={setMonthIndex}>
-                <SelectTrigger className="h-8 w-[140px] border border-black bg-white text-black">
+                <SelectTrigger className="h-8 w-[110px] border bg-white text-black text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-white text-black max-h-[260px] overflow-auto">
@@ -132,7 +165,7 @@ export function DateTimeField({
               </Select>
 
               <Select value={String(yearValue)} onValueChange={setYear}>
-                <SelectTrigger className="h-8 w-[110px] border border-black bg-white text-black">
+                <SelectTrigger className="h-8 w-[85px] border bg-white text-black text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-white text-black max-h-[260px] overflow-auto">
@@ -143,6 +176,17 @@ export function DateTimeField({
                   ))}
                 </SelectContent>
               </Select>
+	    {/* Next Month Button */}
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 p-0 hover:bg-gray-100"
+                onClick={goToNextMonth}
+                disabled={isNextDisabled}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
             </div>
 
             <Calendar
@@ -152,7 +196,7 @@ export function DateTimeField({
               selected={value.date}
               onSelect={(d) => {
                 onChange({ ...value, date: d ?? undefined })
-                if (d) setOpen(false) // ✅ auto-close on select
+                if (d) setOpen(false)
               }}
               disabled={isDateDisabled}
               showOutsideDays
@@ -161,7 +205,6 @@ export function DateTimeField({
         </Popover>
       </div>
 
-      {/* Time */}
       <div className="space-y-2">
         <Label className="flex items-center gap-2">
           <Clock className="h-4 w-4" />
