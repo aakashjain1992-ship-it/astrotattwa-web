@@ -1,25 +1,32 @@
 /**
  * Test Result Comparison Logic
  * Compares actual calculation results against expected test case data
+ *
+ * Rules:
+ * - All tolerances are in ARC-MINUTES.
+ * - Default tolerance is 4 arcmin for EVERYTHING (planets + ascendant).
+ * - Longitude differences are circular (wrap-safe across 0°/360°).
+ * - Rahu/Ketu: if rahuKetuModes provided, compare expected against BOTH true & mean node,
+ *   pick the closer one and record which node mode was used.
  */
 
 export interface PlanetComparison {
   planet: string;
-  expected: number;
-  actual: number;
-  difference: number; // in arcminutes
-  tolerance: number; // in arcminutes
+  expected: number; // degrees
+  actual: number; // degrees
+  difference: number; // arcminutes
+  tolerance: number; // arcminutes
   passed: boolean;
-  nodeMode?: 'TRUE' | 'MEAN';
-  trueDifference?: number; 
-  meanDifference?: number;
+  nodeMode?: "TRUE" | "MEAN";
+  trueDifference?: number; // arcminutes
+  meanDifference?: number; // arcminutes
 }
 
 export interface AscendantComparison {
-  expected: number;
-  actual: number;
-  difference: number; // in arcminutes
-  tolerance: number; // in arcminutes
+  expected: number; // degrees
+  actual: number; // degrees
+  difference: number; // arcminutes
+  tolerance: number; // arcminutes
   passed: boolean;
 }
 
@@ -32,7 +39,7 @@ export interface DashaComparison {
 export interface TestCaseResult {
   testCaseId: string;
   testCaseName: string;
-  status: 'passed' | 'failed';
+  status: "passed" | "failed";
   planets: PlanetComparison[];
   ascendant: AscendantComparison;
   dasha: DashaComparison;
@@ -43,95 +50,123 @@ export interface TestCaseResult {
   };
 }
 
+export type RahuKetuModes = {
+  trueNode: { Rahu: number; Ketu: number };
+  meanNode: { Rahu: number; Ketu: number };
+};
+
+export type LongitudeMap = Record<string, { longitude: number }>;
+
+const DEFAULT_TOLERANCE_ARCMIN = 4;
+
 /**
- * Calculate difference in arcminutes between two longitudes
+ * Circular difference in arcminutes between two longitudes (wrap-safe).
+ * Example: 359.9° vs 0.1° => 0.2° => 12 arcmin
  */
-function calculateArcminuteDifference(expected: number, actual: number): number {
-  const diffDegrees = Math.abs(expected - actual);
-  return diffDegrees * 60; // Convert degrees to arcminutes
+function arcminDiff(expectedDeg: number, actualDeg: number): number {
+  const raw = Math.abs(expectedDeg - actualDeg) % 360;
+  const diffDeg = Math.min(raw, 360 - raw);
+  return diffDeg * 60;
 }
 
 /**
- * Compare planetary positions
+ * Compare planetary positions.
+ * toleranceArcMin is ARC-MINUTES. Default = 4.
  */
 export function comparePlanets(
-  expectedPlanets: Record<string, { longitude: number }>,
-  actualPlanets: Record<string, { longitude: number }>,
-  tolerance: number = 4.0,
-  rahuKetuModes?: { trueNode: { Rahu: number; Ketu: number }; meanNode: { Rahu: number; Ketu: number } } 
+  expectedPlanets: LongitudeMap,
+  actualPlanets: LongitudeMap,
+  toleranceArcMin: number = DEFAULT_TOLERANCE_ARCMIN,
+  rahuKetuModes?: RahuKetuModes
 ): PlanetComparison[] {
- 
-  // Default tolerance for all planets is 4 arcminutes
-  const defaultTolerance = 4;
+  const planetNames = [
+    "Sun",
+    "Moon",
+    "Mars",
+    "Mercury",
+    "Jupiter",
+    "Venus",
+    "Saturn",
+    "Rahu",
+    "Ketu",
+  ] as const;
 
-  const planetNames = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu'];
   const comparisons: PlanetComparison[] = [];
+  const tolerance = toleranceArcMin ?? DEFAULT_TOLERANCE_ARCMIN;
 
   for (const planet of planetNames) {
     const expected = expectedPlanets[planet];
     const actual = actualPlanets[planet];
-    const planetTolerance = defaultTolerance;
 
+    // Missing data => fail but keep structure intact
     if (!expected || !actual) {
       comparisons.push({
         planet,
-        expected: expected?.longitude || 0,
-        actual: actual?.longitude || 0,
+        expected: expected?.longitude ?? 0,
+        actual: actual?.longitude ?? 0,
         difference: 999,
-        tolerance: planetTolerance,
+        tolerance,
         passed: false,
       });
       continue;
     }
 
-    if ((planet === 'Rahu' || planet === 'Ketu') && rahuKetuModes) {
-      const trueValue = rahuKetuModes.trueNode[planet];
-      const meanValue = rahuKetuModes.meanNode[planet];
-      
-      const trueDiff = calculateArcminuteDifference(expected.longitude, trueValue);
-      const meanDiff = calculateArcminuteDifference(expected.longitude, meanValue);
-      
-      
-      const useMean = meanDiff < trueDiff;
-      const actualValue = useMean ? meanValue : trueValue;
-      const difference = useMean ? meanDiff : trueDiff;
-      
-      
+    // Rahu/Ketu handling if node modes available
+    if ((planet === "Rahu" || planet === "Ketu") && rahuKetuModes) {
+      const node = planet as "Rahu" | "Ketu";
+
+      const trueValue = rahuKetuModes.trueNode[node];
+      const meanValue = rahuKetuModes.meanNode[node];
+
+      const trueDifference = arcminDiff(expected.longitude, trueValue);
+      const meanDifference = arcminDiff(expected.longitude, meanValue);
+
+      // Choose the closer one (tie -> MEAN by default)
+      const useMean = meanDifference <= trueDifference;
+      const chosenActual = useMean ? meanValue : trueValue;
+      const difference = useMean ? meanDifference : trueDifference;
+
       comparisons.push({
         planet,
         expected: expected.longitude,
-        actual: actualValue,
+        actual: chosenActual,
         difference,
-        tolerance: planetTolerance,
-        passed: difference <= planetTolerance,
-        nodeMode: useMean ? 'MEAN' : 'TRUE',
-        trueDifference: trueDiff,
-        meanDifference: meanDiff,
+        tolerance,
+        passed: difference <= tolerance,
+        nodeMode: useMean ? "MEAN" : "TRUE",
+        trueDifference,
+        meanDifference,
       });
-    } else {
-      const difference = calculateArcminuteDifference(expected.longitude, actual.longitude);
-      comparisons.push({
-        planet,
-        expected: expected.longitude,
-        actual: actual.longitude,
-        difference,
-        tolerance: planetTolerance,
-        passed: difference <= planetTolerance,
-      });
+      continue;
     }
+
+    // Normal planet
+    const difference = arcminDiff(expected.longitude, actual.longitude);
+
+    comparisons.push({
+      planet,
+      expected: expected.longitude,
+      actual: actual.longitude,
+      difference,
+      tolerance,
+      passed: difference <= tolerance,
+    });
   }
+
   return comparisons;
 }
 
 /**
- * Compare ascendant position
+ * Compare ascendant position.
+ * toleranceArcMin is ARC-MINUTES. Default = 4.
  */
 export function compareAscendant(
   expectedAscendant: { longitude: number },
   actualAscendant: { longitude: number },
-  tolerance: number = 4.0
+  toleranceArcMin: number = DEFAULT_TOLERANCE_ARCMIN
 ): AscendantComparison {
-  const difference = calculateArcminuteDifference(expectedAscendant.longitude, actualAscendant.longitude);
+  const tolerance = toleranceArcMin ?? DEFAULT_TOLERANCE_ARCMIN;
+  const difference = arcminDiff(expectedAscendant.longitude, actualAscendant.longitude);
   const passed = difference <= tolerance;
 
   return {
@@ -144,7 +179,7 @@ export function compareAscendant(
 }
 
 /**
- * Compare dasha (mahadasha lord only for now)
+ * Compare dasha (mahadasha lord only)
  */
 export function compareDasha(
   expectedDasha: { mahadasha: string },
@@ -160,33 +195,54 @@ export function compareDasha(
 }
 
 /**
- * Compare complete test case
+ * Compare complete test case.
+ *
+ * tolerances are ARC-MINUTES.
+ * Defaults:
+ * - planet: 4 arcmin
+ * - ascendant: 4 arcmin
  */
 export function compareTestCase(
   testCaseId: string,
   testCaseName: string,
   expected: {
-    planets: Record<string, { longitude: number }>;
+    planets: LongitudeMap;
     ascendant: { longitude: number };
     dasha: { mahadasha: string };
   },
   actual: {
-    planets: Record<string, { longitude: number }>;
+    planets: LongitudeMap;
     ascendant: { longitude: number };
     dasha: { mahadasha: string };
-    rahuKetuModes?: { trueNode: { Rahu: number; Ketu: number }; meanNode: { Rahu: number; Ketu: number } }; 
+    rahuKetuModes?: RahuKetuModes;
   },
-  tolerances: {
-    planet: number;
-    ascendant: number;
+  tolerances?: {
+    planet?: number; // arcminutes
+    ascendant?: number; // arcminutes
   }
 ): TestCaseResult {
-  const planetComparisons = comparePlanets(expected.planets, actual.planets, tolerances.planet, actual.rahuKetuModes);
-  const ascendantComparison = compareAscendant(expected.ascendant, actual.ascendant, tolerances.ascendant);
+  // 🔒 Default = 4 arcmin for EVERYTHING
+  const planetTol = tolerances?.planet ?? DEFAULT_TOLERANCE_ARCMIN;
+  const ascendantTol = tolerances?.ascendant ?? DEFAULT_TOLERANCE_ARCMIN;
+
+  const planetComparisons = comparePlanets(
+    expected.planets,
+    actual.planets,
+    planetTol,
+    actual.rahuKetuModes
+  );
+
+  const ascendantComparison = compareAscendant(
+    expected.ascendant,
+    actual.ascendant,
+    ascendantTol
+  );
+
   const dashaComparison = compareDasha(expected.dasha, actual.dasha);
 
-  const planetsPassed = planetComparisons.filter(p => p.passed).length;
+  const planetsPassed = planetComparisons.filter((p) => p.passed).length;
   const planetsTotal = planetComparisons.length;
+
   const ascendantPassed = ascendantComparison.passed ? 1 : 0;
   const dashaPassed = dashaComparison.passed ? 1 : 0;
 
@@ -194,7 +250,7 @@ export function compareTestCase(
   const passedChecks = planetsPassed + ascendantPassed + dashaPassed;
   const failedChecks = totalChecks - passedChecks;
 
-  const status = failedChecks === 0 ? 'passed' : 'failed';
+  const status: "passed" | "failed" = failedChecks === 0 ? "passed" : "failed";
 
   return {
     testCaseId,
