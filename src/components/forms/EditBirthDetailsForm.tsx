@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Loader2, RefreshCw } from 'lucide-react';
+import { format } from 'date-fns';
+import { Loader2, RefreshCw, Calendar as CalendarIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,6 +16,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { CitySearch } from '@/components/forms/CitySearch';
 import { cn } from '@/lib/utils';
 
 // ============================================
@@ -23,13 +31,14 @@ import { cn } from '@/lib/utils';
 
 const editFormSchema = z.object({
   name: z.string().min(1, 'Name is required'),
-  birthDate: z.string().min(1, 'Date is required'),
+  birthDate: z.date({ required_error: 'Date is required' }),
   birthHour: z.string().min(1, 'Hour is required'),
   birthMinute: z.string().min(1, 'Minute is required'),
   birthPeriod: z.enum(['AM', 'PM']),
   latitude: z.number().min(-90).max(90),
   longitude: z.number().min(-180).max(180),
   timezone: z.string().min(1, 'Timezone is required'),
+  cityName: z.string().optional(),
 });
 
 type EditFormData = z.infer<typeof editFormSchema>;
@@ -41,22 +50,20 @@ type EditFormData = z.infer<typeof editFormSchema>;
 const HOURS = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'));
 const MINUTES = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
 
-const COMMON_TIMEZONES = [
-  'Asia/Kolkata',
-  'Asia/Dubai',
-  'America/New_York',
-  'America/Los_Angeles',
-  'Europe/London',
-  'Europe/Paris',
-  'Asia/Singapore',
-  'Australia/Sydney',
+// Generate years from 1900 to current year
+const currentYear = new Date().getFullYear();
+const YEARS = Array.from({ length: currentYear - 1900 + 1 }, (_, i) => 1900 + i).reverse();
+
+const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
 ];
 
 /**
  * Parse localDateTime to form fields
  */
 function parseDateTime(localDateTime: string): {
-  date: string;
+  date: Date | undefined;
   hour: string;
   minute: string;
   period: 'AM' | 'PM';
@@ -72,7 +79,7 @@ function parseDateTime(localDateTime: string): {
       else if (hour > 12) hour -= 12;
       
       return {
-        date: `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`,
+        date: dateObj,
         hour: String(hour).padStart(2, '0'),
         minute: String(minute).padStart(2, '0'),
         period,
@@ -82,24 +89,38 @@ function parseDateTime(localDateTime: string): {
     // Fall through
   }
   
-  // Manual parse for "YYYY-MM-DD HH:mm"
-  const parts = localDateTime.split(' ');
-  if (parts.length >= 2) {
-    const [hourNum, minuteNum] = parts[1].split(':').map(Number);
-    let hour = hourNum;
-    const period = hour >= 12 ? 'PM' : 'AM';
-    if (hour === 0) hour = 12;
-    else if (hour > 12) hour -= 12;
+  // Manual parse for "YYYY-MM-DD HH:mm" or "YYYY-MM-DDTHH:mm"
+  const dateStr = localDateTime.split('T')[0] || localDateTime.split(' ')[0];
+  const timeStr = localDateTime.includes('T') 
+    ? localDateTime.split('T')[1] 
+    : localDateTime.split(' ')[1];
+  
+  if (dateStr) {
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    
+    let hour = 12;
+    let minute = 0;
+    let period: 'AM' | 'PM' = 'PM';
+    
+    if (timeStr) {
+      const [h, m] = timeStr.split(':').map(Number);
+      hour = h;
+      minute = m || 0;
+      period = hour >= 12 ? 'PM' : 'AM';
+      if (hour === 0) hour = 12;
+      else if (hour > 12) hour -= 12;
+    }
     
     return {
-      date: parts[0],
+      date,
       hour: String(hour).padStart(2, '0'),
-      minute: String(minuteNum).padStart(2, '0'),
+      minute: String(minute).padStart(2, '0'),
       period,
     };
   }
   
-  return { date: '', hour: '12', minute: '00', period: 'PM' };
+  return { date: undefined, hour: '12', minute: '00', period: 'PM' };
 }
 
 // ============================================
@@ -116,6 +137,7 @@ interface EditBirthDetailsFormProps {
     latitude: number;
     longitude: number;
     timezone: string;
+    cityName?: string;
   };
   /** Callback when form is submitted */
   onSubmit: (data: {
@@ -135,12 +157,7 @@ interface EditBirthDetailsFormProps {
 
 /**
  * EditBirthDetailsForm - Collapsible form for editing birth details
- * 
- * Features:
- * - Pre-filled with current values
- * - Validates input
- * - Submits to recalculate chart
- * - Loading state during submission
+ * Matches the home page form style with calendar picker and city search
  */
 export function EditBirthDetailsForm({
   isOpen,
@@ -150,6 +167,8 @@ export function EditBirthDetailsForm({
   className,
 }: EditBirthDetailsFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [calendarMonth, setCalendarMonth] = useState<Date>(new Date());
   
   // Parse current datetime
   const parsedDateTime = parseDateTime(currentData.localDateTime);
@@ -171,21 +190,59 @@ export function EditBirthDetailsForm({
       latitude: currentData.latitude,
       longitude: currentData.longitude,
       timezone: currentData.timezone,
+      cityName: currentData.cityName || '',
     },
   });
 
-  // Watch values for controlled selects
+  // Watch values for controlled inputs
+  const birthDate = watch('birthDate');
   const birthHour = watch('birthHour');
   const birthMinute = watch('birthMinute');
   const birthPeriod = watch('birthPeriod');
-  const timezone = watch('timezone');
+  const latitude = watch('latitude');
+  const longitude = watch('longitude');
+
+  // Update calendar month when date changes
+  useEffect(() => {
+    if (birthDate) {
+      setCalendarMonth(birthDate);
+    }
+  }, [birthDate]);
+
+  // Handle city selection
+  const handleCitySelect = (city: { 
+    name: string; 
+    latitude: number; 
+    longitude: number; 
+    timezone: string;
+  }) => {
+    setValue('latitude', city.latitude);
+    setValue('longitude', city.longitude);
+    setValue('timezone', city.timezone);
+    setValue('cityName', city.name);
+  };
+
+  // Handle month/year dropdown changes
+  const handleMonthChange = (month: string) => {
+    const newDate = new Date(calendarMonth);
+    newDate.setMonth(parseInt(month));
+    setCalendarMonth(newDate);
+  };
+
+  const handleYearChange = (year: string) => {
+    const newDate = new Date(calendarMonth);
+    newDate.setFullYear(parseInt(year));
+    setCalendarMonth(newDate);
+  };
 
   const handleFormSubmit = async (data: EditFormData) => {
     setIsSubmitting(true);
     try {
+      const dateStr = format(data.birthDate, 'yyyy-MM-dd');
+      
       await onSubmit({
         name: data.name,
-        birthDate: data.birthDate,
+        birthDate: dateStr,
         birthTime: `${data.birthHour}:${data.birthMinute}`,
         timePeriod: data.birthPeriod,
         latitude: data.latitude,
@@ -224,15 +281,103 @@ export function EditBirthDetailsForm({
 
         {/* Date and Time Row */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Birth Date */}
+          {/* Birth Date - Calendar Picker */}
           <div className="space-y-2">
-            <Label htmlFor="edit-date">Birth Date</Label>
-            <Input
-              id="edit-date"
-              type="date"
-              {...register('birthDate')}
-              className={errors.birthDate ? 'border-destructive' : ''}
-            />
+            <Label>Birth Date</Label>
+            <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    'w-full justify-start text-left font-normal',
+                    !birthDate && 'text-muted-foreground',
+                    errors.birthDate && 'border-destructive'
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {birthDate ? format(birthDate, 'dd MMM yyyy') : 'Select date'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                {/* Month/Year Dropdowns */}
+                <div className="flex items-center justify-between gap-2 p-3 border-b">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => {
+                      const newDate = new Date(calendarMonth);
+                      newDate.setMonth(newDate.getMonth() - 1);
+                      setCalendarMonth(newDate);
+                    }}
+                  >
+                    &lt;
+                  </Button>
+                  
+                  <div className="flex gap-2">
+                    <Select
+                      value={String(calendarMonth.getMonth())}
+                      onValueChange={handleMonthChange}
+                    >
+                      <SelectTrigger className="h-8 w-[110px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-[200px]">
+                        {MONTHS.map((month, i) => (
+                          <SelectItem key={month} value={String(i)}>
+                            {month}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    
+                    <Select
+                      value={String(calendarMonth.getFullYear())}
+                      onValueChange={handleYearChange}
+                    >
+                      <SelectTrigger className="h-8 w-[80px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-[200px]">
+                        {YEARS.map((year) => (
+                          <SelectItem key={year} value={String(year)}>
+                            {year}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => {
+                      const newDate = new Date(calendarMonth);
+                      newDate.setMonth(newDate.getMonth() + 1);
+                      setCalendarMonth(newDate);
+                    }}
+                  >
+                    &gt;
+                  </Button>
+                </div>
+                
+                <Calendar
+                  mode="single"
+                  selected={birthDate}
+                  onSelect={(date) => {
+                    if (date) {
+                      setValue('birthDate', date);
+                      setCalendarOpen(false);
+                    }
+                  }}
+                  month={calendarMonth}
+                  onMonthChange={setCalendarMonth}
+                  disabled={(date) => date > new Date()}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
             {errors.birthDate && (
               <p className="text-sm text-destructive">{errors.birthDate.message}</p>
             )}
@@ -289,58 +434,25 @@ export function EditBirthDetailsForm({
           </div>
         </div>
 
-        {/* Location Row */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Latitude */}
-          <div className="space-y-2">
-            <Label htmlFor="edit-lat">Latitude</Label>
-            <Input
-              id="edit-lat"
-              type="number"
-              step="0.0001"
-              {...register('latitude', { valueAsNumber: true })}
-              placeholder="28.6139"
-              className={errors.latitude ? 'border-destructive' : ''}
-            />
-            {errors.latitude && (
-              <p className="text-sm text-destructive">{errors.latitude.message}</p>
-            )}
-          </div>
-
-          {/* Longitude */}
-          <div className="space-y-2">
-            <Label htmlFor="edit-lng">Longitude</Label>
-            <Input
-              id="edit-lng"
-              type="number"
-              step="0.0001"
-              {...register('longitude', { valueAsNumber: true })}
-              placeholder="77.209"
-              className={errors.longitude ? 'border-destructive' : ''}
-            />
-            {errors.longitude && (
-              <p className="text-sm text-destructive">{errors.longitude.message}</p>
-            )}
-          </div>
-
-          {/* Timezone */}
-          <div className="space-y-2">
-            <Label>Timezone</Label>
-            <Select
-              value={timezone}
-              onValueChange={(val) => setValue('timezone', val)}
-            >
-              <SelectTrigger className={errors.timezone ? 'border-destructive' : ''}>
-                <SelectValue placeholder="Select timezone" />
-              </SelectTrigger>
-              <SelectContent className="max-h-[200px]">
-                {COMMON_TIMEZONES.map((tz) => (
-                  <SelectItem key={tz} value={tz}>{tz}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        {/* Birth Place - City Search */}
+        <div className="space-y-2">
+          <Label>Birth Place</Label>
+          <CitySearch
+            onSelect={handleCitySelect}
+            defaultValue={currentData.cityName}
+          />
+          {/* Show current coordinates */}
+          {latitude && longitude && (
+            <p className="text-xs text-muted-foreground">
+              Coordinates: {latitude.toFixed(4)}°{latitude >= 0 ? 'N' : 'S'}, {longitude.toFixed(4)}°{longitude >= 0 ? 'E' : 'W'}
+            </p>
+          )}
         </div>
+
+        {/* Hidden fields for lat/lng/tz - populated by CitySearch */}
+        <input type="hidden" {...register('latitude', { valueAsNumber: true })} />
+        <input type="hidden" {...register('longitude', { valueAsNumber: true })} />
+        <input type="hidden" {...register('timezone')} />
 
         {/* Actions */}
         <div className="flex justify-end gap-3 pt-2">
