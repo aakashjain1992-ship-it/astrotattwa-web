@@ -263,26 +263,13 @@ export function EditBirthDetailsForm({
       // Format date as YYYY-MM-DD
       const dateStr = format(data.birthDate, 'yyyy-MM-dd');
       
-      // Convert 12-hour time to 24-hour format for API
-      const birthTime24 = convertTo24Hour(data.birthHour, data.birthMinute, data.birthPeriod);
-      
-      // Log for debugging
-      console.log('EditBirthDetailsForm - Submitting:', {
-        name: data.name,
-        gender: data.gender,
-        birthDate: dateStr,
-        birthTime: birthTime24,
-        timePeriod: data.birthPeriod,
-        latitude: data.latitude,
-        longitude: data.longitude,
-        timezone: data.timezone,
-      });
-      
+      const birthTime12 = `${String(data.birthHour).padStart(2, '0')}:${String(data.birthMinute).padStart(2, '0')}`;
+        
       await onSubmit({
         name: data.name,
         gender: data.gender,
         birthDate: dateStr,
-        birthTime: birthTime24,
+        birthTime: birthTime12,
         timePeriod: data.birthPeriod,
         latitude: data.latitude,
         longitude: data.longitude,
