@@ -31,6 +31,9 @@ import { cn } from '@/lib/utils';
 
 const editFormSchema = z.object({
   name: z.string().min(1, 'Name is required'),
+  gender: z.enum(['male', 'female'], {
+    required_error: 'Please select gender',
+  }),
   birthDate: z.date({ required_error: 'Date is required' }),
   birthHour: z.string().min(1, 'Hour is required'),
   birthMinute: z.string().min(1, 'Minute is required'),
@@ -58,6 +61,21 @@ const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'
 ];
+
+/**
+ * Convert 12-hour time to 24-hour format
+ */
+function convertTo24Hour(hour: string, minute: string, period: 'AM' | 'PM'): string {
+  let hours = parseInt(hour, 10);
+  
+  if (period === 'PM' && hours !== 12) {
+    hours += 12;
+  } else if (period === 'AM' && hours === 12) {
+    hours = 0;
+  }
+  
+  return `${String(hours).padStart(2, '0')}:${minute}`;
+}
 
 /**
  * Parse localDateTime to form fields
@@ -133,6 +151,7 @@ interface EditBirthDetailsFormProps {
   /** Current birth data */
   currentData: {
     name: string;
+    gender?: 'male' | 'female';
     localDateTime: string;
     latitude: number;
     longitude: number;
@@ -142,6 +161,7 @@ interface EditBirthDetailsFormProps {
   /** Callback when form is submitted */
   onSubmit: (data: {
     name: string;
+    gender: 'male' | 'female';
     birthDate: string;
     birthTime: string;
     timePeriod: 'AM' | 'PM';
@@ -183,6 +203,7 @@ export function EditBirthDetailsForm({
     resolver: zodResolver(editFormSchema),
     defaultValues: {
       name: currentData.name,
+      gender: currentData.gender || 'male',
       birthDate: parsedDateTime.date,
       birthHour: parsedDateTime.hour,
       birthMinute: parsedDateTime.minute,
@@ -199,6 +220,7 @@ export function EditBirthDetailsForm({
   const birthHour = watch('birthHour');
   const birthMinute = watch('birthMinute');
   const birthPeriod = watch('birthPeriod');
+  const gender = watch('gender');
   const latitude = watch('latitude');
   const longitude = watch('longitude');
 
@@ -238,17 +260,37 @@ export function EditBirthDetailsForm({
   const handleFormSubmit = async (data: EditFormData) => {
     setIsSubmitting(true);
     try {
+      // Format date as YYYY-MM-DD
       const dateStr = format(data.birthDate, 'yyyy-MM-dd');
       
-      await onSubmit({
+      // Convert 12-hour time to 24-hour format for API
+      const birthTime24 = convertTo24Hour(data.birthHour, data.birthMinute, data.birthPeriod);
+      
+      // Log for debugging
+      console.log('EditBirthDetailsForm - Submitting:', {
         name: data.name,
+        gender: data.gender,
         birthDate: dateStr,
-        birthTime: `${data.birthHour}:${data.birthMinute}`,
+        birthTime: birthTime24,
         timePeriod: data.birthPeriod,
         latitude: data.latitude,
         longitude: data.longitude,
         timezone: data.timezone,
       });
+      
+      await onSubmit({
+        name: data.name,
+        gender: data.gender,
+        birthDate: dateStr,
+        birthTime: birthTime24,
+        timePeriod: data.birthPeriod,
+        latitude: data.latitude,
+        longitude: data.longitude,
+        timezone: data.timezone,
+      });
+    } catch (error) {
+      console.error('EditBirthDetailsForm - Submit error:', error);
+      throw error;
     } finally {
       setIsSubmitting(false);
     }
@@ -265,18 +307,41 @@ export function EditBirthDetailsForm({
       <h3 className="text-lg font-medium mb-4">Edit Birth Details</h3>
       
       <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
-        {/* Name */}
-        <div className="space-y-2">
-          <Label htmlFor="edit-name">Name</Label>
-          <Input
-            id="edit-name"
-            {...register('name')}
-            placeholder="Enter name"
-            className={errors.name ? 'border-destructive' : ''}
-          />
-          {errors.name && (
-            <p className="text-sm text-destructive">{errors.name.message}</p>
-          )}
+        {/* Name and Gender Row */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Name */}
+          <div className="space-y-2">
+            <Label htmlFor="edit-name">Name</Label>
+            <Input
+              id="edit-name"
+              {...register('name')}
+              placeholder="Enter name"
+              className={errors.name ? 'border-destructive' : ''}
+            />
+            {errors.name && (
+              <p className="text-sm text-destructive">{errors.name.message}</p>
+            )}
+          </div>
+
+          {/* Gender */}
+          <div className="space-y-2">
+            <Label>Gender</Label>
+            <Select
+              value={gender}
+              onValueChange={(val) => setValue('gender', val as 'male' | 'female')}
+            >
+              <SelectTrigger className={errors.gender ? 'border-destructive' : ''}>
+                <SelectValue placeholder="Select gender" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="male">Male</SelectItem>
+                <SelectItem value="female">Female</SelectItem>
+              </SelectContent>
+            </Select>
+            {errors.gender && (
+              <p className="text-sm text-destructive">{errors.gender.message}</p>
+            )}
+          </div>
         </div>
 
         {/* Date and Time Row */}
