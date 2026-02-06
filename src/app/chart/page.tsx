@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, Stars } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ChartFocusMode, type ChartConfig } from '@/components/chart/ChartFocusMode';
+import { generateChartInsights } from '@/lib/utils/generateChartInsights';
 
 // Layout
 import { Header, Footer } from '@/components/layout';
@@ -16,6 +18,8 @@ import { AvakhadaTable } from '@/components/chart/AvakhadaTable';
 import { DiamondChart } from '@/components/chart/diamond';
 import { ChartLegend } from '@/components/chart/ChartLegend';
 import { DashaNavigator } from '@/components/chart/DashaNavigator';
+import { buildMoonHouses, buildNavamsaHouses } from '@/lib/utils/chartHelpers';
+
 
 // ============================================
 // TYPE DEFINITIONS
@@ -166,8 +170,8 @@ function buildHousesFromChart(
     const statusFlags: string[] = [];
     if (planetData.retrograde) statusFlags.push('R');
     if (planetData.combust) statusFlags.push('C');
-    if (planetData.exalted) statusFlags.push('Ex');
-    if (planetData.debilitated) statusFlags.push('Db');
+    if (planetData.exalted) statusFlags.push('↑');
+    if (planetData.debilitated) statusFlags.push('↓');
 
     houses[houseIndex].planets.push({
       key: planetKey,
@@ -367,8 +371,40 @@ export default function ChartPage() {
     return <LoadingScreen />;
   }
 
-  // Build houses for chart
+  // Build houses for all charts
   const houses = buildHousesFromChart(chartData.planets, chartData.ascendant);
+  
+  // Build Moon Chart (Chandra Lagna) - using chartHelpers
+  const moonHouses = buildMoonHouses(chartData.planets, chartData.ascendant);
+  
+  // Build D9 Navamsa Chart - using chartHelpers
+  const navamsaHouses = buildNavamsaHouses(chartData.planets, chartData.ascendant);
+
+
+  const chartConfigs: ChartConfig[] = [
+  {
+    id: 'lagna',
+    title: 'D1 - Lagna',
+    subtitle: `Ascendant: ${chartData.ascendant.sign} ${chartData.ascendant.degreeInSign.toFixed(2)}°`,
+    houses: houses,
+    insights: generateChartInsights(houses, 'lagna'),
+  },
+  {
+    id: 'moon',
+    title: 'Moon Chart',
+    subtitle: `Moon: ${chartData.planets.Moon.sign} ${chartData.planets.Moon.degreeInSign.toFixed(2)}°`,
+    houses: moonHouses,
+    insights: generateChartInsights(moonHouses, 'moon'),
+  },
+  {
+    id: 'd9',
+    title: 'D9 - Navamsa',
+    subtitle: 'Marriage & Dharma',
+    houses: navamsaHouses,
+    insights: generateChartInsights(navamsaHouses, 'd9'),
+  },
+];
+
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -439,30 +475,22 @@ export default function ChartPage() {
               {/* Avakahada Table - always visible on desktop, conditional on mobile */}
               <div className={cn(
                 'md:block',
-                mobileSubTab === 'avakahada' ? 'block' : 'hidden'
-              )}>
+                mobileSubTab === 'avakahada' ? 'block' : 'hidden'              )}>
                 <AvakhadaTable data={chartData.avakahada} variant="compact" />
               </div>
             </div>
 
-            {/* Lagna Chart */}
-            <div className="space-y-4">
-              <DiamondChart
-                houses={houses}
-                title="D1 - Lagna Chart"
-                subtitle={`Ascendant: ${chartData.ascendant.sign} ${chartData.ascendant.degreeInSign.toFixed(2)}°`}
-                size="lg"
-                showRashiNumbers
-                showAscLabel
-                className="max-w-lg mx-auto"
-              />
+           
+            {/* Focus Mode with all 4 enhancements */}
+              <ChartFocusMode charts={chartConfigs} />
 
-              {/* Collapsible Legend - using existing accordion variant */}
-              <div className="max-w-lg mx-auto">
-                <ChartLegend variant="accordion" />
-              </div>
-            </div>
-          </div>
+             {/* Chart Legend below */}
+             <div className="max-w-2xl mx-auto">
+               <ChartLegend variant="accordion" />
+              </div>  
+
+               
+             
         )}
 
         {activeTab === 'dasha' && (

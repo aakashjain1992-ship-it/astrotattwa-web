@@ -99,8 +99,73 @@ export function buildLagnaHouses(
     const statusFlags: string[] = [];
     if (planetData.retrograde) statusFlags.push('R');
     if (planetData.combust) statusFlags.push('C');
-    if (planetData.exalted) statusFlags.push('Ex');
-    if (planetData.debilitated) statusFlags.push('Db');
+    if (planetData.exalted) statusFlags.push('↑');
+    if (planetData.debilitated) statusFlags.push('↓');
+
+    const planet: PlanetInHouse = {
+      key: planetKey,
+      symbol: PLANET_SYMBOLS[planetKey] || planetKey.substring(0, 2),
+      degree: planetData.degreeInSign,
+      longitude: planetData.longitude,
+      statusFlags,
+    };
+
+    houses[houseIndex].planets.push(planet);
+  });
+
+  // Sort planets in each house by degree
+  houses.forEach(house => {
+    house.planets.sort((a, b) => a.degree - b.degree);
+  });
+
+  return houses;
+}
+
+/**
+ * Build houses for Moon Chart (Chandra Lagna)
+ * Uses Moon's position as the ascendant instead of actual ascendant
+ */
+export function buildMoonHouses(
+  planets: Record<string, PlanetData>,
+  ascendant: AscendantData
+): HouseData[] {
+  // Get Moon's position to use as the ascendant
+  const moonData = planets['Moon'];
+  if (!moonData) {
+    // Fallback to regular lagna chart if Moon data is missing
+    return buildLagnaHouses(planets, ascendant);
+  }
+
+  const moonSignNumber = moonData.signNumber; // 1-12
+  const houses: HouseData[] = [];
+
+  // Create 12 empty houses starting from Moon's sign
+  for (let i = 0; i < 12; i++) {
+    const houseNumber = i + 1;
+    const rasiNumber = ((moonSignNumber - 1 + i) % 12) + 1;
+    
+    houses.push({
+      houseNumber,
+      rasiNumber,
+      rasiName: RASHI_NAMES[rasiNumber - 1],
+      planets: [],
+      isAscendant: houseNumber === 1, // House 1 = Moon's position
+    });
+  }
+
+  // Place planets in houses based on their sign relative to Moon
+  Object.entries(planets).forEach(([planetKey, planetData]) => {
+    const planetSignNumber = planetData.signNumber;
+    
+    // Calculate which house this sign falls into relative to Moon's sign
+    const houseIndex = (planetSignNumber - moonSignNumber + 12) % 12;
+    
+    // Build status flags
+    const statusFlags: string[] = [];
+    if (planetData.retrograde) statusFlags.push('R');
+    if (planetData.combust) statusFlags.push('C');
+    if (planetData.exalted) statusFlags.push('↑');
+    if (planetData.debilitated) statusFlags.push('↓');
 
     const planet: PlanetInHouse = {
       key: planetKey,

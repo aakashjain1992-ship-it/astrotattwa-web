@@ -25,6 +25,8 @@ interface DiamondChartProps {
 
 /**
  * Check if house is a triangular corner (less space)
+ * Houses 2,3,5,6,8,9,11,12 = triangular corners (limited space)
+ * Houses 1,4,7,10 = diamond centers (plenty of space)
  */
 function isTriangularHouse(houseNumber: number): boolean {
   return [2, 3, 5, 6, 8, 9, 11, 12].includes(houseNumber);
@@ -37,6 +39,7 @@ function getPlanetGridPosition(
   index: number,
   totalPlanets: number
 ): { offsetX: number; offsetY: number } {
+  // 1-2 planets: vertical line (centered)
   if (totalPlanets <= 2) {
     return {
       offsetX: 0,
@@ -44,6 +47,7 @@ function getPlanetGridPosition(
     };
   }
 
+  // 3-4 planets: 2x2 grid
   if (totalPlanets <= 4) {
     const row = Math.floor(index / 2);
     const col = index % 2;
@@ -56,6 +60,7 @@ function getPlanetGridPosition(
     };
   }
 
+  // 5-6 planets: 3x2 grid
   const row = Math.floor(index / 3);
   const col = index % 3;
   const gridWidth = 32;
@@ -68,7 +73,7 @@ function getPlanetGridPosition(
 }
 
 /**
- * Get dynamic rashi number position
+ * Get dynamic rashi number position to avoid overlap
  */
 function getRashiNumberPosition(
   houseNumber: number,
@@ -103,10 +108,13 @@ function getRashiNumberPosition(
 }
 
 /**
- * DiamondChart with colored status arrows
- * - ↑ (exalted) shown in GREEN before planet
- * - ↓ (debilitated) shown in RED before planet
- * - R, C, D, S shown below planet
+ * DiamondChart - North Indian chart with smart font sizing
+ * 
+ * Font sizing logic:
+ * - Houses 1,4,7,10 (diamond centers): ALWAYS large fonts (plenty of space)
+ * - Houses 2,3,5,6,8,9,11,12 (triangular corners):
+ *   - 1-3 planets: Large fonts (still okay)
+ *   - 4+ planets: Reduce fonts (getting crowded)
  */
 export function DiamondChart({
   houses,
@@ -125,49 +133,35 @@ export function DiamondChart({
 
   /**
    * Smart font sizing based on house type and planet count
+   * 
+   * Diamond houses (1,4,7,10): Always large (plenty of space)
+   * Triangular houses (2,3,5,6,8,9,11,12): Only reduce with 4+ planets
    */
   const getFontSizes = (houseNumber: number, planetCount: number) => {
+    // Diamond houses (1,4,7,10): Always use large fonts
     if (!isTriangularHouse(houseNumber)) {
       return {
         degree: 9,
         symbol: 16,
         status: 9,
-        arrow: 14,
       };
     }
     
+    // Triangular houses: Reduce only when crowded (4+ planets)
     if (planetCount >= 4) {
       return {
         degree: planetCount >= 5 ? 7 : 8,
         symbol: planetCount >= 5 ? 11 : 13,
         status: planetCount >= 5 ? 7 : 8,
-        arrow: planetCount >= 5 ? 10 : 12,
       };
     }
     
+    // Triangular houses with 1-3 planets: Still large
     return {
       degree: 9,
       symbol: 16,
       status: 9,
-      arrow: 14,
     };
-  };
-
-  /**
-   * Get exaltation/debilitation status
-   * Returns: 'exalted', 'debilitated', or null
-   */
-  const getDigbalaStatus = (statusFlags: string[]): 'exalted' | 'debilitated' | null => {
-    if (statusFlags.includes('↑')) return 'exalted';
-    if (statusFlags.includes('↓')) return 'debilitated';
-    return null;
-  };
-
-  /**
-   * Get other status flags (excluding ↑ and ↓)
-   */
-  const getOtherFlags = (statusFlags: string[]): string[] => {
-    return statusFlags.filter(f => f !== '↑' && f !== '↓');
   };
 
   return (
@@ -255,9 +249,6 @@ export function DiamondChart({
                   const y = basePos.y + gridPos.offsetY;
                   const isClickable = !!onPlanetClick;
 
-                  const digbalaStatus = getDigbalaStatus(planet.statusFlags);
-                  const otherFlags = getOtherFlags(planet.statusFlags);
-
                   return (
                     <g
                       key={`planet-${planet.key}`}
@@ -267,21 +258,6 @@ export function DiamondChart({
                       tabIndex={isClickable ? 0 : undefined}
                       aria-label={`${planet.key} at ${planet.degree}°${planet.statusFlags.length > 0 ? `, ${planet.statusFlags.join(' ')}` : ''}`}
                     >
-                      {/* Status Arrow (↑ or ↓) - Before planet symbol */}
-                      {digbalaStatus && (
-                        <text
-                          x={x - 10}
-                          y={y}
-                          fontSize={fontSizes.arrow}
-                          fontWeight="bold"
-                          textAnchor="end"
-                          dominantBaseline="middle"
-                          className={digbalaStatus === 'exalted' ? 'fill-green-500' : 'fill-red-500'}
-                        >
-                          {digbalaStatus === 'exalted' ? '↑' : '↓'}
-                        </text>
-                      )}
-
                       {/* Planet Symbol */}
                       <text
                         x={x}
@@ -307,8 +283,8 @@ export function DiamondChart({
                         {Math.round(planet.degree)}°
                       </text>
 
-                      {/* Other Status Flags (R, C, D, S) - Below planet */}
-                      {otherFlags.length > 0 && (
+                      {/* Status Flags */}
+                      {planet.statusFlags.length > 0 && (
                         <text
                           x={x}
                           y={y + 12}
@@ -317,7 +293,7 @@ export function DiamondChart({
                           dominantBaseline="middle"
                           className="fill-[hsl(var(--chart-status))]"
                         >
-                          {otherFlags.join(' ')}
+                          {planet.statusFlags.join(' ')}
                         </text>
                       )}
                     </g>
