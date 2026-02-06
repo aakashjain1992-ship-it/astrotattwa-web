@@ -309,6 +309,7 @@ export default function ChartPage() {
   // Handle edit form submission - call API and update
   const handleEditSubmit = useCallback(async (formData: {
     name: string;
+    gender: 'male' | 'female';
     birthDate: string;
     birthTime: string;
     timePeriod: 'AM' | 'PM';
@@ -319,23 +320,16 @@ export default function ChartPage() {
     setIsRecalculating(true);
     
     try {
-      // Convert 12-hour to 24-hour format
-      let [hours, minutes] = formData.birthTime.split(':').map(Number);
-      if (formData.timePeriod === 'PM' && hours !== 12) hours += 12;
-      if (formData.timePeriod === 'AM' && hours === 12) hours = 0;
-      const time24 = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-      
-      // Build localDateTime
-      const localDateTime = `${formData.birthDate}T${time24}:00`;
-      
       // Call API to recalculate
       const response = await fetch('/api/calculate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: formData.name,
+          gender: formData.gender,
           birthDate: formData.birthDate,
-          birthTime: time24,
+          birthTime: formData.birthTime,
+          timePeriod: formData.timePeriod,
           latitude: formData.latitude,
           longitude: formData.longitude,
           timezone: formData.timezone,
