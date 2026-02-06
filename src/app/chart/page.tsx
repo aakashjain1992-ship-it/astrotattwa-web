@@ -319,21 +319,29 @@ export default function ChartPage() {
   }) => {
     setIsRecalculating(true);
     
+    // DEBUG: Log what we received from form
+    console.log('🔍 ChartPage - Received from EditBirthDetailsForm:', formData);
+    
     try {
+      const apiPayload = {
+        name: formData.name,
+        gender: formData.gender,
+        birthDate: formData.birthDate,
+        birthTime: formData.birthTime,
+        timePeriod: formData.timePeriod,
+        latitude: formData.latitude,
+        longitude: formData.longitude,
+        timezone: formData.timezone,
+      };
+      
+      // DEBUG: Log what we're sending to API
+      console.log('🔍 ChartPage - Sending to /api/calculate:', apiPayload);
+      
       // Call API to recalculate
       const response = await fetch('/api/calculate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: formData.name,
-          gender: formData.gender,
-          birthDate: formData.birthDate,
-          birthTime: formData.birthTime,
-          timePeriod: formData.timePeriod,
-          latitude: formData.latitude,
-          longitude: formData.longitude,
-          timezone: formData.timezone,
-        }),
+        body: JSON.stringify(apiPayload),
       });
       
       const result = await response.json();
@@ -383,6 +391,7 @@ export default function ChartPage() {
           isOpen={isEditing}
           currentData={{
             name: chartData.name,
+            gender: chartData.gender,
             localDateTime: chartData.input.localDateTime,
             latitude: chartData.input.latitude,
             longitude: chartData.input.longitude,
