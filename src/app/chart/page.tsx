@@ -488,7 +488,7 @@ export default function ChartPage() {
              <div className="max-w-2xl mx-auto">
                <ChartLegend variant="accordion" />
               </div>  
-
+            </div>
                
              
         )}
