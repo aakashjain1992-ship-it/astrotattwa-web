@@ -1,477 +1,774 @@
-# Astrotattwa - Production Deployment Complete! 🎉
+# Project Overview - Astrotattwa
 
-## Current Status (January 24, 2026)
-
-**Environment:** Production (Linode VPS)  
-**Progress:** 35% Complete (Phase 1 MVP)  
-**Live URL:** http://172.236.176.107  
-**Status:** Infrastructure operational, core features in development
+**Version:** 2.0  
+**Last Updated:** February 7, 2026  
+**Status:** Production (Phase 1 Complete)
 
 ---
 
-## 🚀 What's Actually Deployed
+## 📋 Table of Contents
 
-### ✅ Production Infrastructure (100% Complete)
-
-**Linode VPS Details:**
-- **Server:** ubuntu-in-bom-2
-- **IP Address:** 172.236.176.107
-- **Region:** Mumbai 2, India (IN)
-- **Specs:** Nanode 1GB (1 CPU, 1 GB RAM, 25 GB Storage)
-- **OS:** Ubuntu 24.04
-- **Node.js:** v20.20.0 (via NVM)
-- **Process Manager:** PM2
-- **Web Server:** Nginx (reverse proxy)
-- **Firewall:** akamai-non-prod-1
-
-**Deployment Pipeline:**
-- ✅ GitHub repository with protected `main` branch
-- ✅ GitHub Actions CI/CD (auto-deploy on push)
-- ✅ PM2 ecosystem configuration
-- ✅ Nginx reverse proxy (port 80 → 3000)
-- ✅ SSH deploy keys configured
-
-### ✅ Database & Backend (100% Schema Complete)
-
-**Supabase Project:**
-- **URL:** https://ccrmiamtoxrilnhiwuwu.supabase.co
-- **Branch:** main (PRODUCTION)
-- **Tables Created:**
-  - `profiles` - User data (extends auth.users)
-  - `charts` - Birth charts with cached calculations (JSONB)
-  - `cities` - 100+ Indian cities with lat/long
-  - `reports` - Purchased reports (schema ready, not in use)
-  - `payments` - Razorpay transactions (schema ready, not in use)
-
-**Security:**
-- ✅ Row Level Security (RLS) enabled on all tables
-- ✅ Indexes on user_id, created_at, foreign keys
-- ✅ Triggers for auto-updating timestamps
-- ✅ Chart limit trigger (max 10 per user)
-- ✅ Auto-create profile on new user signup
-
-### ✅ Swiss Ephemeris Integration (100% Setup, 0% Implementation)
-
-**Package & Dependencies:**
-- ✅ swisseph npm package installed
-- ✅ Native build tools (build-essential, python3, make, g++)
-- ✅ Webpack configuration for native modules
-- ✅ TypeScript type definitions (src/types/swisseph.d.ts)
-- ✅ Ephemeris data files (.se1 format) in /public/ephe/
-- ✅ 100% calculation accuracy verified against reference software
-
-**Test Results:**
-- ✅ Birth: 25/03/1992, 11:55 AM, Delhi
-- ✅ All planetary positions match Jagannatha Hora within < 1 arcminute
-- ✅ Ascendant matches within < 2 arcminutes
-- ✅ Ready for implementation
+- [Mission](#mission)
+- [Architecture](#architecture)
+- [Tech Stack](#tech-stack)
+- [Data Flow](#data-flow)
+- [Security](#security)
+- [Performance](#performance)
+- [Deployment](#deployment)
 
 ---
 
-## 📦 Project Structure (Current State)
+## 🎯 Mission
+
+Astrotattwa provides **accurate, free Vedic astrology calculations** with AI-powered insights. Our mission is to make high-quality astrological analysis accessible to everyone.
+
+### Core Principles
+1. **Accuracy First** - Swiss Ephemeris calculations (arcminute precision)
+2. **Free Core Features** - No login required for chart generation
+3. **Mobile-First** - Optimized for phones and tablets
+4. **Privacy Focused** - Minimal data collection
+5. **Open & Transparent** - All calculations verifiable
+
+---
+
+## 🏗️ Architecture
+
+### System Overview
 
 ```
-/root/astrotattwa/                          # Production directory on Linode
-├── .github/
-│   └── workflows/
-│       └── deploy.yml                      ✅ CI/CD pipeline
-├── public/
-│   └── ephe/                               ✅ Swiss Ephemeris data (.se1)
-├── src/
-│   ├── app/
-│   │   ├── page.tsx                        ✅ Landing page (form missing)
-│   │   ├── layout.tsx                      ✅ Root layout with providers
-│   │   ├── globals.css                     ✅ Tailwind + custom styles
-│   │   └── api/                            ❌ API routes (NOT CREATED)
-│   ├── components/
-│   │   ├── ui/                             ✅ shadcn/ui components
-│   │   ├── theme-provider.tsx              ✅ Dark/light mode
-│   │   ├── forms/
-│   │   │   └── BirthDataForm.tsx           ❌ NOT CREATED (BLOCKING)
-│   │   └── charts/                         ❌ Chart visualization (NOT CREATED)
-│   ├── lib/
-│   │   ├── astrology/                      ❌ Swiss Ephemeris engine (NOT IMPLEMENTED)
-│   │   ├── supabase/
-│   │   │   ├── client.ts                   ✅ Browser client
-│   │   │   └── server.ts                   ✅ Server client
-│   │   └── utils.ts                        ✅ Helper functions
-│   ├── types/
-│   │   └── swisseph.d.ts                   ✅ Swiss Ephemeris types
-│   └── hooks/                              🚧 Partial (use-toast.ts exists)
-├── supabase/
-│   └── migrations/
-│       └── 001_initial_schema.sql          ✅ Schema applied to production
-├── ecosystem.config.js                     ✅ PM2 configuration
-├── next.config.js                          ✅ Webpack config for native modules
-├── middleware.ts                           ✅ File exists (empty/not implemented)
-├── package.json                            ✅ Dependencies installed
-├── tsconfig.json                           ✅ TypeScript config
-└── README.md                               ✅ Project documentation
+┌─────────────────────────────────────────────────────────────┐
+│                         Cloudflare                           │
+│                    (DNS, SSL, CDN, DDoS)                     │
+└──────────────────────┬──────────────────────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────────────────────┐
+│                      Linode VPS                              │
+│                  (172.236.176.107)                           │
+│  ┌──────────────────────────────────────────────────────┐   │
+│  │                  Nginx (Reverse Proxy)                │   │
+│  │            Port 80 → 443 (SSL redirect)               │   │
+│  │            Port 443 → localhost:3000                  │   │
+│  └────────────────────┬─────────────────────────────────┘   │
+│                       ▼                                      │
+│  ┌──────────────────────────────────────────────────────┐   │
+│  │                     PM2 Process                       │   │
+│  │               (astrotattwa-web)                       │   │
+│  │                                                       │   │
+│  │  ┌────────────────────────────────────────────────┐  │   │
+│  │  │           Next.js 14 Server                    │  │   │
+│  │  │                                                │  │   │
+│  │  │  ┌─────────────────┐  ┌──────────────────┐   │  │   │
+│  │  │  │  Server Side    │  │  API Routes      │   │  │   │
+│  │  │  │  Rendering      │  │  /api/*          │   │  │   │
+│  │  │  └─────────────────┘  └──────────────────┘   │  │   │
+│  │  │                                                │  │   │
+│  │  │  ┌─────────────────────────────────────────┐  │  │   │
+│  │  │  │      Swiss Ephemeris Engine             │  │  │   │
+│  │  │  │  (Planetary Calculations)               │  │  │   │
+│  │  │  └─────────────────────────────────────────┘  │  │   │
+│  │  └────────────────────────────────────────────────┘  │   │
+│  └──────────────────────┬───────────────────────────────┘   │
+│                         │                                    │
+│                         ▼                                    │
+│  ┌──────────────────────────────────────────────────────┐   │
+│  │         PostgreSQL (Future - Planned Migration)       │   │
+│  └──────────────────────────────────────────────────────┘   │
+└──────────────────────────┬──────────────────────────────────┘
+                           │
+                           ▼
+              ┌────────────────────────────┐
+              │      Supabase Cloud        │
+              │  (PostgreSQL + Auth)       │
+              │  - profiles table          │
+              │  - charts table            │
+              │  - cities table            │
+              └────────────────────────────┘
 ```
 
 ---
 
-## 🎯 What's Working vs What's Not
+## 🛠️ Tech Stack
 
-### ✅ Fully Functional
-1. **Infrastructure** - Linode server running with PM2 + Nginx
-2. **Database** - Supabase with all tables created and secured
-3. **Swiss Ephemeris** - Package installed, verified 100% accurate
-4. **Landing Page** - Renders at http://172.236.176.107 (form component missing)
-5. **Dark/Light Mode** - Theme toggle working
-6. **CI/CD** - Auto-deployment on push to main
-7. **Cities Database** - 100+ Indian cities with coordinates
+### Frontend Layer
 
-### 🚧 Partially Working
-8. **Landing Page Form** - Structure exists but BirthDataForm component missing
-9. **Authentication** - Supabase configured but not implemented
-10. **Middleware** - File exists but empty
+#### Core Framework
+- **Next.js 14** (App Router)
+  - Server Components (default)
+  - Client Components ('use client' when needed)
+  - API Routes
+  - Automatic code splitting
+  - Image optimization
 
-### ❌ Not Started
-11. **Calculation Engine** - Functions not written (Priority 2)
-12. **API Endpoints** - No routes created (Priority 3)
-13. **Chart Visualization** - Components not built
-14. **Chart Management** - Save/load functionality missing
-15. **Domain/SSL** - astrotatwa.com purchased but not mapped
+#### Language
+- **TypeScript 5.3** (strict mode)
+  - All files typed
+  - No implicit any
+  - Strict null checks
 
----
+#### Styling
+- **Tailwind CSS 3.4**
+  - Utility-first CSS
+  - Custom design tokens
+  - Dark/Light theme support
+- **shadcn/ui**
+  - 24+ reusable components
+  - Radix UI primitives
+  - Accessible by default
 
-## 🚨 Critical Blockers (Immediate Action Required)
+#### State Management
+- **Zustand 4.5** (minimal global state)
+- **React Hook Form** (form state)
+- **Server State:** Fetched directly in Server Components
 
-### Blocker #1: BirthDataForm Component Missing (HIGHEST PRIORITY)
-**Location:** Should be `src/components/forms/BirthDataForm.tsx`  
-**Impact:** Landing page broken, blocks all development  
-**Estimated Time:** 4-6 hours
-
-**Required Fields:**
-- Name input (text)
-- Date of Birth (date picker)
-- Time of Birth (time picker)
-- Place of Birth (searchable dropdown from cities table)
-- Gender selection (optional)
-- Submit button with loading state
-- Form validation with Zod
-
-### Blocker #2: Calculation Engine Not Implemented (HIGH PRIORITY)
-**Location:** Should be in `src/lib/astrology/`  
-**Impact:** Can't perform any astrological calculations  
-**Estimated Time:** 8-12 hours
-
-**Required Files:**
-- `utils.ts` - Julian Day, conversions, helpers
-- `planetary.ts` - Calculate all 9 planet positions
-- `ascendant.ts` - Calculate Lagna (Ascendant)
-- `houses.ts` - Calculate 12 house cusps
-- `dasha.ts` - Vimshottari Dasha timeline
-- `nakshatra.ts` - Nakshatra & Pada
-- `constants.ts` - Ayanamsa, planet IDs, zodiac
-- `index.ts` - Main export
-
-### Blocker #3: API Endpoint Missing (MEDIUM PRIORITY)
-**Location:** Should be `src/app/api/calculate/route.ts`  
-**Impact:** Frontend can't communicate with backend  
-**Estimated Time:** 2-3 hours (depends on Blocker #2)
+#### UI Libraries
+- **next-themes** - Theme management
+- **framer-motion** - Animations
+- **lucide-react** - Icons
 
 ---
 
-## 📊 Progress Summary
+### Backend Layer
 
-| Category | Status | Completion |
-|----------|--------|------------|
-| **Infrastructure** | ✅ Complete | 100% |
-| **Database Schema** | ✅ Complete | 100% |
-| **Swiss Ephemeris Setup** | ✅ Complete | 100% |
-| **Landing Page** | 🚧 Partial | 60% |
-| **Calculation Engine** | ❌ Not Started | 0% |
-| **API Endpoints** | ❌ Not Started | 0% |
-| **Chart Visualization** | ❌ Not Started | 0% |
-| **Authentication** | 🚧 Configured | 20% |
-| **SSL/Domain** | ❌ Not Configured | 0% |
-| **Overall Project** | 🚧 In Progress | **35%** |
+#### Runtime & Server
+- **Node.js 20.20.0**
+- **Next.js API Routes** (serverless functions)
+
+#### Database
+**Current:** Supabase (PostgreSQL 15)
+- Row Level Security (RLS)
+- Real-time subscriptions (not used yet)
+- Auth system (configured, not active)
+
+**Future:** Linode PostgreSQL (planned migration)
+- Better cost control
+- Direct server access
+- Custom configuration
+
+#### Authentication (Planned P7)
+- **Supabase Auth**
+- Google OAuth
+- Email/password
+- JWT tokens
+
+#### Calculations Engine
+- **Swiss Ephemeris 0.5.17**
+  - Planetary ephemeris (JPL DE431)
+  - High precision (arcminute accuracy)
+  - Lahiri Ayanamsa
+  - Node.js bindings via `swisseph` npm package
 
 ---
 
-## 🏗️ Architecture Overview
+### Infrastructure
 
-### Current Architecture
+#### Hosting
+- **Linode VPS**
+  - Region: Mumbai
+  - IP: 172.236.176.107
+  - OS: Ubuntu 22.04 LTS
+  - RAM: 4GB
+  - Storage: 80GB SSD
+
+#### Web Server
+- **Nginx 1.18**
+  - Reverse proxy
+  - SSL termination
+  - Gzip compression
+  - Static file serving
+
+#### Process Management
+- **PM2**
+  - Process: `astrotattwa-web`
+  - Auto-restart on crash
+  - Log management
+  - Cluster mode ready
+
+#### Domain & DNS
+- **Cloudflare**
+  - Domain registrar
+  - DNS management
+  - SSL/TLS (Full Strict)
+  - CDN
+  - DDoS protection
+  - Web Application Firewall (WAF)
+
+---
+
+### Development Tools
+
+#### Version Control
+- **Git** + **GitHub**
+  - Repository: aakashjain1992-ship-it/astrotattwa-web
+  - Branches: main, dev, feature/*
+  - Protected main branch
+
+#### CI/CD
+- **GitHub Actions**
+  - Auto-deploy main → Linode
+  - Build checks
+  - Type checking
+
+#### Code Quality
+- **ESLint** - Linting
+- **Prettier** - Formatting (planned)
+- **TypeScript** - Type checking
+
+#### Testing
+- **Manual Testing** (current)
+- **Unit Tests** (planned)
+- **E2E Tests** (planned)
+
+---
+
+## 🔄 Data Flow
+
+### Chart Calculation Flow
+
 ```
-┌─────────────────────────────────────────────────┐
-│ GoDaddy Domain: astrotatwa.com                  │
-│ Status: PURCHASED, DNS NOT CONFIGURED           │
-│ Action Required: Point A record to IP           │
-└─────────────────────────────────────────────────┘
-                      ↓
-┌─────────────────────────────────────────────────┐
-│ Linode VPS: ubuntu-in-bom-2                     │
-│ Public IP: 172.236.176.107                      │
-│ ├─ Nginx (reverse proxy on port 80)            │
-│ ├─ PM2 (process manager - "astrotattwa" app)   │
-│ └─ Next.js 14 (Node.js 20.20.0 on port 3000)   │
-│    (Frontend + Backend in monorepo)             │
-└─────────────────────────────────────────────────┘
-                      ↓
-┌─────────────────────────────────────────────────┐
-│ Supabase (Backend Services)                     │
-│ ├─ PostgreSQL Database                          │
-│ │  └─ Tables: profiles, charts, cities          │
-│ ├─ Authentication (Google OAuth + Email)        │
-│ └─ Storage (for future PDF reports)             │
-└─────────────────────────────────────────────────┘
+1. User Input
+   ├── Name
+   ├── Date (YYYY-MM-DD)
+   ├── Time (HH:MM AM/PM)
+   └── Location (City, State, Country)
+           │
+           ▼
+2. Frontend Validation (Zod schema)
+   ├── Required fields
+   ├── Valid date/time
+   └── Coordinates present
+           │
+           ▼
+3. API Request
+   POST /api/calculate
+   {
+     name, date, time, 
+     lat, lng, timezone, utcOffset
+   }
+           │
+           ▼
+4. Server-Side Calculation
+   ├── Convert to UTC
+   ├── Calculate Julian Day
+   ├── Swiss Ephemeris:
+   │   ├── Planet longitudes
+   │   ├── Ascendant
+   │   ├── House cusps
+   │   └── Nakshatras
+   ├── KP System:
+   │   ├── Sub-lords
+   │   └── Cuspal positions
+   ├── Vimshottari Dasha:
+   │   └── 4-level hierarchy
+   └── Divisional Charts:
+       └── D1, D2, D3, D7, D9, D10, D12, Moon
+           │
+           ▼
+5. Response (JSON)
+   {
+     planets: {...},
+     houses: [...],
+     dashas: {...},
+     avakahada: {...}
+   }
+           │
+           ▼
+6. Frontend Rendering
+   ├── DiamondChart (SVG)
+   ├── PlanetaryTable
+   ├── DashaNavigator
+   └── Divisional Charts
 ```
 
-**Architecture Principles:**
-- **Monorepo:** Frontend and backend in same Next.js 14 codebase
-- **API Layer:** Frontend consumes backend APIs over HTTP
-- **Backend must remain frontend-agnostic** - maintain clear boundaries
+---
 
-### Security Features (Implemented)
-- ✅ Row Level Security on all Supabase tables
-- ✅ Auth middleware for session refresh (structure ready)
-- ✅ HTTP-only cookies for tokens
-- ✅ Security headers in Nginx config
-- ✅ Environment variables secured (.env.local)
+### City Search Flow
+
+```
+1. User Types in CitySearch
+   "New Del..."
+           │
+           ▼
+2. Debounced Input (300ms)
+           │
+           ▼
+3. API Request
+   GET /api/cities/search?q=New+Del
+           │
+           ▼
+4. Database Query
+   SELECT city_name, state_name, country, 
+          latitude, longitude, timezone
+   FROM cities
+   WHERE search_text ILIKE '%new del%'
+   LIMIT 10
+           │
+           ▼
+5. Response (JSON)
+   [
+     {
+       city_name: "New Delhi",
+       state_name: "Delhi",
+       country: "India",
+       latitude: 28.6139,
+       longitude: 77.2090,
+       timezone: "Asia/Kolkata"
+     },
+     ...
+   ]
+           │
+           ▼
+6. Autocomplete Dropdown
+   Shows: "New Delhi, Delhi, India"
+```
 
 ---
 
-## 📋 Tech Stack (Actual Implementation)
+## 🔐 Security
 
-### Frontend (Operational)
-- **Framework:** Next.js 14 (App Router)
-- **Language:** TypeScript (strict mode)
-- **Styling:** Tailwind CSS 3.4
-- **Components:** shadcn/ui
-- **State:** Zustand (not yet used), React Query (not yet used)
-- **Theme:** next-themes (dark/light mode working)
+### Current Measures
 
-### Backend (Configured, Partially Implemented)
-- **API:** Next.js API Routes (not created yet)
-- **Database:** Supabase PostgreSQL
-- **Auth:** Supabase Auth (configured, not implemented)
-- **Calculations:** Swiss Ephemeris (installed, not used yet)
+#### SSL/TLS
+- **Cloudflare SSL** (Full Strict mode)
+- HTTPS enforced (redirect HTTP → HTTPS)
+- TLS 1.2+ only
+- HSTS enabled
 
-### Infrastructure (Fully Operational)
-- **Hosting:** Linode VPS (Mumbai, 172.236.176.107)
-- **OS:** Ubuntu 24.04
-- **Runtime:** Node.js 20.20.0 (via NVM)
-- **Process Manager:** PM2
-- **Web Server:** Nginx
-- **CI/CD:** GitHub Actions
-- **Domain:** astrotatwa.com (purchased, not mapped)
+#### Database
+- **Supabase RLS** (Row Level Security)
+- No public access without auth
+- Parameterized queries (SQL injection prevention)
 
-### Payment & AI (Phase 2 - Not Started)
-- **Payments:** Razorpay (India), Stripe (International)
-- **AI Reports:** OpenAI GPT-4 / Claude API
-- **PDF Generation:** jsPDF or React-PDF
+#### Environment Variables
+- Sensitive keys in `.env.local`
+- Not committed to git
+- Server-side only (not exposed to client)
+
+#### CORS
+- Restricted to own domain
+- No wildcard origins
 
 ---
 
-## 🚀 Development Roadmap
+### Planned Security (P3)
 
-### Week 1 (Current - Jan 24-31, 2026) - 50% Complete
-- [x] Infrastructure setup (Linode + PM2 + Nginx) ✅
-- [x] Swiss Ephemeris installation ✅
-- [x] Database schema creation ✅
-- [x] Landing page structure ✅
-- [ ] BirthDataForm component 🚧 NEXT
-- [ ] Calculation engine 🚧 NEXT
-- [ ] /api/calculate endpoint 🚧 NEXT
+#### API Authentication
+- JWT tokens
+- Protected routes
+- Rate limiting (100 req/min per IP)
 
-### Week 2 (Feb 1-7, 2026) - Not Started
-- [ ] Chart visualization (North Indian D1)
-- [ ] Planet list component
-- [ ] Dasha timeline component
-- [ ] Google OAuth implementation
-- [ ] Email signup flow
+#### Input Validation
+- Zod schemas on all API routes
+- Sanitize user input
+- XSS prevention
 
-### Week 3 (Feb 8-14, 2026) - Not Started
-- [ ] Domain mapping (astrotatwa.com → 172.236.176.107)
-- [ ] SSL certificate (Certbot + Let's Encrypt)
-- [ ] Chart save/load functionality
-- [ ] User dashboard
-- [ ] Chart management UI
-
-### Week 4 (Feb 15-21, 2026) - Not Started
-- [ ] Additional divisional charts (D9, D2-D60)
-- [ ] Yoga detection (30+ classical yogas)
-- [ ] Responsive design polish
-- [ ] Beta testing
-- [ ] Bug fixes
+#### Security Headers
+- CSP (Content Security Policy)
+- X-Frame-Options
+- X-Content-Type-Options
+- Referrer-Policy
 
 ---
 
-## 🎯 Immediate Priorities (Next 3-7 Days)
+## ⚡ Performance
 
-### Priority 1: Create BirthDataForm (4-6 hours)
-**Why Critical:** Blocks all user interaction and development
-**Deliverable:** Working form that collects birth data
-**Dependencies:** None (cities table already exists)
+### Current Performance (Feb 7, 2026)
 
-### Priority 2: Build Calculation Engine (8-12 hours)
-**Why Critical:** Core functionality of the application
-**Deliverable:** Functions that calculate planetary positions
-**Dependencies:** Swiss Ephemeris (already installed)
-**Critical Requirement:** 100% accuracy (< 1 arcminute tolerance)
+#### Lighthouse Scores
+- **Performance:** 💯 100/100
+- **Accessibility:** 🟢 90/100
+- **Best Practices:** 🟢 96/100
+- **SEO:** 💯 100/100
 
-### Priority 3: Create API Endpoint (2-3 hours)
-**Why Critical:** Connects frontend to calculations
-**Deliverable:** POST /api/calculate route
-**Dependencies:** Priority 2 (calculation engine)
-
----
-
-## 📚 Key Documentation
-
-### For Development
-- **README.md** - Public-facing project overview
-- **README_FOR_CHATGPT.md** - Complete AI assistant context
-- **SETUP_CHECKLIST.md** - Detailed current status & todos
-- **01_PRD.md** - Product requirements
-- **04_Development_Plan.md** - Technical architecture
-- **05_Tech_Stack.md** - Technology specifications
-- **06_Test_Case_Reference.md** - Calculation verification data
-
-### For Operations
-- **ecosystem.config.js** - PM2 configuration
-- **.github/workflows/deploy.yml** - CI/CD pipeline
-- **next.config.js** - Webpack + Next.js config
-- **.env.local** - Environment variables (server only, NOT in git)
+#### Core Web Vitals
+- **FCP:** 0.3s ⚡ (< 1.8s target)
+- **LCP:** 0.6s ⚡ (< 2.5s target)
+- **CLS:** 0.036 ✅ (< 0.1 target)
+- **TBT:** 0ms ⚡
+- **SI:** 0.3s ⚡
 
 ---
 
-## 🔑 Server Access & Commands
+### Performance Strategies
 
-### SSH Access
+#### 1. Server-Side Rendering (SSR)
+- Landing page pre-rendered
+- Fast initial load
+
+#### 2. Code Splitting
+- Automatic route-based splitting
+- Dynamic imports for heavy components
+
+#### 3. Image Optimization
+- Next.js Image component
+- WebP format
+- Lazy loading
+
+#### 4. Bundle Optimization
+- Tree shaking
+- Minification
+- Gzip compression
+
+#### 5. Caching
+- **Static Assets:** Cloudflare CDN (1 year)
+- **API Responses:** Future (Redis planned)
+
+---
+
+### Current Bottlenecks
+
+1. **Swiss Ephemeris Calculations** (~100-200ms)
+   - Solution: Cache common dates
+   
+2. **Large Chart Data** (~50 KB JSON)
+   - Solution: Progressive loading
+   
+3. **Multiple Divisional Charts** (8 charts × 50 KB)
+   - Solution: Lazy load on tab switch
+
+---
+
+## 🚀 Deployment
+
+### Deployment Architecture
+
+```
+Developer (Aakash)
+    │
+    ▼
+Local Changes
+    │
+    ▼
+Git Commit → Push to GitHub (dev branch)
+    │
+    ▼
+Create PR: dev → main
+    │
+    ▼
+GitHub Actions (CI)
+    ├── Type check
+    ├── Lint
+    └── Build test
+    │
+    ▼
+Merge to main (protected)
+    │
+    ▼
+GitHub Actions (CD)
+    ├── SSH to Linode
+    ├── git pull origin main
+    ├── npm install
+    ├── npm run build
+    ├── pm2 restart astrotattwa-web
+    └── Health check
+    │
+    ▼
+Production Live 🎉
+```
+
+---
+
+### Manual Deployment (Current)
+
 ```bash
-ssh root@172.236.176.107
-cd /root/astrotattwa
-```
+# On Linode server
+cd /var/www/astrotattwa-web
 
-### Common Operations
-```bash
-# Check PM2 status
-/root/.nvm/versions/node/v20.20.0/bin/pm2 status
-
-# View logs
-/root/.nvm/versions/node/v20.20.0/bin/pm2 logs astrotattwa --lines 50
-
-# Restart app
-/root/.nvm/versions/node/v20.20.0/bin/pm2 restart astrotattwa
-
-# Rebuild after changes
-/root/.nvm/versions/node/v20.20.0/bin/npm run build
-/root/.nvm/versions/node/v20.20.0/bin/pm2 restart astrotattwa
-
-# Check Nginx
-sudo systemctl status nginx
-sudo nginx -t
-```
-
-### Manual Deployment (if GitHub Actions fails)
-```bash
-cd /root/astrotattwa
+# Pull latest code
 git pull origin main
-/root/.nvm/versions/node/v20.20.0/bin/npm install
-/root/.nvm/versions/node/v20.20.0/bin/npm run build
-/root/.nvm/versions/node/v20.20.0/bin/pm2 restart astrotattwa
+
+# Install dependencies
+npm install
+
+# Build production
+npm run build
+
+# Restart PM2
+pm2 restart astrotattwa-web
+
+# Check status
+pm2 status
+pm2 logs astrotattwa-web --lines 50
 ```
 
 ---
 
-## 💡 Development Philosophy
+### Rollback Strategy
 
-### What We're Building For
-- **Mobile-First:** Designed for thumbs, not mice
-- **Accuracy First:** Swiss Ephemeris with < 1 arcminute tolerance
-- **Trust Through Transparency:** All user data is free forever
-- **Calm Design:** Clean, minimal UI that reduces anxiety
+```bash
+# View recent commits
+git log --oneline -10
 
-### What We Avoid
-- ❌ Approximations in calculations
-- ❌ Premature optimization
-- ❌ Coupling frontend and backend logic
-- ❌ Full rewrites without clear reason
-- ❌ Breaking existing functionality
+# Rollback to previous commit
+git reset --hard HEAD~1
 
-### How We Work
-- ✅ Incremental improvements
-- ✅ Production-safe code
-- ✅ TypeScript strict mode
-- ✅ Test calculations against reference data
-- ✅ Mobile-first responsive design
+# Or to specific commit
+git reset --hard <commit-hash>
+
+# Rebuild and restart
+npm run build
+pm2 restart astrotattwa-web
+```
 
 ---
 
-## 🎉 Milestones Achieved
+## 📊 System Monitoring
 
-- ✅ **Infrastructure Complete!** Linode server operational (Jan 20, 2026)
-- ✅ **Database Live!** All tables created with RLS (Jan 21, 2026)
-- ✅ **Swiss Ephemeris Verified!** 100% accuracy confirmed (Jan 23, 2026)
-- ✅ **CI/CD Working!** Auto-deployment pipeline (Jan 23, 2026)
-- ✅ **Landing Page Live!** http://172.236.176.107 (Jan 24, 2026)
+### Current Monitoring
 
-**Next Milestone:** Form + Calculations working (Target: Jan 31, 2026)
+#### PM2 Monitoring
+```bash
+# Process status
+pm2 status
 
----
+# Live monitoring
+pm2 monit
 
-## 📞 Getting Help
+# Logs
+pm2 logs astrotattwa-web --lines 100
 
-### For Development
-- Check **README_FOR_CHATGPT.md** for complete context
-- Review **SETUP_CHECKLIST.md** for current blockers
-- Refer to **06_Test_Case_Reference.md** for verification data
+# Metrics
+pm2 describe astrotattwa-web
+```
 
-### For Infrastructure
-- Check PM2 logs: `pm2 logs astrotattwa`
-- Check Nginx logs: `tail -f /var/log/nginx/error.log`
-- GitHub Actions: Check workflow runs for deployment issues
+#### Server Resources
+```bash
+# CPU, Memory, Disk
+htop
 
-### For Accuracy
-- Always verify against Jagannatha Hora (JHora)
-- Use test case: 25/03/1992, 11:55 AM, Delhi
-- Tolerance: < 1 arcminute (planets), < 2 arcminutes (ascendant)
+# Disk usage
+df -h
 
----
-
-**Version:** 0.2.0  
-**Status:** Production Infrastructure Complete, Core Features In Development  
-**Progress:** 35% Complete  
-**Live URL:** http://172.236.176.107 (HTTP only, SSL pending)  
-**Last Updated:** January 24, 2026, 11:55 PM IST
+# Network
+netstat -tulpn
+```
 
 ---
 
-**Status:** Foundation Complete ✅  
-**Ready For:** Authentication Implementation  
-**Timeline:** On track for Week 2 delivery  
-**Version:** 0.1.0
+### Planned Monitoring (P15)
+
+- **Sentry** - Error tracking
+- **LogRocket** - Session replay
+- **PostHog** - Analytics
+- **UptimeRobot** - Uptime monitoring
 
 ---
 
-## 🎊 Latest Update: January 23, 2026
+## 🗂️ Database Schema
 
-### Swiss Ephemeris Integration Complete! ✅
+### Current Tables (Supabase)
 
-**Major Milestone:** The core calculation engine is now operational!
+#### profiles
+```sql
+CREATE TABLE profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id),
+  email TEXT NOT NULL,
+  full_name TEXT,
+  avatar_url TEXT,
+  phone TEXT,
+  phone_verified BOOLEAN DEFAULT false,
+  charts_limit INTEGER DEFAULT 10,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
 
-**What's Working:**
-- ✅ Swiss Ephemeris v0.5.17 installed and configured
-- ✅ Sun position calculations (Sidereal with Lahiri Ayanamsa)
-- ✅ Moon position calculations  
-- ✅ Nakshatra system (27 nakshatras with Pada)
-- ✅ Test API endpoint: `/api/test-calc`
-- ✅ Verified accuracy against reference birth charts
+-- RLS Policies
+-- Users can only read/update their own profile
+```
 
-**Test Results (March 25, 1992, 11:55 AM IST):**
-- Sun: Pisces 11.33° in Uttara Bhadrapada (Pada 3)
-- Moon: Sagittarius 4.62° in Mula (Pada 2)
-- Calculation accuracy: 100% verified ✅
+#### charts
+```sql
+CREATE TABLE charts (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES profiles(id),
+  name TEXT NOT NULL,
+  birth_date DATE NOT NULL,
+  birth_time TIME NOT NULL,
+  birth_place TEXT NOT NULL,
+  latitude DECIMAL NOT NULL,
+  longitude DECIMAL NOT NULL,
+  timezone TEXT NOT NULL,
+  utc_offset INTEGER NOT NULL,
+  ayanamsa DECIMAL,
+  ascendant_degree DECIMAL,
+  ascendant_sign INTEGER,
+  moon_sign INTEGER,
+  sun_sign INTEGER,
+  nakshatra TEXT,
+  nakshatra_pada INTEGER,
+  planets JSONB,  -- All planetary data
+  houses JSONB,   -- House cusps
+  dashas JSONB,   -- Vimshottari dasha
+  yogas JSONB,    -- Classical yogas (not used)
+  is_favorite BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
 
-**Current Progress:** 45% of Phase 1 MVP Complete
+-- RLS Policies
+-- Users can only access their own charts
+```
 
-**Next Steps:**
-1. Add remaining 7 planets (Mars through Ketu)
-2. Implement Ascendant calculation
-3. Build Vimshottari Dasha system
-4. Create main calculation API endpoint
+#### cities
+```sql
+CREATE TABLE cities (
+  id SERIAL PRIMARY KEY,
+  city_name TEXT NOT NULL,
+  state_name TEXT,
+  country TEXT NOT NULL,
+  latitude NUMERIC NOT NULL,
+  longitude NUMERIC NOT NULL,
+  timezone TEXT NOT NULL,
+  population INTEGER,
+  search_text TEXT,  -- For full-text search
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
 
-See `CURRENT_STATE_ANALYSIS.md` for complete details.
+-- Indexes
+CREATE INDEX idx_cities_search ON cities USING GIN(to_tsvector('english', search_text));
+```
+
+---
+
+### Future Tables (Planned)
+
+#### reports (P12)
+```sql
+CREATE TABLE reports (
+  id UUID PRIMARY KEY,
+  user_id UUID REFERENCES profiles(id),
+  chart_id UUID REFERENCES charts(id),
+  report_type VARCHAR(50), -- 'career', 'marriage', etc.
+  content JSONB,
+  pdf_url TEXT,
+  amount_paid DECIMAL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+#### payments (P12)
+```sql
+CREATE TABLE payments (
+  id UUID PRIMARY KEY,
+  user_id UUID REFERENCES profiles(id),
+  report_id UUID REFERENCES reports(id),
+  razorpay_order_id VARCHAR(255),
+  razorpay_payment_id VARCHAR(255),
+  amount DECIMAL NOT NULL,
+  currency VARCHAR(3) DEFAULT 'INR',
+  status VARCHAR(50), -- 'pending', 'success', 'failed'
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+---
+
+## 🔮 Future Architecture
+
+### Scalability Plans
+
+#### 1. **Caching Layer** (P15)
+```
+User Request
+    │
+    ▼
+Redis Cache
+    ├── Hit → Return cached
+    │
+    └── Miss
+        │
+        ▼
+    Calculate
+        │
+        ▼
+    Store in Redis
+        │
+        ▼
+    Return to user
+```
+
+#### 2. **Load Balancing** (When needed)
+```
+Cloudflare
+    │
+    ▼
+Nginx Load Balancer
+    ├── PM2 Instance 1
+    ├── PM2 Instance 2
+    └── PM2 Instance 3
+```
+
+#### 3. **Database Sharding** (When needed)
+- Shard by user_id
+- Read replicas for queries
+
+---
+
+## 📚 API Documentation
+
+### Endpoints
+
+#### POST /api/calculate
+Calculate birth chart
+
+**Request:**
+```json
+{
+  "name": "John Doe",
+  "birthDate": "1992-03-25",
+  "birthTime": "11:55 AM",
+  "latitude": 28.6139,
+  "longitude": 77.2090,
+  "timezone": "Asia/Kolkata",
+  "utcOffset": 330
+}
+```
+
+**Response:** ChartData (all calculations)
+
+---
+
+#### GET /api/cities/search?q={query}
+Search cities
+
+**Response:**
+```json
+[
+  {
+    "city_name": "New Delhi",
+    "state_name": "Delhi",
+    "country": "India",
+    "latitude": 28.6139,
+    "longitude": 77.2090,
+    "timezone": "Asia/Kolkata"
+  }
+]
+```
+
+---
+
+#### GET /api/dasha/balance
+Calculate dasha balance at birth
+
+#### GET /api/avakahada
+Calculate Avakahada Chakra
+
+---
+
+## 🎯 Success Metrics
+
+### Technical Metrics
+- **Uptime:** Target 99.9%
+- **Response Time:** < 200ms (API)
+- **Error Rate:** < 0.1%
+
+### User Metrics
+- **Charts Created:** Track growth
+- **Return Rate:** Target 40%+
+- **Mobile Users:** ~70% of traffic
+
+---
+
+**Last Updated:** February 7, 2026  
+**Version:** 2.0  
+**Next Review:** March 7, 2026

@@ -12,16 +12,6 @@ const nextConfig = {
     serverComponentsExternalPackages: ['swisseph']
   },
 
-  env: {
-    SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
-    SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
-  },
-typescript: {
-    ignoreBuildErrors: true,
-  },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
 };
 
 
