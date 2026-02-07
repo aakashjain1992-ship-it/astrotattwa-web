@@ -2,7 +2,6 @@
 
 import { cn } from '@/lib/utils';
 import type { PlanetDisplayInfo } from '@/types/chart-display';
-import { getPlanetColorClass } from '@/lib/utils/chartHelpers';
 
 interface PlanetDisplayProps {
   planet: PlanetDisplayInfo;
@@ -11,7 +10,6 @@ interface PlanetDisplayProps {
 }
 
 export function PlanetDisplay({ planet, onClick, className }: PlanetDisplayProps) {
-  const colorClass = getPlanetColorClass(planet.key);
   const hasFlags = planet.statusFlags.length > 0;
   
   return (
@@ -35,7 +33,7 @@ export function PlanetDisplay({ planet, onClick, className }: PlanetDisplayProps
         {planet.degree}
       </div>
       
-      <div className={cn('text-base font-bold leading-none', colorClass)}>
+      <div className={cn('text-base font-bold leading-none')}>
         {planet.symbol}
       </div>
       
