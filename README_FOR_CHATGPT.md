@@ -1,3 +1,5 @@
+# THIS FILE IS NOT UPDATED. Don't read - 7th Feb, 2025 
+
 # ChatGPT Project Context – Astrotattwa (Current State)
 
 ## 🔄 IMPORTANT: Parallel AI Usage
