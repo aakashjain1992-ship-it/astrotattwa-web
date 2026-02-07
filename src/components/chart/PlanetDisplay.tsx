@@ -1,7 +1,7 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import type { PlanetDisplayInfo } from '@/types/chart-display';
+import type { PlanetDisplayInfo } from '@/types/astrology';
 
 interface PlanetDisplayProps {
   planet: PlanetDisplayInfo;

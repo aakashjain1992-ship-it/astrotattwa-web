@@ -176,7 +176,7 @@ export interface PlanetDisplayInfo {
 /**
  * Status flags for planets
  */
-export type StatusFlag = 'R' | 'C' | 'E' | 'D' | 'S';
+export type StatusFlag = 'R' | 'C' | 'E' | 'D' | 'S'| '↑' | '↓';
 
 /**
  * House information for chart display

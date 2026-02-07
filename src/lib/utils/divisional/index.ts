@@ -1,5 +1,5 @@
-import type { PlanetData, AscendantData } from '../chartHelpers';
-import type { HouseData } from '@/components/chart/diamond';
+import type { PlanetData, AscendantData, HouseInfo } from '@/types/astrology';
+
 import { buildLagnaHouses, buildMoonHouses, buildNavamsaHouses, buildDasamsaHouses } from '../chartHelpers';
 import { buildHoraHouses } from './d2-hora';
 import { buildDrekkanaHouses } from './d3-drekkana';
@@ -12,7 +12,7 @@ export function calculateDivisionalChart(
   chartId: DivisionalChartId,
   planets: Record<string, PlanetData>,
   ascendant: AscendantData
-): HouseData[] {
+): HouseInfo[] {
   switch (chartId) {
     case 'd1': return buildLagnaHouses(planets, ascendant);
     case 'd2': return buildHoraHouses(planets, ascendant);

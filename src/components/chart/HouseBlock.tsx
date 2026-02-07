@@ -1,7 +1,7 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import type { HouseInfo } from '@/types/chart-display';
+import type { HouseInfo } from '@/types/astrology';
 import { PlanetDisplay } from './PlanetDisplay';
 
 interface HouseBlockProps {
