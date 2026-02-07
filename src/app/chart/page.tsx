@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Loader2, Stars } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ChartFocusMode, type ChartConfig } from '@/components/chart/ChartFocusMode';
+import { DivisionalChartsTab } from '@/components/chart/divisional';
 import { generateChartInsights } from '@/lib/utils/generateChartInsights';
 
 // Layout
@@ -99,7 +100,7 @@ interface ChartData {
   ayanamsha?: string;
 }
 
-type TabType = 'overview' | 'dasha';
+type TabType = 'overview' | 'dasha'| 'divisional';
 type MobileSubTab = 'planets' | 'avakahada';
 
 // ============================================
@@ -451,6 +452,13 @@ export default function ChartPage() {
           >
             Dasha Timeline
           </TabButton>
+          <TabButton
+            active={activeTab === 'divisional'}
+            onClick={() => setActiveTab('divisional')}
+          >
+            Divisional Charts
+          </TabButton>
+
         </div>
 
         {/* Tab Content */}
@@ -496,6 +504,15 @@ export default function ChartPage() {
         {activeTab === 'dasha' && (
           <div className="animate-fade-in">
             <DashaNavigator dashaData={chartData.dasa} />
+          </div>
+        )}
+
+	{activeTab === 'divisional' && (
+          <div className="animate-fade-in">
+            <DivisionalChartsTab
+              planets={chartData.planets}
+              ascendant={chartData.ascendant}
+            />
           </div>
         )}
       </main>
