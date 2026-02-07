@@ -4,7 +4,7 @@ import { Lightbulb, AlertCircle, CheckCircle, Info } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import type { HouseData } from '@/components/chart/diamond';
+import type { HouseInfo as HouseData } from '@/types/astrology';
 import type { DivisionalChartInfo } from './DivisionalChartConfig';
 
 export interface ChartInsight {

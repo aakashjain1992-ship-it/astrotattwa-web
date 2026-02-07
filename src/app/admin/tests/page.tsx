@@ -1,4 +1,3 @@
-// @ts-nocheck
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -72,22 +71,22 @@ export default function AdminTestsPage() {
   }, []);
 
   async function fetchHistory() {
-    setLoadingHistory(true);
-    try {
-      const { data, error } = await supabase
-        .from('test_case_runs')
-        .select('id, run_at, status, differences, test_case_id')
-        .order('run_at', { ascending: false })
-        .limit(10);
+  setLoadingHistory(true);
+  try {
+    const { data, error } = await supabase
+      .from('test_case_runs')
+      .select('id, run_at, status, differences, test_case_id')
+      .order('run_at', { ascending: false })
+      .limit(10);
 
-      if (error) throw error;
-      setHistory(data as any || []);
-    } catch (error) {
-      console.error('Failed to fetch history:', error);
-    } finally {
-      setLoadingHistory(false);
-    }
+    if (error) throw error;
+    setHistory(data as any || []);
+  } catch (error) {
+    console.error('Failed to fetch history:', error);
+  } finally {
+    setLoadingHistory(false);
   }
+}
 
   async function runTests() {
     setIsRunning(true);

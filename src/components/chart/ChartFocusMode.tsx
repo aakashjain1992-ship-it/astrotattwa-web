@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Columns2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { DiamondChart, type HouseData } from '@/components/chart/diamond';
+import { DiamondChart } from '@/components/chart/diamond';
+import type { HouseInfo as HouseData } from '@/types/astrology';
 import { Button } from '@/components/ui/button';
 import { useSwipeable } from 'react-swipeable';
 

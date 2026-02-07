@@ -7,21 +7,12 @@
 // TYPE DEFINITIONS
 // ============================================
 
-export interface PlanetInHouse {
-  key: string;           // 'Sun', 'Moon', 'Mars', etc.
-  symbol: string;        // 'Su', 'Mo', 'Ma', etc.
-  degree: number;        // Degree in sign (0-30)
-  longitude: number;     // Absolute longitude (0-360)
-  statusFlags: string[]; // ['R', 'C', 'D', 'Ex', '↑', '↓']
-}
+import type { HouseInfo, PlanetDisplayInfo } from '@/types/astrology';
 
-export interface HouseData {
-  houseNumber: number;   // 1-12
-  rasiNumber: number;    // 1-12 (zodiac sign number)
-  rasiName: string;      // 'Aries', 'Taurus', etc.
-  planets: PlanetInHouse[];
-  isAscendant: boolean;
-}
+// Re-export with backward-compatible names
+export type HouseData = HouseInfo;
+export type PlanetInHouse = PlanetDisplayInfo;
+
 
 export type ChartSize = 'sm' | 'md' | 'lg';
 

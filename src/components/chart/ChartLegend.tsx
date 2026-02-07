@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
-import { PLANET_SYMBOLS, PLANET_FULL_NAMES } from '@/types/chart-display';
+import { PLANET_SYMBOLS, PLANET_FULL_NAMES } from '@/types/astrology';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 
 interface ChartLegendProps {

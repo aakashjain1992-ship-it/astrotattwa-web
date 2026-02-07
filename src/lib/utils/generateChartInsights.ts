@@ -1,4 +1,4 @@
-import type { HouseData } from '@/components/chart/diamond';
+import type { HouseInfo as HouseData } from '@/types/astrology';
 import type { ChartInsight } from '@/components/chart/ChartFocusMode';
 
 /**

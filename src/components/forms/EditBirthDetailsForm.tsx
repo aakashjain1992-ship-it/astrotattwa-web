@@ -22,7 +22,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { CitySearch } from '@/components/forms/CitySearch';
+import { CitySearch, type City  } from '@/components/forms/CitySearch';
 import { cn } from '@/lib/utils';
 
 // ============================================
@@ -229,16 +229,11 @@ export function EditBirthDetailsForm({
   }, [birthDate]);
 
   // Handle city selection
-  const handleCitySelect = (city: { 
-    name: string; 
-    latitude: number; 
-    longitude: number; 
-    timezone: string;
-  }) => {
+  const handleCitySelect = (city: City) => {
     setValue('latitude', city.latitude);
     setValue('longitude', city.longitude);
     setValue('timezone', city.timezone);
-    setValue('cityName', city.name);
+    setValue('cityName', city.city_name);
   };
 
   // Handle month/year dropdown changes
@@ -517,8 +512,8 @@ export function EditBirthDetailsForm({
         <div className="space-y-2">
           <Label>Birth Place</Label>
           <CitySearch
+            value={currentData.cityName || ''}
             onSelect={handleCitySelect}
-            defaultValue={currentData.cityName}
           />
           {/* Show current coordinates */}
           {latitude && longitude && (
