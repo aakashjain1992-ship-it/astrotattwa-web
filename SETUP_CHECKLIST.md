@@ -1,71 +1,74 @@
+THIS FILE IS NOT UPDATED. Don't read - 7th Feb, 2025
+
+
 # Astrotattwa - Setup Checklist
 
 ## ✅ Foundation Setup Complete (Production Server)
 
 ### Infrastructure (Linode VPS)
-- [x] **Linode Server**: ubuntu-in-bom-2 (Nanode 1GB, Mumbai)
-- [x] **Public IP**: 172.236.176.107
-- [x] **Node.js**: v20.20.0 installed via NVM
-- [x] **PM2**: Configured and running (`astrotattwa` app)
-- [x] **Nginx**: Reverse proxy on port 80 → localhost:3000
-- [x] **GitHub Actions**: CI/CD pipeline (auto-deploy on push to main)
-- [x] **SSH Access**: Deploy keys configured
-- [x] **Firewall**: akamai-non-prod-1 configured
+- [✅] **Linode Server**: ubuntu-in-bom-2 (Nanode 1GB, Mumbai)
+- [✅] **Public IP**: 172.236.176.107
+- [✅] **Node.js**: v20.20.0 installed via NVM
+- [✅] **PM2**: Configured and running (`astrotattwa` app)
+- [✅] **Nginx**: Reverse proxy on port 80 → localhost:3000
+- [✅] **GitHub Actions**: CI/CD pipeline (auto-deploy on push to main)
+- [✅] **SSH Access**: Deploy keys configured
+- [✅] **Firewall**: akamai-non-prod-1 configured
 
 ### Core Application Files
-- [x] `package.json` - Dependencies configured
-- [x] `tsconfig.json` - TypeScript strict mode
-- [x] `next.config.js` - Next.js + Webpack config for native modules
-- [x] `tailwind.config.js` - Tailwind CSS with custom theme
+- [✅] `package.json` - Dependencies configured
+- [✅] `tsconfig.json` - TypeScript strict mode
+- [✅] `next.config.js` - Next.js + Webpack config for native modules
+- [✅] `tailwind.config.js` - Tailwind CSS with custom theme
 - [x] `postcss.config.js` - PostCSS configuration
 - [x] `ecosystem.config.js` - PM2 process manager config
-- [x] `.env.example` - Environment variables template
-- [x] `.gitignore` - Git ignore rules
+- [✅] `.env.example` - Environment variables template
+- [✅] `.gitignore` - Git ignore rules
 - [x] `vercel.json` - Deployment configuration
 
 ### Database & Schema
-- [x] Supabase project created
-- [x] Database schema migration (`001_initial_schema.sql`)
-- [x] **Tables created**: profiles, charts, cities, reports, payments
-- [x] Row Level Security (RLS) enabled on all tables
-- [x] Indexes on user_id, created_at, foreign keys
+- [✅] Supabase project created
+- [✅] Database schema migration (`001_initial_schema.sql`)
+- [✅] **Tables created**: profiles, charts, cities,
+- [✅] Row Level Security (RLS) enabled on all tables
+- [✅] Indexes on user_id, created_at, foreign keys
 - [x] Triggers for auto-updating updated_at
 - [x] Chart limit trigger (max 10 per user)
-- [x] Cities table populated (100+ Indian cities)
+- [✅] Cities table populated (100+ Indian cities)
 
 ### Supabase Integration
-- [x] `src/lib/supabase/client.ts` - Browser client
-- [x] `src/lib/supabase/server.ts` - Server client
-- [x] `src/lib/supabase/middleware.ts` - Auth middleware
-- [x] Environment variables configured (.env.local on server)
-- [x] Connection verified and working
+- [✅] `src/lib/supabase/client.ts` - Browser client
+- [✅] `src/lib/supabase/server.ts` - Server client
+- [✅] `src/lib/supabase/middleware.ts` - Auth middleware
+- [✅] Environment variables configured (.env.local on server)
+- [✅] Connection verified and working
 
 ### Swiss Ephemeris Setup
-- [x] **swisseph npm package** installed
-- [x] **Native dependencies**: build-essential, python3, make, g++
-- [x] **Webpack configuration**: Native module externalization
-- [x] **TypeScript types**: src/types/swisseph.d.ts
-- [x] **Ephemeris data files**: .se1 files in /public/ephe/
-- [x] **Calculation verification**: 100% accuracy (tested against JHora)
-- [x] **Status**: Foundation complete, ready for implementation
+- [✅] **swisseph npm package** installed
+- [✅] **Native dependencies**: build-essential, python3, make, g++
+- [✅] **Webpack configuration**: Native module externalization
+- [✅] **TypeScript types**: src/types/swisseph.d.ts
+- [✅] **Ephemeris data files**: .se1 files in /public/ephe/
+- [✅] **Calculation verification**: 100% accuracy (tested against JHora)
+- [✅] **Status**: Foundation complete, ready for implementation
 
 ### UI Components & Pages
-- [x] Root layout (`src/app/layout.tsx`) with theme provider
-- [x] Landing page (`src/app/page.tsx`)
-- [x] Theme provider (Dark/Light mode)
-- [x] UI components from shadcn/ui:
-  - [x] Button
-  - [x] Toast & Toaster
-  - [x] (Others available via shadcn/ui)
-- [x] Global styles (`src/styles/globals.css`)
-- [x] TypeScript types (`src/types/supabase.ts`)
+- [✅] Root layout (`src/app/layout.tsx`) with theme provider
+- [✅] Landing page (`src/app/page.tsx`)
+- [✅] Theme provider (Dark/Light mode)
+- [✅] UI components from shadcn/ui:
+  - [✅] Button
+  - [✅] Toast & Toaster
+  - [✅] (Others available via shadcn/ui)
+- [✅] Global styles (`src/styles/globals.css`)
+- [✅] TypeScript types (`src/types/supabase.ts`)
 
 ### Deployment & CI/CD
-- [x] GitHub repository with protected `main` branch
-- [x] GitHub Actions workflow (.github/workflows/deploy.yml)
-- [x] Automated deployment on push to main
-- [x] PM2 restart on deployment
-- [x] Full NVM paths in deployment scripts
+- [✅] GitHub repository with protected `main` branch
+- [✅] GitHub Actions workflow (.github/workflows/deploy.yml)
+- [✅] Automated deployment on push to main
+- [✅] PM2 restart on deployment
+- [✅] Full NVM paths in deployment scripts
 
 ### Documentation
 - [x] README.md - Public-facing documentation
@@ -228,12 +231,12 @@ npm run dev
 | **Infrastructure** | ✅ Complete | 100% |
 | **Database & Schema** | ✅ Complete | 100% |
 | **Swiss Ephemeris Setup** | ✅ Complete | 100% |
-| **Landing Page** | 🚧 Partial | 60% (form missing) |
-| **Calculation Engine** | ❌ Not Started | 0% |
-| **API Endpoints** | ❌ Not Started | 0% |
-| **Chart Visualization** | ❌ Not Started | 0% |
+| **Landing Page** | ✅ Complete | 100% (form missing) |
+| **Calculation Engine** | ✅ Complete | 100% |
+| **API Endpoints** | ✅ Complete | 100% |
+| **Chart Visualization** | ✅ Complete | 100% |
 | **Authentication** | 🚧 Configured | 20% (not implemented) |
-| **SSL/Domain** | ❌ Not Configured | 0% |
+| **SSL/Domain** | ✅ Complete | 100% |
 | **Overall Project** | 🚧 In Progress | **35%** |
 
 ---

@@ -44,13 +44,13 @@ export const HOUSE_POSITIONS: Record<number, { x: number; y: number }> = {
   1:  { x: 300, y: 150 },   // Top center (12 o'clock) - ASC
   2:  { x: 150, y: 75 },    // Top-left (11 o'clock)
   3:  { x: 75, y: 150 },    // Left-top (10 o'clock)
-  4:  { x: 75, y: 300 },    // Left-center (9 o'clock)
+  4:  { x: 120, y: 300 },    // Left-center (9 o'clock)
   5:  { x: 75, y: 450 },    // Left-bottom (8 o'clock)
   6:  { x: 150, y: 525 },   // Bottom-left (7 o'clock)
   7:  { x: 300, y: 450 },   // Bottom center (6 o'clock)
   8:  { x: 450, y: 525 },   // Bottom-right (5 o'clock)
   9:  { x: 525, y: 450 },   // Right-bottom (4 o'clock)
-  10: { x: 525, y: 300 },   // Right-center (3 o'clock)
+  10: { x: 480, y: 300 },   // Right-center (3 o'clock)
   11: { x: 525, y: 150 },   // Right-top (2 o'clock)
   12: { x: 450, y: 75 },    // Top-right (1 o'clock)
 };

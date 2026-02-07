@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
@@ -198,6 +198,7 @@ export function EditBirthDetailsForm({
     handleSubmit,
     setValue,
     watch,
+    control,
     formState: { errors },
   } = useForm<EditFormData>({
     resolver: zodResolver(editFormSchema),
@@ -215,12 +216,8 @@ export function EditBirthDetailsForm({
     },
   });
 
-  // Watch values for controlled inputs
+  // Watch values for controlled inputs (only those needed for UI logic)
   const birthDate = watch('birthDate');
-  const birthHour = watch('birthHour');
-  const birthMinute = watch('birthMinute');
-  const birthPeriod = watch('birthPeriod');
-  const gender = watch('gender');
   const latitude = watch('latitude');
   const longitude = watch('longitude');
 
@@ -259,13 +256,23 @@ export function EditBirthDetailsForm({
 
   const handleFormSubmit = async (data: EditFormData) => {
     setIsSubmitting(true);
+    
+    // DEBUG: Log form data to see what React Hook Form captured
+    console.log('🔍 EditBirthDetailsForm - Form data from React Hook Form:', {
+      gender: data.gender,
+      birthHour: data.birthHour,
+      birthMinute: data.birthMinute,
+      birthPeriod: data.birthPeriod,
+      allData: data,
+    });
+    
     try {
       // Format date as YYYY-MM-DD
       const dateStr = format(data.birthDate, 'yyyy-MM-dd');
       
       const birthTime12 = `${String(data.birthHour).padStart(2, '0')}:${String(data.birthMinute).padStart(2, '0')}`;
-        
-      await onSubmit({
+      
+      const submitData = {
         name: data.name,
         gender: data.gender,
         birthDate: dateStr,
@@ -274,7 +281,12 @@ export function EditBirthDetailsForm({
         latitude: data.latitude,
         longitude: data.longitude,
         timezone: data.timezone,
-      });
+      };
+      
+      // DEBUG: Log what we're sending to parent
+      console.log('🔍 EditBirthDetailsForm - Submitting to parent:', submitData);
+        
+      await onSubmit(submitData);
     } catch (error) {
       console.error('EditBirthDetailsForm - Submit error:', error);
       throw error;
@@ -313,18 +325,24 @@ export function EditBirthDetailsForm({
           {/* Gender */}
           <div className="space-y-2">
             <Label>Gender</Label>
-            <Select
-              value={gender}
-              onValueChange={(val) => setValue('gender', val as 'male' | 'female')}
-            >
-              <SelectTrigger className={errors.gender ? 'border-destructive' : ''}>
-                <SelectValue placeholder="Select gender" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="male">Male</SelectItem>
-                <SelectItem value="female">Female</SelectItem>
-              </SelectContent>
-            </Select>
+            <Controller
+              name="gender"
+              control={control}
+              render={({ field }) => (
+                <Select
+                  value={field.value}
+                  onValueChange={field.onChange}
+                >
+                  <SelectTrigger className={errors.gender ? 'border-destructive' : ''}>
+                    <SelectValue placeholder="Select gender" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="male">Male</SelectItem>
+                    <SelectItem value="female">Female</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            />
             {errors.gender && (
               <p className="text-sm text-destructive">{errors.gender.message}</p>
             )}
@@ -440,48 +458,57 @@ export function EditBirthDetailsForm({
             <Label>Birth Time</Label>
             <div className="grid grid-cols-3 gap-2">
               {/* Hour */}
-              <Select
-                value={birthHour}
-                onValueChange={(val) => setValue('birthHour', val)}
-              >
-                <SelectTrigger className={errors.birthHour ? 'border-destructive' : ''}>
-                  <SelectValue placeholder="HH" />
-                </SelectTrigger>
-                <SelectContent className="max-h-[200px]">
-                  {HOURS.map((h) => (
-                    <SelectItem key={h} value={h}>{h}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Controller
+                name="birthHour"
+                control={control}
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger className={errors.birthHour ? 'border-destructive' : ''}>
+                      <SelectValue placeholder="HH" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[200px]">
+                      {HOURS.map((h) => (
+                        <SelectItem key={h} value={h}>{h}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
 
               {/* Minute */}
-              <Select
-                value={birthMinute}
-                onValueChange={(val) => setValue('birthMinute', val)}
-              >
-                <SelectTrigger className={errors.birthMinute ? 'border-destructive' : ''}>
-                  <SelectValue placeholder="MM" />
-                </SelectTrigger>
-                <SelectContent className="max-h-[200px]">
-                  {MINUTES.map((m) => (
-                    <SelectItem key={m} value={m}>{m}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Controller
+                name="birthMinute"
+                control={control}
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger className={errors.birthMinute ? 'border-destructive' : ''}>
+                      <SelectValue placeholder="MM" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[200px]">
+                      {MINUTES.map((m) => (
+                        <SelectItem key={m} value={m}>{m}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
 
               {/* AM/PM */}
-              <Select
-                value={birthPeriod}
-                onValueChange={(val) => setValue('birthPeriod', val as 'AM' | 'PM')}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="AM/PM" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="AM">AM</SelectItem>
-                  <SelectItem value="PM">PM</SelectItem>
-                </SelectContent>
-              </Select>
+              <Controller
+                name="birthPeriod"
+                control={control}
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="AM/PM" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="AM">AM</SelectItem>
+                      <SelectItem value="PM">PM</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
             </div>
           </div>
         </div>

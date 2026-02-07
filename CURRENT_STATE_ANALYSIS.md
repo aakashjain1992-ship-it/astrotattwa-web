@@ -1,3 +1,6 @@
+#THIS FILE IS NOT UPDATED. Don't read - 7th Feb, 2025
+
+
 # 📊 Astrotattwa - Current State Analysis
 **Last Updated:** January 26, 2026
 **Status:** ✅ **Swiss Ephemeris Integration Complete - Phase 1A Done**
