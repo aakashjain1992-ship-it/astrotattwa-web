@@ -8,9 +8,14 @@
  * @created February 7, 2026
  */
 
-import type { PlanetData, AscendantData } from '@/types/chart-display';
-import type { HouseInfo } from '@/types/chart-display';
-import { RASHI_NAMES, PLANET_SYMBOLS } from '@/types/chart-display';
+import type { 
+  PlanetData, 
+  AscendantData, 
+  HouseInfo, 
+  PlanetDisplayInfo,
+  StatusFlag 
+} from '@/types/astrology';
+import { RASHI_NAMES, PLANET_SYMBOLS } from '@/types/astrology';
 
 // ===== DIVISION CONFIGURATIONS =====
 
@@ -119,6 +124,120 @@ export const DWADASAMSA_CONFIG: DivisionConfig = {
   },
 };
 
+/**
+ * Chaturthamsa (D4) Configuration
+ * Divides each sign into 4 parts (7.5° each)
+ * Used for property, assets, fixed resources, and general fortune
+ */
+export const CHATURTHAMSA_CONFIG: DivisionConfig = {
+  type: 'D4',
+  name: 'Chaturthamsa',
+  sanskritName: 'Chaturthāṁśa',
+  divisor: 4,
+  calculateSign: (longitude: number): number => {
+    const signIndex = Math.floor(longitude / 30);
+    const degreeInSign = longitude % 30;
+    const chaturthamsaPart = Math.floor(degreeInSign / 7.5);
+    const resultSignIndex = (signIndex + (chaturthamsaPart * 3)) % 12;
+    return resultSignIndex + 1;
+  },
+};
+
+/**
+ * Navamsa (D9) Configuration
+ * Divides each sign into 9 parts (3°20' each)
+ * THE MOST IMPORTANT divisional chart after D1
+ * Shows: spouse, dharma, inner strength, spiritual inclinations
+ * 
+ * Rules:
+ * - Fire signs (Aries, Leo, Sag) start from Aries
+ * - Earth signs (Taurus, Virgo, Cap) start from Capricorn
+ * - Air signs (Gemini, Libra, Aquarius) start from Libra
+ * - Water signs (Cancer, Scorpio, Pisces) start from Cancer
+ */
+export const NAVAMSA_CONFIG: DivisionConfig = {
+  type: 'D9',
+  name: 'Navamsa',
+  sanskritName: 'Navāṁśa',
+  divisor: 9,
+  calculateSign: (longitude: number): number => {
+    const signIndex = Math.floor(longitude / 30);
+    const degreeInSign = longitude % 30;
+    const navamsaPart = Math.floor(degreeInSign / (30 / 9)); // 0-8
+    
+    // Element-based starting signs
+    const element = signIndex % 4; // Fire=0, Earth=1, Air=2, Water=3
+    const startSigns = [0, 9, 6, 3]; // Aries, Capricorn, Libra, Cancer
+    const startSign = startSigns[element];
+    
+    const resultSignIndex = (startSign + navamsaPart) % 12;
+    return resultSignIndex + 1;
+  },
+};
+
+/**
+ * Dasamsa (D10) Configuration
+ * Divides each sign into 10 parts (3° each)
+ * Used for career, profession, status, and achievements
+ * 
+ * Rules:
+ * - Odd signs start from the sign itself
+ * - Even signs start from the 9th sign from itself
+ */
+export const DASAMSA_CONFIG: DivisionConfig = {
+  type: 'D10',
+  name: 'Dasamsa',
+  sanskritName: 'Daśāṁśa',
+  divisor: 10,
+  calculateSign: (longitude: number): number => {
+    const signIndex = Math.floor(longitude / 30);
+    const degreeInSign = longitude % 30;
+    const dasamsaPart = Math.floor(degreeInSign / 3);
+    const isOddSign = signIndex % 2 === 0;
+    const startSign = isOddSign ? signIndex : (signIndex + 8) % 12;
+    const resultSignIndex = (startSign + dasamsaPart) % 12;
+    return resultSignIndex + 1;
+  },
+};
+
+/**
+ * Trimsamsa (D30) Configuration
+ * Divides each sign into 30 parts (1° each)
+ * Used for misfortunes, weaknesses, hidden enemies, evil influences
+ * 
+ * Complex ruleset based on sign type (odd/even) with specific degree ranges
+ */
+export const TRIMSAMSA_CONFIG: DivisionConfig = {
+  type: 'D30',
+  name: 'Trimsamsa',
+  sanskritName: 'Triṁśāṁśa',
+  divisor: 30,
+  calculateSign: (longitude: number): number => {
+    const signIndex = Math.floor(longitude / 30);
+    const degreeInSign = longitude % 30;
+    const isOddSign = signIndex % 2 === 0;
+    
+    // Trimsamsa has specific degree ranges for each sign type
+    if (isOddSign) {
+      // Odd signs: Mars(5°), Saturn(5°), Jupiter(8°), Mercury(7°), Venus(5°)
+      if (degreeInSign < 5) return (signIndex + 0) % 12 + 1; // Mars (same sign)
+      if (degreeInSign < 10) return (signIndex + 10) % 12 + 1; // Saturn
+      if (degreeInSign < 18) return (signIndex + 8) % 12 + 1; // Jupiter
+      if (degreeInSign < 25) return (signIndex + 6) % 12 + 1; // Mercury
+      return (signIndex + 4) % 12 + 1; // Venus
+    } else {
+      // Even signs: Venus(5°), Mercury(7°), Jupiter(8°), Saturn(5°), Mars(5°)
+      if (degreeInSign < 5) return (signIndex + 4) % 12 + 1; // Venus
+      if (degreeInSign < 12) return (signIndex + 6) % 12 + 1; // Mercury
+      if (degreeInSign < 20) return (signIndex + 8) % 12 + 1; // Jupiter
+      if (degreeInSign < 25) return (signIndex + 10) % 12 + 1; // Saturn
+      return (signIndex + 0) % 12 + 1; // Mars
+    }
+  },
+};
+
+
+
 // ===== DIVISIONAL CHART BUILDER =====
 
 /**
@@ -178,7 +297,7 @@ export function buildDivisionalHouses(
     const houseIndex = (planetDivisionalSign - ascDivisionalSign + 12) % 12;
     
     // Build status flags
-    const statusFlags: string[] = [];
+    const statusFlags: StatusFlag[] = [];
     if (planetData.retrograde) statusFlags.push('R');
     if (planetData.combust) statusFlags.push('C');
     if (planetData.exalted) statusFlags.push('E');
@@ -254,8 +373,13 @@ export function buildDwadamsamsaHouses(
 export const DIVISION_CONFIGS = {
   D2: HORA_CONFIG,
   D3: DREKKANA_CONFIG,
+  D4: CHATURTHAMSA_CONFIG,
   D7: SAPTAMSA_CONFIG,
+  D9: NAVAMSA_CONFIG,
+  D10: DASAMSA_CONFIG,  
   D12: DWADASAMSA_CONFIG,
+  D30: TRIMSAMSA_CONFIG,
+
 } as const;
 
 /**
