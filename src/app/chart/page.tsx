@@ -326,7 +326,6 @@ export default function ChartPage() {
     setIsRecalculating(true);
     
     // DEBUG: Log what we received from form
-    console.log('🔍 ChartPage - Received from EditBirthDetailsForm:', formData);
     
     try {
       const apiPayload = {
@@ -341,7 +340,6 @@ export default function ChartPage() {
       };
       
       // DEBUG: Log what we're sending to API
-      console.log('🔍 ChartPage - Sending to /api/calculate:', apiPayload);
       
       // Call API to recalculate
       const response = await fetch('/api/calculate', {
@@ -361,7 +359,6 @@ export default function ChartPage() {
         throw new Error(result.error || 'Calculation failed');
       }
     } catch (error) {
-      console.error('Recalculation failed:', error);
       // Could show a toast here
     } finally {
       setIsRecalculating(false);

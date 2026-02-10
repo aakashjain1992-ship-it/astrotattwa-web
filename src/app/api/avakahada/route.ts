@@ -108,7 +108,6 @@ export async function GET(req: Request) {
       data: avakahada,
     });
   } catch (error) {
-    console.error("Avakahada calculation error:", error);
     return NextResponse.json(
       {
         success: false,

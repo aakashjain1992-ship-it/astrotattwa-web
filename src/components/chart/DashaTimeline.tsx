@@ -106,7 +106,6 @@ export function DashaTimeline({ dasa }: DashaTimelineProps) {
         setAntardashas([]);
       }
     } catch (error) {
-      console.error('Failed to load antardashas:', error);
       setAntardashas([]);
     } finally {
       setLoadingAntardasha(false);

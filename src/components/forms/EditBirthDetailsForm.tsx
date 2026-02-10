@@ -252,14 +252,7 @@ export function EditBirthDetailsForm({
   const handleFormSubmit = async (data: EditFormData) => {
     setIsSubmitting(true);
     
-    // DEBUG: Log form data to see what React Hook Form captured
-    console.log('🔍 EditBirthDetailsForm - Form data from React Hook Form:', {
-      gender: data.gender,
-      birthHour: data.birthHour,
-      birthMinute: data.birthMinute,
-      birthPeriod: data.birthPeriod,
-      allData: data,
-    });
+ 
     
     try {
       // Format date as YYYY-MM-DD
@@ -278,12 +271,9 @@ export function EditBirthDetailsForm({
         timezone: data.timezone,
       };
       
-      // DEBUG: Log what we're sending to parent
-      console.log('🔍 EditBirthDetailsForm - Submitting to parent:', submitData);
         
       await onSubmit(submitData);
     } catch (error) {
-      console.error('EditBirthDetailsForm - Submit error:', error);
       throw error;
     } finally {
       setIsSubmitting(false);

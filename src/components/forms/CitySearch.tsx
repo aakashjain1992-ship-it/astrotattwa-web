@@ -59,7 +59,6 @@ export function CitySearch({ value, onSelect }: CitySearchProps) {
         setResults(data.cities || [])
         setIsOpen(true)
       } catch (error) {
-        console.error('City search error:', error)
         setResults([])
       } finally {
         setIsLoading(false)
