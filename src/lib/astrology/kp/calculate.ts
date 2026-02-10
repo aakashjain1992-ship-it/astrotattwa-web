@@ -45,13 +45,13 @@ export async function calculateKpChart(input: {
   
   try {
     trueNodeLon = (await sweCalcSidereal(jdUt, bodies.TRUE_NODE)).lon;
-  } catch (err) {
+  } catch {
     trueNodeLon = 0; // fallback
   }
   
   try {
     meanNodeLon = (await sweCalcSidereal(jdUt, bodies.MEAN_NODE)).lon;
-  } catch (err) {
+  } catch {
     meanNodeLon = 0; // fallback
   }
   

@@ -99,6 +99,31 @@ export const DIVISIONAL_CHARTS: DivisionalChartInfo[] = [
     ]
   },
   {
+    id: 'd4',
+    label: 'D4',
+    name: 'Chaturthamsa',
+    division: 4,
+    primarySignifies: 'Property, assets, and fixed resources',
+    alsoSignifies: [
+      'Real estate and land ownership',
+      'Vehicles and conveyances',
+      'General fortune and luck',
+      'Home and domestic happiness'
+    ],
+    interpretation: `Chaturthamsa divides each sign into 4 equal parts of 7°30' each. The 4th house represents property and assets. A strong D4 chart indicates property ownership, vehicles, and general material fortune in life.`,
+    importance: 'important',
+    isPopular: false,
+    examples: [
+      'Venus in 4th house of D4: Beautiful home, luxury vehicles',
+      'Saturn in D4: Property acquired through hard work, delayed gains'
+    ],
+    keyHouses: [
+      { house: 4, meaning: 'Property, assets, home, domestic happiness' },
+      { house: 2, meaning: 'Accumulated wealth, family property' },
+      { house: 11, meaning: 'Gains from property, fulfillment of material desires' }
+    ]
+  },
+  {
     id: 'd7',
     label: 'D7',
     name: 'Saptamsa',
@@ -199,6 +224,31 @@ export const DIVISIONAL_CHARTS: DivisionalChartInfo[] = [
     ]
   },
   {
+    id: 'd30',
+    label: 'D30',
+    name: 'Trimsamsa',
+    division: 30,
+    primarySignifies: 'Misfortunes, evils, and hidden weaknesses',
+    alsoSignifies: [
+      'Health vulnerabilities and chronic issues',
+      'Hidden enemies and obstacles',
+      'Moral character and ethical challenges',
+      'Troubles and adversities in life'
+    ],
+    interpretation: `Trimsamsa divides each sign into 5 unequal parts based on planetary rulership. This chart reveals hidden weaknesses, potential misfortunes, and areas of life prone to difficulties. It's especially important for analyzing health issues and moral character.`,
+    importance: 'advanced',
+    isPopular: false,
+    examples: [
+      'Malefics in 6th house of D30: Health issues, enemies causing trouble',
+      'Benefics strong in D30: Protection from evils, good moral character'
+    ],
+    keyHouses: [
+      { house: 6, meaning: 'Diseases, enemies, obstacles' },
+      { house: 8, meaning: 'Hidden troubles, chronic issues, transformations' },
+      { house: 12, meaning: 'Losses, hidden enemies, self-undoing' }
+    ]
+  },
+  {
     id: 'moon',
     label: 'Moon',
     name: 'Chandra Lagna',
@@ -242,6 +292,6 @@ export const getChartsByImportance = (importance: ChartImportance): DivisionalCh
 };
 
 export const getPhase1Charts = (): DivisionalChartInfo[] => {
-  const phase1Ids = ['d1', 'd2', 'd3', 'd7', 'd9', 'd10', 'd12', 'moon'];
+  const phase1Ids = ['d1', 'd2', 'd3', 'd4', 'd7', 'd9', 'd10', 'd12', 'd30', 'moon'];
   return DIVISIONAL_CHARTS.filter(chart => phase1Ids.includes(chart.id));
 };

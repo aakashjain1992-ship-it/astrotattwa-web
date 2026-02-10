@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 // src/app/api/test/delete-runs/route.ts
 
 import { NextResponse } from 'next/server';

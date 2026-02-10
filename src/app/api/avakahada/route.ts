@@ -107,7 +107,7 @@ export async function GET(req: Request) {
       success: true,
       data: avakahada,
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       {
         success: false,

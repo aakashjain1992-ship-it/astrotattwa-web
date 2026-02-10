@@ -155,7 +155,7 @@ export default function BirthDataForm() {
       } else {
         alert(`Error: ${result.error || 'Calculation failed'}`)
       }
-    } catch (error) {
+    } catch {
       alert('Failed to calculate chart. Please try again.')
     }
   }

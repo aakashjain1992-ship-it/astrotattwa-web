@@ -103,7 +103,7 @@ export async function POST(req: Request) {
       success: true,
       data: roundedChart,
     });
-  } catch (error) {
+  } catch {
 
     // Don't expose internal error details to client
     return NextResponse.json(

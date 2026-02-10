@@ -66,7 +66,7 @@ export async function GET(req: Request) {
         pratyantars,
       },
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       {
         success: false,

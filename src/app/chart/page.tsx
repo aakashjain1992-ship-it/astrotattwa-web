@@ -1,7 +1,6 @@
-// @ts-nocheck
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, Stars } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -17,16 +16,19 @@ import { UserDetailsCard } from '@/components/chart/UserDetailsCard';
 import { EditBirthDetailsForm } from '@/components/forms/EditBirthDetailsForm';
 import { PlanetaryTable } from '@/components/chart/PlanetaryTable';
 import { AvakhadaTable } from '@/components/chart/AvakhadaTable';
-import { DiamondChart } from '@/components/chart/diamond';
 import { ChartLegend } from '@/components/chart/ChartLegend';
 import { DashaNavigator } from '@/components/chart/DashaNavigator';
-import { buildMoonHouses, buildNavamsaHouses } from '@/lib/utils/chartHelpers';
+import { buildLagnaHouses, buildMoonHouses, buildNavamsaHouses } from '@/lib/utils/chartHelpers';
+
+// Import proper types from astrology module
+import type { PlanetData, AscendantData as AstroAscendantData } from '@/types/astrology';
 
 
 // ============================================
 // TYPE DEFINITIONS
 // ============================================
 
+// Local types for page-specific data structures
 interface ChartInput {
   localDateTime: string;
   latitude: number;
@@ -34,22 +36,7 @@ interface ChartInput {
   timezone: string;
 }
 
-interface PlanetData {
-  longitude: number;
-  sign: string;
-  signNumber: number;
-  degreeInSign: number;
-  retrograde: boolean;
-  combust?: boolean;
-  exalted?: boolean;
-  debilitated?: boolean;
-  nakshatra?: {
-    name: string;
-    pada: number;
-    lord: string;
-  };
-}
-
+// Minimal ascendant type for page logic (compatible with AstroAscendantData)
 interface AscendantData {
   sign: string;
   signNumber: number;
@@ -125,66 +112,6 @@ function getChartFromStorage(): ChartData | null {
 function saveChartToStorage(data: ChartData): void {
   if (typeof window === 'undefined') return;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-}
-
-// Build houses for DiamondChart from planet data
-function buildHousesFromChart(
-  planets: Record<string, PlanetData>,
-  ascendant: AscendantData
-): import('@/components/chart/diamond').HouseData[] {
-  const RASHI_NAMES = [
-    'Aries', 'Taurus', 'Gemini', 'Cancer',
-    'Leo', 'Virgo', 'Libra', 'Scorpio',
-    'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces',
-  ];
-
-  const PLANET_SYMBOLS: Record<string, string> = {
-    Sun: 'Su', Moon: 'Mo', Mars: 'Ma', Mercury: 'Me',
-    Jupiter: 'Ju', Venus: 'Ve', Saturn: 'Sa', Rahu: 'Ra', Ketu: 'Ke',
-  };
-
-  // Create 12 empty houses starting from ascendant sign
-  const ascSignNumber = ascendant.signNumber; // 1-12
-  const houses: import('@/components/chart/diamond').HouseData[] = [];
-
-  for (let i = 0; i < 12; i++) {
-    const houseNumber = i + 1;
-    const rasiNumber = ((ascSignNumber - 1 + i) % 12) + 1;
-    
-    houses.push({
-      houseNumber,
-      rasiNumber,
-      rasiName: RASHI_NAMES[rasiNumber - 1],
-      planets: [],
-      isAscendant: houseNumber === 1,
-    });
-  }
-
-  // Place planets in houses based on their sign
-  Object.entries(planets).forEach(([planetKey, planetData]) => {
-    const planetSignNumber = planetData.signNumber;
-    
-    // Find which house this sign falls into
-    // House 1 = ascendant sign, House 2 = next sign, etc.
-    let houseIndex = (planetSignNumber - ascSignNumber + 12) % 12;
-    
-    // Build status flags
-    const statusFlags: string[] = [];
-    if (planetData.retrograde) statusFlags.push('R');
-    if (planetData.combust) statusFlags.push('C');
-    if (planetData.exalted) statusFlags.push('↑');
-    if (planetData.debilitated) statusFlags.push('↓');
-
-    houses[houseIndex].planets.push({
-      key: planetKey,
-      symbol: PLANET_SYMBOLS[planetKey] || planetKey.substring(0, 2),
-      degree: planetData.degreeInSign,
-      longitude: planetData.longitude,
-      statusFlags,
-    });
-  });
-
-  return houses;
 }
 
 // ============================================
@@ -296,7 +223,7 @@ export default function ChartPage() {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [mobileSubTab, setMobileSubTab] = useState<MobileSubTab>('planets');
   const [isEditing, setIsEditing] = useState(false);
-  const [isRecalculating, setIsRecalculating] = useState(false);
+  const [, setIsRecalculating] = useState(false);
 
   // Load chart data from localStorage
   useEffect(() => {
@@ -325,8 +252,6 @@ export default function ChartPage() {
   }) => {
     setIsRecalculating(true);
     
-    // DEBUG: Log what we received from form
-    
     try {
       const apiPayload = {
         name: formData.name,
@@ -338,8 +263,6 @@ export default function ChartPage() {
         longitude: formData.longitude,
         timezone: formData.timezone,
       };
-      
-      // DEBUG: Log what we're sending to API
       
       // Call API to recalculate
       const response = await fetch('/api/calculate', {
@@ -358,7 +281,7 @@ export default function ChartPage() {
       } else {
         throw new Error(result.error || 'Calculation failed');
       }
-    } catch (error) {
+    } catch {
       // Could show a toast here
     } finally {
       setIsRecalculating(false);
@@ -370,14 +293,17 @@ export default function ChartPage() {
     return <LoadingScreen />;
   }
 
-  // Build houses for all charts
-  const houses = buildHousesFromChart(chartData.planets, chartData.ascendant);
+  // Cast ascendant to proper type for chartHelpers functions
+  const ascendant = chartData.ascendant as AstroAscendantData;
+
+  // Build houses using chartHelpers (proper types)
+  const houses = buildLagnaHouses(chartData.planets, ascendant);
   
-  // Build Moon Chart (Chandra Lagna) - using chartHelpers
-  const moonHouses = buildMoonHouses(chartData.planets, chartData.ascendant);
+  // Build Moon Chart (Chandra Lagna)
+  const moonHouses = buildMoonHouses(chartData.planets, ascendant);
   
-  // Build D9 Navamsa Chart - using chartHelpers
-  const navamsaHouses = buildNavamsaHouses(chartData.planets, chartData.ascendant);
+  // Build D9 Navamsa Chart
+  const navamsaHouses = buildNavamsaHouses(chartData.planets, ascendant);
 
 
   const chartConfigs: ChartConfig[] = [
@@ -505,11 +431,11 @@ export default function ChartPage() {
           </div>
         )}
 
-	{activeTab === 'divisional' && (
+        {activeTab === 'divisional' && (
           <div className="animate-fade-in">
             <DivisionalChartsTab
               planets={chartData.planets}
-              ascendant={chartData.ascendant}
+              ascendant={ascendant}
             />
           </div>
         )}

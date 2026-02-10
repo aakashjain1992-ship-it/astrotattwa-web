@@ -10,7 +10,6 @@
 import { 
   buildDivisionalHouses, 
   HORA_CONFIG,
-  type DivisionConfig 
 } from '@/lib/astrology/divisionalChartBuilder';
 import type { PlanetData, AscendantData, HouseInfo } from '@/types/astrology';
 

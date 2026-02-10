@@ -86,7 +86,7 @@ export async function GET(req: Request) {
         ...currentPeriods,
       },
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       {
         success: false,

@@ -58,7 +58,7 @@ export function CitySearch({ value, onSelect }: CitySearchProps) {
         const data = await response.json()
         setResults(data.cities || [])
         setIsOpen(true)
-      } catch (error) {
+      } catch {
         setResults([])
       } finally {
         setIsLoading(false)

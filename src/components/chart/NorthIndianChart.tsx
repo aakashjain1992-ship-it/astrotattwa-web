@@ -1,4 +1,3 @@
-// @ts-nocheck
 'use client';
 
 import { cn } from '@/lib/utils';
@@ -18,11 +17,12 @@ export function NorthIndianChart({
   chartData,
   onPlanetClick,
   onHouseClick,
-  showHouseNumbers = false,
+  showHouseNumbers: _showHouseNumbers = false,
   houseSystem = 'whole-sign',
   className,
 }: NorthIndianChartProps) {
-  const houses = buildHouses(chartData, houseSystem);
+  // Fix: pass planets and ascendant separately, not the whole chartData
+  const houses = buildHouses(chartData.planets, chartData.ascendant, houseSystem);
   
   // House 1 at TOP (12 o'clock), going ANTI-CLOCKWISE
   const housePositions: Record<number, { x: number; y: number }> = {

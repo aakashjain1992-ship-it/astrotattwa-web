@@ -65,17 +65,6 @@ const MONTHS = [
 /**
  * Convert 12-hour time to 24-hour format
  */
-function convertTo24Hour(hour: string, minute: string, period: 'AM' | 'PM'): string {
-  let hours = parseInt(hour, 10);
-  
-  if (period === 'PM' && hours !== 12) {
-    hours += 12;
-  } else if (period === 'AM' && hours === 12) {
-    hours = 0;
-  }
-  
-  return `${String(hours).padStart(2, '0')}:${minute}`;
-}
 
 /**
  * Parse localDateTime to form fields

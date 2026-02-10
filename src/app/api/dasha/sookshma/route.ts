@@ -69,7 +69,7 @@ export async function GET(req: Request) {
         sookshmas,
       },
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       {
         success: false,
