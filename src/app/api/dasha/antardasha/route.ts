@@ -63,8 +63,7 @@ export async function GET(req: Request) {
         antardashas,
       },
     });
-  } catch (error) {
-    console.error("Antardasha calculation error:", error);
+  } catch {
     return NextResponse.json(
       {
         success: false,

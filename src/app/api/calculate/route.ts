@@ -75,8 +75,6 @@ export async function POST(req: Request) {
       timezone,
     });
   // DEBUG: Log what calculateKpChart returned
-   console.log('🔍 calculateKpChart returned keys:', Object.keys(chart));
-    console.log('🔍 rahuKetuModes from chart:', JSON.stringify(chart.rahuKetuModes));
 
   // 6. Round all decimals to 2 places (NEW - Day 1, Task 4)
     const roundedChart = {
@@ -98,7 +96,6 @@ export async function POST(req: Request) {
 
 
     // DEBUG: Verify rahuKetuModes is in roundedChart
-    console.log('🔍 roundedChart.rahuKetuModes:', JSON.stringify(roundedChart.rahuKetuModes));
 
 
     // 7. Return response
@@ -106,8 +103,7 @@ export async function POST(req: Request) {
       success: true,
       data: roundedChart,
     });
-  } catch (error) {
-    console.error("Chart calculation error:", error);
+  } catch {
 
     // Don't expose internal error details to client
     return NextResponse.json(

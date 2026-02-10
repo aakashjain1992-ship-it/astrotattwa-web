@@ -11,10 +11,10 @@ const nextConfig = {
     serverComponentsExternalPackages: ['swisseph']
   },
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
   eslint: {
-    ignoreDuringBuilds: true,
+    ignoreDuringBuilds: false,
   },
 };
 

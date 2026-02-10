@@ -66,8 +66,7 @@ export async function GET(req: Request) {
         pratyantars,
       },
     });
-  } catch (error) {
-    console.error("Pratyantar calculation error:", error);
+  } catch {
     return NextResponse.json(
       {
         success: false,

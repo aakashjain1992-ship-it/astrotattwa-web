@@ -12,7 +12,6 @@ import type {
   PlanetData, 
   AscendantData, 
   HouseInfo, 
-  PlanetDisplayInfo,
   StatusFlag 
 } from '@/types/astrology';
 import { RASHI_NAMES, PLANET_SYMBOLS } from '@/types/astrology';

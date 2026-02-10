@@ -86,8 +86,7 @@ export async function GET(req: Request) {
         ...currentPeriods,
       },
     });
-  } catch (error) {
-    console.error("Current periods calculation error:", error);
+  } catch {
     return NextResponse.json(
       {
         success: false,

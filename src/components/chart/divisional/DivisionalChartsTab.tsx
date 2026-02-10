@@ -32,7 +32,6 @@ export function DivisionalChartsTab({ planets, ascendant, className }: Divisiona
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Chart calculation failed';
       setError(errorMessage);
-      console.error('Divisional chart calculation error:', err);
       return [];
     }
   }, [selectedChartId, planets, ascendant]);

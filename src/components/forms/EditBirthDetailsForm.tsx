@@ -65,17 +65,6 @@ const MONTHS = [
 /**
  * Convert 12-hour time to 24-hour format
  */
-function convertTo24Hour(hour: string, minute: string, period: 'AM' | 'PM'): string {
-  let hours = parseInt(hour, 10);
-  
-  if (period === 'PM' && hours !== 12) {
-    hours += 12;
-  } else if (period === 'AM' && hours === 12) {
-    hours = 0;
-  }
-  
-  return `${String(hours).padStart(2, '0')}:${minute}`;
-}
 
 /**
  * Parse localDateTime to form fields
@@ -252,14 +241,7 @@ export function EditBirthDetailsForm({
   const handleFormSubmit = async (data: EditFormData) => {
     setIsSubmitting(true);
     
-    // DEBUG: Log form data to see what React Hook Form captured
-    console.log('🔍 EditBirthDetailsForm - Form data from React Hook Form:', {
-      gender: data.gender,
-      birthHour: data.birthHour,
-      birthMinute: data.birthMinute,
-      birthPeriod: data.birthPeriod,
-      allData: data,
-    });
+ 
     
     try {
       // Format date as YYYY-MM-DD
@@ -278,12 +260,9 @@ export function EditBirthDetailsForm({
         timezone: data.timezone,
       };
       
-      // DEBUG: Log what we're sending to parent
-      console.log('🔍 EditBirthDetailsForm - Submitting to parent:', submitData);
         
       await onSubmit(submitData);
     } catch (error) {
-      console.error('EditBirthDetailsForm - Submit error:', error);
       throw error;
     } finally {
       setIsSubmitting(false);

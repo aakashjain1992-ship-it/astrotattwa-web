@@ -5,7 +5,6 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const query = searchParams.get('q')
   
-  console.log('[City Search] Query:', query)
   
   if (!query || query.length < 2) {
     return NextResponse.json({ cities: [] })
@@ -13,10 +12,8 @@ export async function GET(request: Request) {
 
   try {
     const supabase = await createClient()
-    console.log('[City Search] Supabase client created')
     
     const searchPattern = `%${query}%`
-    console.log('[City Search] Search pattern:', searchPattern)
     
     const { data, error } = await supabase
       .from('cities')
@@ -25,10 +22,8 @@ export async function GET(request: Request) {
       .order('city_name')
       .limit(10)
 
-    console.log('[City Search] Query executed. Data:', data?.length, 'Error:', error)
 
     if (error) {
-      console.error('[City Search] Supabase error:', error)
       return NextResponse.json({ 
         error: 'Search failed', 
         details: error.message 
@@ -37,7 +32,6 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ cities: data || [] })
   } catch (error) {
-    console.error('[City Search] Catch error:', error)
     return NextResponse.json({ 
       error: 'Search failed', 
       details: error instanceof Error ? error.message : 'Unknown error'

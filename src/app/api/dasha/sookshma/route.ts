@@ -69,8 +69,7 @@ export async function GET(req: Request) {
         sookshmas,
       },
     });
-  } catch (error) {
-    console.error("Sookshma calculation error:", error);
+  } catch {
     return NextResponse.json(
       {
         success: false,

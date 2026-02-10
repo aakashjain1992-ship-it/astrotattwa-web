@@ -50,7 +50,7 @@ const NAK_NAMES = [
 
 export function kpLordsOfLongitude(x: number): KpData {
   // CRITICAL FIX: Use Math.floor instead of Math.round to preserve precision
-  let sec = Math.floor(3600 * x) % (360 * 3600);
+  const sec = Math.floor(3600 * x) % (360 * 3600);
 
   const nakIndex = Math.floor(sec / NAK_SPAN_SEC);
   const nakLord = DASHA_ORDER[nakIndex % 9];

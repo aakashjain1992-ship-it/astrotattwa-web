@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ChevronRight, ChevronLeft } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 
 interface MahadashaItem {
   lord: string;
@@ -47,7 +47,7 @@ export function DashaTimeline({ dasa }: DashaTimelineProps) {
       const month = String(date.getMonth() + 1).padStart(2, '0');
       const year = date.getFullYear();
       return `${day}/${month}/${year}`;
-    } catch (error) {
+    } catch {
       return 'Invalid Date';
     }
   };
@@ -105,8 +105,7 @@ export function DashaTimeline({ dasa }: DashaTimelineProps) {
       } else {
         setAntardashas([]);
       }
-    } catch (error) {
-      console.error('Failed to load antardashas:', error);
+    } catch {
       setAntardashas([]);
     } finally {
       setLoadingAntardasha(false);

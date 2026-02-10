@@ -39,36 +39,25 @@ export async function calculateKpChart(input: {
   }
 
  // Node - Calculate BOTH True and Mean
-  console.log('🔍 Starting Rahu/Ketu calculation (BOTH modes)...');
   
   let trueNodeLon: number;
   let meanNodeLon: number;
   
   try {
-    console.log('🔍 Calculating TRUE_NODE...');
     trueNodeLon = (await sweCalcSidereal(jdUt, bodies.TRUE_NODE)).lon;
-    console.log('✅ TRUE_NODE success:', trueNodeLon);
-  } catch (err) {
-    console.warn('⚠️ TRUE_NODE failed:', err);
+  } catch {
     trueNodeLon = 0; // fallback
   }
   
   try {
-    console.log('🔍 Calculating MEAN_NODE...');
     meanNodeLon = (await sweCalcSidereal(jdUt, bodies.MEAN_NODE)).lon;
-    console.log('✅ MEAN_NODE success:', meanNodeLon);
-  } catch (err) {
-    console.warn('⚠️ MEAN_NODE failed:', err);
+  } catch {
     meanNodeLon = 0; // fallback
   }
   
   // Use TRUE_NODE as primary
   const nodeLon = trueNodeLon || meanNodeLon;
   
-  console.log('✅ Rahu/Ketu calculation complete');
-  console.log('   TRUE_NODE Rahu:', trueNodeLon, 'Ketu:', norm360(trueNodeLon + 180));
-  console.log('   MEAN_NODE Rahu:', meanNodeLon, 'Ketu:', norm360(meanNodeLon + 180));
-  console.log('   Using:', nodeLon);
 
   planets.Rahu = buildPlanet("Rahu", nodeLon, undefined, sunLon);
   planets.Ketu = buildPlanet("Ketu", norm360(nodeLon + 180), undefined, sunLon);
