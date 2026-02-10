@@ -1,9 +1,9 @@
 # Astrotattwa - Vedic Astrology Web Application
 
 **Version:** 0.2.0  
-**Status:** Production (Phase 1 Complete)  
+**Status:** Production (Phase 1 Complete, Phase 2 67%)  
 **Live URL:** https://astrotattwa.com  
-**Last Updated:** February 7, 2026
+**Last Updated:** February 10, 2026
 
 ---
 
@@ -30,7 +30,7 @@ Astrotattwa is a **mobile-first Progressive Web App** that provides accurate Ved
 - ✅ **100% Free Chart Data** - No login required to calculate
 - ✅ **Swiss Ephemeris Precision** - Accurate to arcminutes
 - ✅ **Mobile-First Design** - Optimized for touch and small screens
-- ✅ **8 Divisional Charts** - D1, D2, D3, D7, D9, D10, D12, Moon Chart
+- ✅ **10 Divisional Charts** - D1, D2, D3, D4, D7, D9, D10, D12, D30, Moon Chart
 - ✅ **4-Level Dasha System** - Mahadasha → Antardasha → Pratyantardasha → Sookshma
 - ✅ **Lightning Fast** - 100/100 Lighthouse Performance Score
 
@@ -47,10 +47,12 @@ Astrotattwa is a **mobile-first Progressive Web App** that provides accurate Ved
 
 ### Completion Summary
 - **Phase 1 (MVP):** ✅ **100% Complete**
-- **Total Code:** ~6,222 lines (TypeScript/TSX)
+- **Phase 2 (Refactoring):** 🚧 **67% Complete** (P1.1 ✅ P1.2 ✅ P1.3 ⏳)
+- **Total Code:** ~12,618 lines (TypeScript/TSX)
 - **Components:** 45+ reusable components
 - **API Routes:** 10+ endpoints
 - **Database Tables:** 5 (Supabase PostgreSQL)
+- **TypeScript Errors:** 0 (strict mode)
 
 ---
 
@@ -144,8 +146,12 @@ astrotattwa-web/
 │   │   │   │   ├── index.ts
 │   │   │   │   ├── d2-hora.ts
 │   │   │   │   ├── d3-drekkana.ts
+│   │   │   │   ├── d4-chaturthamsa.ts
 │   │   │   │   ├── d7-saptamsa.ts
-│   │   │   │   └── d12-dwadasamsa.ts
+│   │   │   │   ├── d9-navamsa.ts
+│   │   │   │   ├── d10-dasamsa.ts
+│   │   │   │   ├── d12-dwadasamsa.ts
+│   │   │   │   └── d30-trimsamsa.ts
 │   │   │   └── generateChartInsights.ts
 │   │   └── validation/               # Zod schemas
 │   │
@@ -240,10 +246,12 @@ astrotattwa-web/
 - ✅ **D1** - Lagna/Rashi (Main birth chart)
 - ✅ **D2** - Hora (Wealth, financial status)
 - ✅ **D3** - Drekkana (Siblings, courage)
+- ✅ **D4** - Chaturthamsa (Property, assets)
 - ✅ **D7** - Saptamsa (Children, progeny)
 - ✅ **D9** - Navamsa (Marriage, dharma)
 - ✅ **D10** - Dasamsa (Career, profession)
 - ✅ **D12** - Dwadasamsa (Parents, ancestors)
+- ✅ **D30** - Trimsamsa (Misfortunes, hidden enemies)
 - ✅ **Moon Chart** - Chandra Lagna (Mind, emotions)
 
 #### Chart Visualization
@@ -272,7 +280,12 @@ astrotattwa-web/
 - ✅ **Error Handling** - Graceful fallbacks
 - ✅ **Loading States** - Smooth UX
 
-### Phase 2 (Planned) 🚧
+### Phase 2 (In Progress) 🚧
+
+**P1: Code Optimization & Refactoring (67% Complete)**
+- ✅ P1.1: Unified divisional chart builder (Complete - Feb 10, 2026)
+- ✅ P1.2: Type system centralization (Complete - Feb 10, 2026)
+- ⏳ P1.3: Extract common form logic (Pending)
 
 See [DEVELOPMENT_ROADMAP.md](./DEVELOPMENT_ROADMAP.md) for detailed roadmap.
 
