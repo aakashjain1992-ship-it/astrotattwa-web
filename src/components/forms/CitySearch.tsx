@@ -5,7 +5,7 @@ import { Search } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 
-interface City {
+export interface City {
   id: number // int4 in Supabase
   city_name: string
   state_name: string

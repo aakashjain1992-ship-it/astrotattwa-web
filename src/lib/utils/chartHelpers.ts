@@ -3,7 +3,15 @@
  * Functions for building house data for divisional charts
  */
 
-import type { HouseData, PlanetInHouse } from '@/components/chart/diamond';
+import type { 
+  HouseInfo as HouseData,
+  PlanetDisplayInfo as PlanetInHouse,
+  HouseNumber,
+  RashiNumber,
+  PlanetKey,
+  StatusFlag,
+  PlanetData } from '@/types/astrology';
+
 
 // ============================================
 // CONSTANTS
@@ -36,21 +44,6 @@ export const PLANET_ORDER = [
 // TYPE DEFINITIONS
 // ============================================
 
-export interface PlanetData {
-  longitude: number;
-  sign: string;
-  signNumber: number;
-  degreeInSign: number;
-  retrograde?: boolean;
-  combust?: boolean;
-  exalted?: boolean;
-  debilitated?: boolean;
-  nakshatra?: {
-    name: string;
-    pada: number;
-    lord: string;
-  };
-}
 
 export interface AscendantData {
   sign: string;
@@ -79,8 +72,8 @@ export function buildLagnaHouses(
     const rasiNumber = ((ascSignNumber - 1 + i) % 12) + 1;
     
     houses.push({
-      houseNumber,
-      rasiNumber,
+      houseNumber: houseNumber as HouseNumber,
+      rasiNumber: rasiNumber as RashiNumber,
       rasiName: RASHI_NAMES[rasiNumber - 1],
       planets: [],
       isAscendant: houseNumber === 1,
@@ -96,18 +89,19 @@ export function buildLagnaHouses(
     const houseIndex = (planetSignNumber - ascSignNumber + 12) % 12;
     
     // Build status flags
-    const statusFlags: string[] = [];
+    const statusFlags: StatusFlag[] = [];
     if (planetData.retrograde) statusFlags.push('R');
     if (planetData.combust) statusFlags.push('C');
     if (planetData.exalted) statusFlags.push('↑');
     if (planetData.debilitated) statusFlags.push('↓');
 
     const planet: PlanetInHouse = {
-      key: planetKey,
+      key: planetKey as PlanetKey,
       symbol: PLANET_SYMBOLS[planetKey] || planetKey.substring(0, 2),
       degree: planetData.degreeInSign,
       longitude: planetData.longitude,
       statusFlags,
+      fullData: planetData,
     };
 
     houses[houseIndex].planets.push(planet);
@@ -145,8 +139,8 @@ export function buildMoonHouses(
     const rasiNumber = ((moonSignNumber - 1 + i) % 12) + 1;
     
     houses.push({
-      houseNumber,
-      rasiNumber,
+      houseNumber: houseNumber as HouseNumber,
+      rasiNumber: rasiNumber as RashiNumber,
       rasiName: RASHI_NAMES[rasiNumber - 1],
       planets: [],
       isAscendant: houseNumber === 1, // House 1 = Moon's position
@@ -161,18 +155,19 @@ export function buildMoonHouses(
     const houseIndex = (planetSignNumber - moonSignNumber + 12) % 12;
     
     // Build status flags
-    const statusFlags: string[] = [];
+    const statusFlags: StatusFlag[] = [];
     if (planetData.retrograde) statusFlags.push('R');
     if (planetData.combust) statusFlags.push('C');
     if (planetData.exalted) statusFlags.push('↑');
     if (planetData.debilitated) statusFlags.push('↓');
 
     const planet: PlanetInHouse = {
-      key: planetKey,
+      key: planetKey as PlanetKey,
       symbol: PLANET_SYMBOLS[planetKey] || planetKey.substring(0, 2),
       degree: planetData.degreeInSign,
       longitude: planetData.longitude,
       statusFlags,
+      fullData: planetData,
     };
 
     houses[houseIndex].planets.push(planet);
@@ -223,8 +218,8 @@ export function buildNavamsaHouses(
     const rasiNumber = ((ascNavamsaSign - 1 + i) % 12) + 1;
     
     houses.push({
-      houseNumber,
-      rasiNumber,
+      houseNumber: houseNumber as HouseNumber,
+      rasiNumber: rasiNumber as RashiNumber,
       rasiName: RASHI_NAMES[rasiNumber - 1],
       planets: [],
       isAscendant: houseNumber === 1,
@@ -236,15 +231,16 @@ export function buildNavamsaHouses(
     const navamsaSign = getNavamsaSign(planetData.longitude);
     const houseIndex = (navamsaSign - ascNavamsaSign + 12) % 12;
     
-    const statusFlags: string[] = [];
+    const statusFlags: StatusFlag[] = [];
     if (planetData.retrograde) statusFlags.push('R');
 
     houses[houseIndex].planets.push({
-      key: planetKey,
+      key: planetKey as PlanetKey,
       symbol: PLANET_SYMBOLS[planetKey] || planetKey.substring(0, 2),
       degree: planetData.degreeInSign,
       longitude: planetData.longitude,
       statusFlags,
+      fullData: planetData,
     });
   });
 
@@ -282,8 +278,8 @@ export function buildDasamsaHouses(
     const rasiNumber = ((ascDasamsaSign - 1 + i) % 12) + 1;
     
     houses.push({
-      houseNumber,
-      rasiNumber,
+      houseNumber: houseNumber as HouseNumber,
+      rasiNumber: rasiNumber as RashiNumber,
       rasiName: RASHI_NAMES[rasiNumber - 1],
       planets: [],
       isAscendant: houseNumber === 1,
@@ -294,15 +290,16 @@ export function buildDasamsaHouses(
     const dasamsaSign = getDasamsaSign(planetData.longitude);
     const houseIndex = (dasamsaSign - ascDasamsaSign + 12) % 12;
     
-    const statusFlags: string[] = [];
+    const statusFlags: StatusFlag[] = [];
     if (planetData.retrograde) statusFlags.push('R');
 
     houses[houseIndex].planets.push({
-      key: planetKey,
+      key: planetKey as PlanetKey,
       symbol: PLANET_SYMBOLS[planetKey] || planetKey.substring(0, 2),
       degree: planetData.degreeInSign,
       longitude: planetData.longitude,
       statusFlags,
+      fullData: planetData,
     });
   });
 

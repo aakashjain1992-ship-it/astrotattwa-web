@@ -9,7 +9,7 @@ import { ChartEducation } from './ChartEducation';
 import { ChartInsights } from './ChartInsights';
 import { calculateDivisionalChart, isChartImplemented, type DivisionalChartId } from '@/lib/utils/divisional';
 import { getChartById } from './DivisionalChartConfig';
-import type { PlanetData, AscendantData } from '@/lib/utils/chartHelpers';
+import type { PlanetData, AscendantData } from '@/types/astrology';
 
 interface DivisionalChartsTabProps {
   planets: Record<string, PlanetData>;
