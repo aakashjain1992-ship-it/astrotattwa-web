@@ -37,8 +37,8 @@ export function roundPlanetDecimals(planet: PlanetData): PlanetData {
     longitude: roundToDecimal(planet.longitude),
     degreeInSign: roundToDecimal(planet.degreeInSign),
     speed: roundToDecimal(planet.speed),
-    combustionOrbDegrees: planet.combustionOrbDegrees 
-      ? roundToDecimal(planet.combustionOrbDegrees) 
+    combustionOrbDeg: planet.combustionOrbDeg 
+      ? roundToDecimal(planet.combustionOrbDeg) 
       : undefined,
   };
 }

@@ -1,8 +1,78 @@
+import path from "path";
+
+export interface SweCalcResult {
+  longitude?: number;
+  latitude?: number;
+  distance?: number;
+  longitudeSpeed?: number;
+  latitudeSpeed?: number;
+  distanceSpeed?: number;
+  data?: number[];
+  rflag?: number;
+  error?: string;
+}
+
+
+export interface SweHousesResult {
+  cusps?: number[];
+  ascmc?: number[];
+  ascendant?: number;
+  mc?: number;
+}
+
+export interface SwissEph {
+  swe_set_ephe_path: (path: string) => void;
+  swe_set_sid_mode: (mode: number, t0: number, ayan_t0: number) => void;
+  swe_close: () => void;
+  swe_julday: (year: number, month: number, day: number, hour: number, cal: number) => number;
+  swe_revjul: (jd: number, cal: number) => { year: number; month: number; day: number; hour: number };
+  swe_calc_ut: (jdUt: number, planet: number, flags: number) => SweCalcResult;
+  swe_calc: (jd: number, planet: number, flags: number) => SweCalcResult;
+  swe_houses?: (jd: number, lat: number, lon: number, hsys: string) => SweHousesResult;
+  swe_houses_ex?: (jd: number, flags: number, lat: number, lon: number, hsys: string) => SweHousesResult;
+  swe_get_ayanamsa_ut: (jdUt: number) => number;
+  swe_get_ayanamsa: (jd: number) => number;
+  SE_SUN: number;
+  SE_MOON: number;
+  SE_MERCURY: number;
+  SE_VENUS: number;
+  SE_MARS: number;
+  SE_JUPITER: number;
+  SE_SATURN: number;
+  SE_URANUS: number;
+  SE_NEPTUNE: number;
+  SE_PLUTO: number;
+  SE_MEAN_NODE: number;
+  SE_TRUE_NODE: number;
+  SE_CHIRON: number;
+  SEFLG_SWIEPH: number;
+  SEFLG_JPLEPH: number;
+  SEFLG_SIDEREAL: number;
+  SEFLG_SPEED: number;
+  SEFLG_NOGDEFL: number;
+  SEFLG_NOABERR: number;
+  SEFLG_EQUATORIAL: number;
+  SEFLG_XYZ: number;
+  SEFLG_RADIANS: number;
+  SEFLG_BARYCTR: number;
+  SEFLG_TOPOCTR: number;
+  SE_GREG_CAL: number;
+  SE_JUL_CAL: number;
+  SE_SIDM_LAHIRI: number;
+  SE_SIDM_FAGAN_BRADLEY: number;
+  SE_SIDM_RAMAN: number;
+  SE_SIDM_TRUE_CITRA: number;
+  SE_SIDM_TRUE_REVATI: number;
+  SE_SIDM_TRUE_PUSHYA: number;
+  SE_SIDM_USER: number;
+}
+
+
 let swe: SwissEph | null = null;
 
 export async function getSwe(): Promise<SwissEph> {
   if (!swe) {
-    swe = await import("swisseph");
+    swe = await import("swisseph") as unknown as SwissEph;
     const ephePath = path.join(process.cwd(), "public", "ephe");
     swe.swe_set_ephe_path(ephePath);
     // Lahiri ayanamsa (standard Vedic astrology)

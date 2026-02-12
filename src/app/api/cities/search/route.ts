@@ -1,40 +1,34 @@
-import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { NextRequest } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+import { successResponse, withErrorHandling, validationError } from "@/lib/api/errorHandling";
+import { rateLimit, RateLimitPresets } from "@/lib/api/rateLimit";
+import { logError } from "@/lib/monitoring/errorLogger";
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url)
-  const query = searchParams.get('q')
-  
-  
+export const GET = withErrorHandling(async (req: NextRequest) => {
+  await rateLimit(req, RateLimitPresets.lenient);
+
+  const { searchParams } = new URL(req.url);
+  const query = searchParams.get("q");
+
   if (!query || query.length < 2) {
-    return NextResponse.json({ cities: [] })
+    return successResponse({ cities: [] });
   }
 
-  try {
-    const supabase = await createClient()
-    
-    const searchPattern = `%${query}%`
-    
-    const { data, error } = await supabase
-      .from('cities')
-      .select('id, city_name, state_name, country, latitude, longitude, timezone')
-      .or(`city_name.ilike.${searchPattern},state_name.ilike.${searchPattern}`)
-      .order('city_name')
-      .limit(10)
+  const supabase = await createClient();
+  const searchPattern = `%${query}%`;
 
+  const { data, error } = await supabase
+    .from("cities")
+    .select("id, city_name, state_name, country, latitude, longitude, timezone")
+    .or(`city_name.ilike.${searchPattern},state_name.ilike.${searchPattern}`)
+    .order("city_name")
+    .limit(10);
 
-    if (error) {
-      return NextResponse.json({ 
-        error: 'Search failed', 
-        details: error.message 
-      }, { status: 500 })
-    }
-
-    return NextResponse.json({ cities: data || [] })
-  } catch (error) {
-    return NextResponse.json({ 
-      error: 'Search failed', 
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 })
+  if (error) {
+    logError("City search failed", new Error(error.message), { query });
+    throw new Error("City search failed");
   }
-}
+
+  return successResponse({ cities: data || [] });
+});
+

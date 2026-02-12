@@ -1,23 +1,24 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { calculateKpChart } from "@/lib/astrology/kp/calculate";
 import { chartCalculationSchema } from "@/lib/validation/chart-calculation";
 import { roundAllPlanets, roundAscendantDecimals } from "@/lib/utils";
 import { convert12to24 } from "@/lib/astrology/time";
-
+import { successResponse, withErrorHandling, calculationError } from "@/lib/api/errorHandling";
+import { rateLimit, RateLimitPresets } from "@/lib/api/rateLimit";
+import { logError } from "@/lib/monitoring/errorLogger";
 
 export async function GET() {
   return NextResponse.json(
     {
       success: false,
-      error: "Method Not Allowed",
-      message: "Use POST /api/calculate with JSON body.",
+      error: { code: "METHOD_NOT_ALLOWED", message: "Use POST /api/calculate with JSON body." },
       example: {
         name: "Aakash Jain",
         gender: "male",
         birthDate: "1992-03-25",
         birthTime: "11:55",
         timePeriod: "AM",
-        cityId: "550e8400-e29b-41d4-a716-446655440000",
+        cityId: 1,
         latitude: 28.6139,
         longitude: 77.209,
         timezone: "Asia/Kolkata",
@@ -27,92 +28,44 @@ export async function GET() {
   );
 }
 
-export async function POST(req: Request) {
-  try {
-    // 1. Parse request body
-    const body = await req.json();
+export const POST = withErrorHandling(async (req: NextRequest) => {
+  // Rate limit: 5 requests per minute (expensive calculation)
+  await rateLimit(req, RateLimitPresets.strict);
 
-    // 2. Validate with Zod schema
-    const validationResult = chartCalculationSchema.safeParse(body);
+  // 1. Parse and validate request body
+  const body = await req.json();
+  const validationResult = chartCalculationSchema.safeParse(body);
 
-    if (!validationResult.success) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "ValidationError",
-          message: "Invalid input data",
-          details: validationResult.error.issues.map((issue) => ({
-            field: issue.path.join("."),
-            message: issue.message,
-          })),
-        },
-        { status: 400 }
-      );
-    }
-
-    // 3. Use validated data
-    const {
-      name,
-      gender,
-      birthDate,
-      birthTime,
-      timePeriod,
-      cityId,
-      latitude,
-      longitude,
-      timezone,
-    } = validationResult.data;
-
-   // 4. Convert 12-hour time to 24-hour format
-    const birthTime24 = convert12to24(birthTime, timePeriod);
-    
-  // 5. Calculate chart with 24-hour time
-    const chart = await calculateKpChart({
-      birthDate,
-      birthTime: birthTime24,  // Use converted 24-hour time
-      latitude,
-      longitude,
-      timezone,
-    });
-  // DEBUG: Log what calculateKpChart returned
-
-  // 6. Round all decimals to 2 places (NEW - Day 1, Task 4)
-    const roundedChart = {
-      ...chart,
-      // Add new fields to response
-      name,
-      gender,
-      timePeriod,
-      cityId,
-      // Round planetary positions
-      planets: chart.planets ? roundAllPlanets(chart.planets) : chart.planets,
-      // Round ascendant
-      ascendant: chart.ascendant
-        ? roundAscendantDecimals(chart.ascendant)
-        : chart.ascendant,
-      rahuKetuModes: chart.rahuKetuModes,
-
-    };
-
-
-    // DEBUG: Verify rahuKetuModes is in roundedChart
-
-
-    // 7. Return response
-    return NextResponse.json({
-      success: true,
-      data: roundedChart,
-    });
-  } catch {
-
-    // Don't expose internal error details to client
-    return NextResponse.json(
-      {
-        success: false,
-        error: "InternalError",
-        message: "Failed to calculate chart. Please try again.",
-      },
-      { status: 500 }
-    );
+  if (!validationResult.success) {
+    throw validationResult.error;
   }
-}
+
+  const { name, gender, birthDate, birthTime, timePeriod, cityId, latitude, longitude, timezone } =
+    validationResult.data;
+
+  // 2. Convert 12-hour time to 24-hour format
+  const birthTime24 = convert12to24(birthTime, timePeriod);
+
+  // 3. Calculate chart
+  let chart;
+  try {
+    chart = await calculateKpChart({ birthDate, birthTime: birthTime24, latitude, longitude, timezone });
+  } catch (error) {
+    logError("Chart calculation failed", error, { birthDate, birthTime: birthTime24, latitude, longitude, timezone });
+    throw calculationError("Failed to calculate chart. Please verify your birth data.");
+  }
+
+  // 4. Round all decimals and return
+  const roundedChart = {
+    ...chart,
+    name,
+    gender,
+    timePeriod,
+    cityId,
+    planets: chart.planets ? roundAllPlanets(chart.planets) : chart.planets,
+    ascendant: chart.ascendant ? roundAscendantDecimals(chart.ascendant) : chart.ascendant,
+    rahuKetuModes: chart.rahuKetuModes,
+  };
+
+  return successResponse(roundedChart);
+});
