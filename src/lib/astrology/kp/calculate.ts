@@ -22,7 +22,7 @@ export async function calculateKpChart(input: {
 
   // Sun first (needed for combustion calc)
   const sun = await sweCalcSidereal(jdUt, bodies.SUN);
-  const planets: any = {};
+  const planets: Record<string, any> = {};
   planets.Sun = buildPlanet("Sun", sun.lon, sun.speed, undefined);
   const sunLon = planets.Sun.longitude;
 

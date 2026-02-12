@@ -1,6 +1,3 @@
-import path from "path";
-type SwissEph = any;
-
 let swe: SwissEph | null = null;
 
 export async function getSwe(): Promise<SwissEph> {
@@ -45,7 +42,7 @@ export async function sweAscendantSidereal(jdUt: number, lat: number, lon: numbe
   const s = await getSwe();
   const flags = s.SEFLG_SIDEREAL;
 
-  let res: any;
+  let res: SweHousesResult;
   if (typeof s.swe_houses_ex === "function") res = s.swe_houses_ex(jdUt, flags, lat, lon, "P");
   else if (typeof s.swe_houses === "function") res = s.swe_houses(jdUt, lat, lon, "P");
   else throw new Error("Swiss Ephemeris houses function not available.");
