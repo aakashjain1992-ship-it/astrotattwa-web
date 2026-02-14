@@ -40,23 +40,23 @@ export async function calculateKpChart(input: {
 
  // Node - Calculate BOTH True and Mean
   
-  let trueNodeLon: number;
-  let meanNodeLon: number;
+  let trueNodeLon: number | undefined;
+  let meanNodeLon: number | undefined;
   
   try {
     trueNodeLon = (await sweCalcSidereal(jdUt, bodies.TRUE_NODE)).lon;
   } catch {
-    trueNodeLon = 0; // fallback
+    trueNodeLon = undefined; // fallback
   }
   
   try {
     meanNodeLon = (await sweCalcSidereal(jdUt, bodies.MEAN_NODE)).lon;
   } catch {
-    meanNodeLon = 0; // fallback
+    meanNodeLon = undefined; // fallback
   }
   
   // Use TRUE_NODE as primary
-  const nodeLon = trueNodeLon || meanNodeLon;
+  const nodeLon = trueNodeLon ?? meanNodeLon ?? 0;
   
 
   planets.Rahu = buildPlanet("Rahu", nodeLon, undefined, sunLon);
@@ -65,12 +65,12 @@ export async function calculateKpChart(input: {
   // Store both modes for comparison
   const rahuKetuModes = {
     trueNode: {
-      Rahu: trueNodeLon,
-      Ketu: norm360(trueNodeLon + 180)
+      Rahu: trueNodeLon ?? null,
+      Ketu: trueNodeLon !=null ? norm360(trueNodeLon + 180) : null,
     },
     meanNode: {
-      Rahu: meanNodeLon,
-      Ketu: norm360(meanNodeLon + 180)
+      Rahu: meanNodeLon ?? null,
+      Ketu: meanNodeLon != null ? norm360(meanNodeLon + 180) : null,
     }
   };
   
