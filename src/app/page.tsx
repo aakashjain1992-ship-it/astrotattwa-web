@@ -1,12 +1,7 @@
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Stars, Calculator, Lock, Zap } from 'lucide-react'
-import dynamic from 'next/dynamic'
-
-// Dynamically import the form (client component)
-const BirthDataForm = dynamic(() => import('@/components/forms/BirthDataForm'), {
-  ssr: false,
-})
+import BirthDataFormWrapper from '@/components/forms/BirthDataFormWrapper'
 
 export default function HomePage() {
   return (
@@ -65,7 +60,7 @@ export default function HomePage() {
             {/* Right: Chart Creation Form */}
             <div className="rounded-lg border bg-card p-6 shadow-sm lg:p-8">
               <h2 className="mb-6 text-2xl font-bold">Create Your Birth Chart</h2>
-              <BirthDataForm />
+              <BirthDataFormWrapper />
             </div>
           </div>
         </section>

@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
+import type { PlanetData, AscendantData } from "@/types/astrology"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -30,14 +31,14 @@ export function roundToDecimal(value: number, decimals: number = 2): number {
  * @param planet - Planet data object
  * @returns Planet data with rounded decimals
  */
-export function roundPlanetDecimals(planet: any) {
+export function roundPlanetDecimals(planet: PlanetData): PlanetData {
   return {
     ...planet,
     longitude: roundToDecimal(planet.longitude),
     degreeInSign: roundToDecimal(planet.degreeInSign),
     speed: roundToDecimal(planet.speed),
-    combustionOrbDegrees: planet.combustionOrbDegrees 
-      ? roundToDecimal(planet.combustionOrbDegrees) 
+    combustionOrbDeg: planet.combustionOrbDeg 
+      ? roundToDecimal(planet.combustionOrbDeg) 
       : undefined,
   };
 }
@@ -48,8 +49,8 @@ export function roundPlanetDecimals(planet: any) {
  * @param planets - Object with planet names as keys
  * @returns Planets object with all decimals rounded to 2 places
  */
-export function roundAllPlanets(planets: Record<string, any>) {
-  const result: Record<string, any> = {};
+export function roundAllPlanets(planets: Record<string, PlanetData>): Record<string, PlanetData> {
+  const result: Record<string, PlanetData> = {};
   for (const [name, data] of Object.entries(planets)) {
     result[name] = roundPlanetDecimals(data);
   }
@@ -62,7 +63,7 @@ export function roundAllPlanets(planets: Record<string, any>) {
  * @param ascendant - Ascendant data object
  * @returns Ascendant data with rounded decimals
  */
-export function roundAscendantDecimals(ascendant: any) {
+export function roundAscendantDecimals(ascendant: AscendantData): AscendantData {
   return {
     ...ascendant,
     longitude: roundToDecimal(ascendant.longitude),

@@ -1,76 +1,45 @@
-import { NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { calculateAntardashas } from "@/lib/astrology/kp/dasa";
+import { successResponse, withErrorHandling, validationError } from "@/lib/api/errorHandling";
+import { rateLimit, RateLimitPresets } from "@/lib/api/rateLimit";
+import { logError } from "@/lib/monitoring/errorLogger";
 
-export async function GET(req: Request) {
-  try {
-    const { searchParams } = new URL(req.url);
-    
-    const mahadashaLord = searchParams.get("mahadashaLord");
-    const mahadashaStartUtc = searchParams.get("startUtc");
-    const mahadashaEndUtc = searchParams.get("endUtc");
+const VALID_LORDS = ["Ketu", "Venus", "Sun", "Moon", "Mars", "Rahu", "Jupiter", "Saturn", "Mercury"];
 
-    // Validation
-    if (!mahadashaLord || !mahadashaStartUtc || !mahadashaEndUtc) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "MissingParameters",
-          message: "Required parameters: mahadashaLord, startUtc, endUtc",
-          example: "/api/dasha/antardasha?mahadashaLord=Moon&startUtc=2024-04-06T01:07:12.600Z&endUtc=2034-04-06T13:07:12.600Z",
-        },
-        { status: 400 }
-      );
-    }
+export const GET = withErrorHandling(async (req: NextRequest) => {
+  await rateLimit(req, RateLimitPresets.standard);
 
-    // Validate mahadashaLord
-    const validLords = ["Ketu", "Venus", "Sun", "Moon", "Mars", "Rahu", "Jupiter", "Saturn", "Mercury"];
-    if (!validLords.includes(mahadashaLord)) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "InvalidParameter",
-          message: `Invalid mahadashaLord. Must be one of: ${validLords.join(", ")}`,
-        },
-        { status: 400 }
-      );
-    }
+  const { searchParams } = new URL(req.url);
 
-    // Validate dates
-    const startDate = new Date(mahadashaStartUtc);
-    const endDate = new Date(mahadashaEndUtc);
-    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "InvalidDate",
-          message: "startUtc and endUtc must be valid ISO date strings",
-        },
-        { status: 400 }
-      );
-    }
+  const mahadashaLord = searchParams.get("mahadashaLord");
+  const mahadashaStartUtc = searchParams.get("startUtc");
+  const mahadashaEndUtc = searchParams.get("endUtc");
 
-    // Calculate antardashas
-    const antardashas = calculateAntardashas(
-      mahadashaLord as any,
-      mahadashaStartUtc,
-      mahadashaEndUtc
-    );
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        mahadashaLord,
-        antardashas,
-      },
-    });
-  } catch {
-    return NextResponse.json(
-      {
-        success: false,
-        error: "InternalError",
-        message: "Failed to calculate antardashas. Please try again.",
-      },
-      { status: 500 }
+  if (!mahadashaLord || !mahadashaStartUtc || !mahadashaEndUtc) {
+    throw validationError(
+      "Required parameters: mahadashaLord, startUtc, endUtc",
+      { example: "/api/dasha/antardasha?mahadashaLord=Moon&startUtc=2024-04-06T01:07:12.600Z&endUtc=2034-04-06T13:07:12.600Z" }
     );
   }
-}
+
+  if (!VALID_LORDS.includes(mahadashaLord)) {
+    throw validationError(`Invalid mahadashaLord. Must be one of: ${VALID_LORDS.join(", ")}`);
+  }
+
+  const startDate = new Date(mahadashaStartUtc);
+  const endDate = new Date(mahadashaEndUtc);
+  if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+    throw validationError("startUtc and endUtc must be valid ISO date strings");
+  }
+
+  let antardashas;
+  try {
+    antardashas = calculateAntardashas(mahadashaLord as any, mahadashaStartUtc, mahadashaEndUtc);
+  } catch (error) {
+    logError("Antardasha calculation failed", error, { mahadashaLord, mahadashaStartUtc, mahadashaEndUtc });
+    throw error;
+  }
+
+  return successResponse({ mahadashaLord, antardashas });
+});
+
