@@ -20,13 +20,16 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 
+// No local HOURS/MINUTES/MONTHS/YEARS needed — DateTimeField handles its own internals.
+// formConstants.ts is available for EditBirthDetailsForm if it ever needs raw arrays.
+
 const birthDataSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100),
   gender: z.enum(['Male', 'Female'], { required_error: 'Gender is required' }),
 
   // API expects these:
   birthDate: z.string().min(1, 'Birth date is required'), // YYYY-MM-DD
-  birthTime: z.string().min(1, 'Birth time is required'), // hh:mm (12-hour)
+  birthTime: z.string().min(1, 'Birth time is required'), // HH:MM (12-hour)
   timePeriod: z.enum(['AM', 'PM'], { required_error: 'AM/PM is required' }),
 
   cityId: z.number().optional(),
@@ -39,14 +42,16 @@ const birthDataSchema = z.object({
 
 type BirthDataForm = z.infer<typeof birthDataSchema>
 
+const DEFAULT_DATETIME: DateTimeValue = {
+  date: undefined,
+  hour: undefined,
+  minute: undefined,
+  period: 'AM',
+}
+
 export default function BirthDataForm() {
   const [isTestData, setIsTestData] = useState(false)
-  const [dateTime, setDateTime] = useState<DateTimeValue>({
-    date: undefined,
-    hour: undefined,
-    minute: undefined,
-    period: 'AM',
-  })
+  const [dateTime, setDateTime] = useState<DateTimeValue>(DEFAULT_DATETIME)
 
   const {
     register,
@@ -71,16 +76,16 @@ export default function BirthDataForm() {
 
   const cityName = watch('cityName')
 
-  const canBuildDateTime = useMemo(() => {
-    return !!dateTime.date && !!dateTime.hour && !!dateTime.minute && !!dateTime.period
-  }, [dateTime])
+  const canBuildDateTime = useMemo(
+    () => !!dateTime.date && !!dateTime.hour && !!dateTime.minute && !!dateTime.period,
+    [dateTime],
+  )
 
   const fillTestData = () => {
     setValue('name', 'Test Chart')
     setValue('gender', 'Male')
 
-    // set DateTimeField + also sync API fields
-    const d = new Date(1992, 2, 25) // 25 Mar 1992 (month is 0-based)
+    const d = new Date(1992, 2, 25) // 25 Mar 1992
     setDateTime({ date: d, hour: '11', minute: '55', period: 'AM' })
     setValue('birthDate', formatDate(d, 'yyyy-MM-dd'))
     setValue('birthTime', '11:55')
@@ -113,7 +118,6 @@ export default function BirthDataForm() {
   const syncDateTimeToForm = (next: DateTimeValue) => {
     setDateTime(next)
 
-    // Only sync when we have a full valid set
     if (next.date) {
       setValue('birthDate', formatDate(next.date, 'yyyy-MM-dd'), { shouldValidate: true })
     } else {
@@ -132,7 +136,6 @@ export default function BirthDataForm() {
   }
 
   const onSubmit = async (data: BirthDataForm) => {
-    // quick safety check (so we never send partial date/time)
     if (!canBuildDateTime) {
       alert('Please select a valid birth date and time.')
       return
@@ -196,7 +199,7 @@ export default function BirthDataForm() {
         {errors.gender && <p className="text-sm text-destructive">{errors.gender.message}</p>}
       </div>
 
-      {/* Date + Time (custom, non-browser) */}
+      {/* Date + Time */}
       <DateTimeField
         value={dateTime}
         onChange={syncDateTimeToForm}
@@ -261,7 +264,7 @@ export default function BirthDataForm() {
         No login required. You can save your chart later.
       </p>
 
-      {/* Hidden fields (react-hook-form already has them via setValue, but these keep things explicit) */}
+      {/* Hidden fields */}
       <input type="hidden" {...register('birthDate')} />
       <input type="hidden" {...register('birthTime')} />
       <input type="hidden" {...register('timePeriod')} />
