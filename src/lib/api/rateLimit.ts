@@ -109,6 +109,12 @@ export async function rateLimit(
 ): Promise<void> {
   const { maxRequests, windowMs, keyGenerator = defaultKeyGenerator } = config;
 
+const internalToken = req.headers.get('X-Internal-Call');
+if (internalToken && internalToken === process.env.ADMIN_SECRET_TOKEN) {
+  return;
+}
+
+
   // Generate rate limit key
   const key = keyGenerator(req);
 

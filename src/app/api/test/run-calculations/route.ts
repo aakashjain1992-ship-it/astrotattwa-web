@@ -6,6 +6,7 @@ import { NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { compareTestCase } from "@/lib/test/compare-results";
 import { logError } from "@/lib/monitoring/errorLogger";
+import { validateAdminToken, unauthorizedResponse } from "@/lib/api/adminAuth";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -54,13 +55,16 @@ const parseTime24to12 = (time24: string) => {
 };
 
 export async function GET(request: NextRequest) {
+ // ── AUTH CHECK ──────────────────────────────────────────────────────────────
+  if (!validateAdminToken(request)) {
+    return unauthorizedResponse();
+  }
+
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream({
     async start(controller) {
       try {
-        console.log("🚀 TEST RUNNER STARTED");
-
         controller.enqueue(
           encoder.encode(`data: ${JSON.stringify({ type: "started", message: "Starting test run..." })}\n\n`)
         );
@@ -128,16 +132,17 @@ export async function GET(request: NextRequest) {
               latitude: testCase.latitude,
               longitude: testCase.longitude,
               timezone: testCase.timezone,
-              cityId: "00000000-0000-0000-0000-000000000000",
+           //   cityId: "00000000-0000-0000-0000-000000000000",
             };
 
-            console.log("🔍 Calling /api/calculate with:", JSON.stringify(requestBody, null, 2));
-
             const calculateResponse = await fetch(
-              `${process.env.NEXT_PUBLIC_SITE_URL || "http://172.236.176.107"}/api/calculate`,
+             "https://astrotattwa.com/api/calculate",
               {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: { 
+			"Content-Type": "application/json",
+			 "X-Internal-Call": process.env.ADMIN_SECRET_TOKEN || "",  // bypasses rate limit for server→server calls
+			 },
                 body: JSON.stringify(requestBody),
               }
             );
@@ -150,8 +155,6 @@ export async function GET(request: NextRequest) {
 
             const calculateResult = await calculateResponse.json();
             const actualData = calculateResult.data;
-
-            console.log("🔍 DEBUG rahuKetuModes for", testCase.name, ":", JSON.stringify(actualData.rahuKetuModes));
 
             const comparison = compareTestCase(
               testCase.id,
@@ -193,8 +196,6 @@ export async function GET(request: NextRequest) {
 
             if (insertError) {
               logError("Failed to save test result", new Error(insertError.message), { testName: testCase.name });
-            } else {
-              console.log("✅ Saved test result for:", testCase.name);
             }
 
             if (comparison.status === "passed") {
@@ -280,4 +281,3 @@ export async function GET(request: NextRequest) {
     },
   });
 }
-
