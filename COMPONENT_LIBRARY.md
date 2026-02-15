@@ -1,7 +1,7 @@
 # Component Library
 
 **Version:** 1.0  
-**Last Updated:** February 7, 2026  
+**Last Updated:** February 14, 2026  
 **Total Components:** 45+
 
 ---
@@ -645,13 +645,33 @@ import { BirthDataForm } from '@/components/forms/BirthDataForm';
 
 ### EditBirthDetailsForm
 **File:** `src/components/forms/EditBirthDetailsForm.tsx`  
-**Purpose:** Edit existing birth details
+**Purpose:** Edit existing birth details  
+**Refactored:** February 14, 2026 — now uses `DateTimeField` (same as home form)
 
 ```typescript
 interface EditBirthDetailsFormProps {
-  initialData: ChartFormData;
-  onSubmit: (data: ChartFormData) => void;
+  isOpen: boolean;
+  currentData: {
+    name: string;
+    gender?: 'male' | 'female';
+    localDateTime: string;   // "YYYY-MM-DDTHH:mm" or "YYYY-MM-DD HH:mm"
+    latitude: number;
+    longitude: number;
+    timezone: string;
+    cityName?: string;
+  };
+  onSubmit: (data: {
+    name: string;
+    gender: 'male' | 'female';
+    birthDate: string;        // YYYY-MM-DD
+    birthTime: string;        // HH:MM
+    timePeriod: 'AM' | 'PM';
+    latitude: number;
+    longitude: number;
+    timezone: string;
+  }) => Promise<void>;
   onCancel: () => void;
+  className?: string;
 }
 ```
 
@@ -659,12 +679,19 @@ interface EditBirthDetailsFormProps {
 ```tsx
 import { EditBirthDetailsForm } from '@/components/forms/EditBirthDetailsForm';
 
-<EditBirthDetailsForm 
-  initialData={existingData}
+<EditBirthDetailsForm
+  isOpen={isEditing}
+  currentData={existingData}
   onSubmit={handleUpdate}
   onCancel={handleCancel}
 />
 ```
+
+**Features:**
+- Uses `DateTimeField` (shared with home form — no duplicate calendar UI)
+- Pre-filled from `currentData.localDateTime` via `parseDateTime` utility
+- `syncDateTimeToForm` pattern identical to BirthDataForm
+- Collapsible (hidden when `isOpen` is false)
 
 ---
 
@@ -731,6 +758,39 @@ import { CitySearch } from '@/components/forms/CitySearch';
 - Debounced API calls
 - Displays: City, State, Country
 - Returns: Coordinates, timezone
+
+---
+
+### Form Utilities (Added Feb 14, 2026)
+
+#### parseDateTime
+**File:** `src/lib/utils/parseDateTime.ts`  
+**Purpose:** Parse `localDateTime` string → `DateTimeValue` for use with `DateTimeField`
+
+```typescript
+import { parseDateTime } from '@/lib/utils/parseDateTime'
+
+// Handles ISO, "YYYY-MM-DD HH:mm", date-only
+const dtValue = parseDateTime('1992-03-25T11:55:00')
+// → { date: Date, hour: '11', minute: '55', period: 'AM' }
+```
+
+**Handles:**
+- ISO strings: `"1992-03-25T11:55:00"`
+- Space-separated: `"1992-03-25 11:55"`
+- Date-only: `"1992-03-25"` (defaults time to 12:00 PM)
+
+---
+
+#### formConstants
+**File:** `src/lib/constants/formConstants.ts`  
+**Purpose:** Shared time/date arrays — single source of truth for all forms
+
+```typescript
+import { HOURS, MINUTES, MONTHS, YEARS } from '@/lib/constants/formConstants'
+```
+
+**Exports:** `HOURS` (01-12), `MINUTES` (00-59), `MONTHS` (January-December), `YEARS` (1900-current, descending)
 
 ---
 
@@ -964,6 +1024,6 @@ src/components/
 
 ---
 
-**Last Updated:** February 7, 2026  
-**Next Review:** February 14, 2026  
+**Last Updated:** February 14, 2026  
+**Next Review:** February 21, 2026  
 **Maintainer:** Aakash + AI Assistants

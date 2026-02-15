@@ -1,8 +1,8 @@
 # Code Refactoring Guide
 
 **Version:** 1.0  
-**Last Updated:** February 10, 2026  
-**Status:** P1 67% Complete (2 of 3 done)
+**Last Updated:** February 14, 2026  
+**Status:** P1 100% Complete (3 of 3 done)
 
 ---
 
@@ -248,12 +248,28 @@ export interface HouseData {
 
 ---
 
-#### 1.3 Extract Common Form Logic ⏳ PENDING
-**Status:** Next priority after P1.1 & P1.2  
-**Effort:** 1-2 days  
+#### 1.3 Extract Common Form Logic ✅ COMPLETE
+**Completed:** February 14, 2026  
+**Effort:** 0.5 days  
 **Impact:** Medium
 
-**Current:** Duplicate validation and field logic
+**STATUS: ✅ DEPLOYED TO PRODUCTION**
+
+**What Was Done:**
+- Created `src/lib/utils/parseDateTime.ts` - extracted from EditBirthDetailsForm, fully reusable
+- Created `src/lib/constants/formConstants.ts` - HOURS, MINUTES, MONTHS, YEARS arrays (single source of truth)
+- Refactored `EditBirthDetailsForm.tsx` to use `DateTimeField` (same as home form)
+- Updated `BirthDataForm.tsx` to reference shared constants
+
+**Results:**
+- EditBirthDetailsForm: 541 lines → 267 lines (-50%)
+- Removed ~130 lines of duplicate calendar/time picker UI
+- Both forms now share the same DateTimeField, syncDateTimeToForm pattern, and constants
+- Zero breaking changes
+
+---
+
+**Original Plan:**
 
 **Proposed:**
 ```typescript
@@ -596,6 +612,6 @@ Type Definitions: Centralized
 
 ---
 
-**Last Updated:** February 7, 2026  
-**Next Review:** February 14, 2026  
+**Last Updated:** February 14, 2026  
+**Next Review:** February 21, 2026  
 **Owner:** Aakash + AI Assistants (Claude/ChatGPT)
