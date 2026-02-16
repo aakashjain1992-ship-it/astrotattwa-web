@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
+import { baseBirthSchema } from '@/lib/validation/birthFormSchemas'
 import { format as formatDate } from 'date-fns'
 
 import { Button } from '@/components/ui/button'
@@ -23,21 +24,9 @@ import {
 // No local HOURS/MINUTES/MONTHS/YEARS needed — DateTimeField handles its own internals.
 // formConstants.ts is available for EditBirthDetailsForm if it ever needs raw arrays.
 
-const birthDataSchema = z.object({
-  name: z.string().min(1, 'Name is required').max(100),
-  gender: z.enum(['Male', 'Female'], { required_error: 'Gender is required' }),
-
-  // API expects these:
-  birthDate: z.string().min(1, 'Birth date is required'), // YYYY-MM-DD
-  birthTime: z.string().min(1, 'Birth time is required'), // HH:MM (12-hour)
-  timePeriod: z.enum(['AM', 'PM'], { required_error: 'AM/PM is required' }),
-
+const birthDataSchema = baseBirthSchema.extend({
   cityId: z.number().optional(),
-  cityName: z.string().min(1, 'Birth place is required'),
   stateName: z.string().optional(),
-  latitude: z.number().min(-90).max(90),
-  longitude: z.number().min(-180).max(180),
-  timezone: z.string().default('Asia/Kolkata'),
 })
 
 type BirthDataForm = z.infer<typeof birthDataSchema>

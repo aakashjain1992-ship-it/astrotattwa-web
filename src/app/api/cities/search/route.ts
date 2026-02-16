@@ -4,6 +4,8 @@ import { createClient } from '@/lib/supabase/server';
 import { createClient as createServiceClient } from '@supabase/supabase-js';
 import { logError } from '@/lib/monitoring/errorLogger';
 import { SupabaseClient } from '@supabase/supabase-js';
+import { withErrorHandling } from '@/lib/api/errorHandling'
+
 
 interface HereGeocodeAddress {
   countryCode: string;
@@ -119,7 +121,7 @@ async function saveCitiesToCache(cities: CityResult[]): Promise<void> {
   }
 }
 
-export async function GET(request: NextRequest) {
+export const GET= withErrorHandling(async (request: NextRequest)=> {
   const { searchParams } = new URL(request.url);
   const query = searchParams.get('q');
 
@@ -158,4 +160,4 @@ export async function GET(request: NextRequest) {
     logError('City search route failed', error, { query });
     return NextResponse.json({ cities: [] }, { status: 500 });
   }
-}
+})

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { baseBirthSchema } from '@/lib/validation/birthFormSchemas'
 import { format } from 'date-fns'
 import { Loader2, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -25,20 +26,8 @@ import { cn } from '@/lib/utils'
 // VALIDATION SCHEMA
 // ============================================
 
-const editFormSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  gender: z.enum(['male', 'female'], {
-    required_error: 'Please select gender',
-  }),
-  // Stored as strings for API compatibility (same as BirthDataForm)
-  birthDate: z.string().min(1, 'Birth date is required'),   // YYYY-MM-DD
-  birthTime: z.string().min(1, 'Birth time is required'),   // HH:MM
-  timePeriod: z.enum(['AM', 'PM']),
-  latitude: z.number().min(-90).max(90),
-  longitude: z.number().min(-180).max(180),
-  timezone: z.string().min(1, 'Timezone is required'),
-  cityName: z.string().optional(),
-})
+const editFormSchema = baseBirthSchema
+
 
 type EditFormData = z.infer<typeof editFormSchema>
 
@@ -99,7 +88,7 @@ export function EditBirthDetailsForm({
     resolver: zodResolver(editFormSchema),
     defaultValues: {
       name: currentData.name,
-      gender: currentData.gender || 'male',
+      gender: currentData.gender || 'Male',
       birthDate: parsed.date ? format(parsed.date, 'yyyy-MM-dd') : '',
       birthTime: parsed.hour && parsed.minute ? `${parsed.hour}:${parsed.minute}` : '',
       timePeriod: parsed.period ?? 'AM',
@@ -203,8 +192,8 @@ export function EditBirthDetailsForm({
                 <SelectValue placeholder="Select gender" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="male">Male</SelectItem>
-                <SelectItem value="female">Female</SelectItem>
+                <SelectItem value="Male">Male</SelectItem>
+                <SelectItem value="Female">Female</SelectItem>
               </SelectContent>
             </Select>
             {errors.gender && (

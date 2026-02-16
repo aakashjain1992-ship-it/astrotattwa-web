@@ -2,17 +2,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Play, Trash2, ChevronDown, ChevronRight, CheckCircle2, XCircle } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Loader2, Play, Trash2, ChevronDown, ChevronRight, CheckCircle2, XCircle, Lock } from 'lucide-react';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+const SESSION_TOKEN_KEY = 'admin_token';
 
 interface TestResult {
   testCaseId: string;
@@ -54,10 +52,73 @@ interface TestRun {
   status: string;
   differences: any;
   test_case_id: string;
-  test_cases?: { name: string } | { name: string }[];
 }
 
-export default function AdminTestsPage() {
+// ─── Token Gate ───────────────────────────────────────────────────────────────
+
+function TokenGate({ onAuthenticated }: { onAuthenticated: (token: string) => void }) {
+  const [input, setInput] = useState('');
+  const [error, setError] = useState('');
+  const [checking, setChecking] = useState(false);
+
+  async function handleSubmit() {
+    if (!input.trim()) return;
+    setChecking(true);
+    setError('');
+
+    // Validate by pinging the history endpoint — if 200, token is good
+    try {
+      const res = await fetch(`/api/test/history?token=${encodeURIComponent(input.trim())}`);
+      if (res.ok) {
+        sessionStorage.setItem(SESSION_TOKEN_KEY, input.trim());
+        onAuthenticated(input.trim());
+      } else {
+        setError('Invalid token. Check ADMIN_SECRET_TOKEN on the server.');
+      }
+    } catch {
+      setError('Could not connect to server.');
+    } finally {
+      setChecking(false);
+    }
+  }
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <Card className="w-full max-w-sm">
+        <CardHeader className="text-center">
+          <div className="flex justify-center mb-2">
+            <Lock className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <CardTitle>Admin Access</CardTitle>
+          <CardDescription>Enter the admin token to continue</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Label htmlFor="token">Admin Token</Label>
+            <Input
+              id="token"
+              type="password"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
+              placeholder="Enter token..."
+              className="mt-1"
+            />
+          </div>
+          {error && <p className="text-sm text-destructive">{error}</p>}
+          <Button onClick={handleSubmit} disabled={checking || !input.trim()} className="w-full">
+            {checking ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+            {checking ? 'Verifying...' : 'Enter'}
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ─── Main Dashboard ───────────────────────────────────────────────────────────
+
+function TestDashboard({ token }: { token: string }) {
   const [isRunning, setIsRunning] = useState(false);
   const [progress, setProgress] = useState(0);
   const [currentTest, setCurrentTest] = useState('');
@@ -69,25 +130,22 @@ export default function AdminTestsPage() {
 
   useEffect(() => {
     fetchHistory();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function fetchHistory() {
-  setLoadingHistory(true);
-  try {
-    const { data, error } = await supabase
-      .from('test_case_runs')
-      .select('id, run_at, status, differences, test_case_id')
-      .order('run_at', { ascending: false })
-      .limit(10);
-
-    if (error) throw error;
-    setHistory(data as any || []);
-  } catch (error) {
-    console.error('Failed to fetch history:', error);
-  } finally {
-    setLoadingHistory(false);
+    setLoadingHistory(true);
+    try {
+      const res = await fetch(`/api/test/history?token=${encodeURIComponent(token)}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      setHistory(json.data || []);
+    } catch (error) {
+      console.error('Failed to fetch history:', error);
+    } finally {
+      setLoadingHistory(false);
+    }
   }
-}
 
   async function runTests() {
     setIsRunning(true);
@@ -97,7 +155,10 @@ export default function AdminTestsPage() {
     setSummary({ total: 0, passed: 0, failed: 0, executionTime: 0 });
 
     try {
-      const eventSource = new EventSource('/api/test/run-calculations');
+      // Pass token as query param — EventSource cannot set custom headers
+      const eventSource = new EventSource(
+        `/api/test/run-calculations?token=${encodeURIComponent(token)}`
+      );
 
       eventSource.onmessage = (event) => {
         const data = JSON.parse(event.data);
@@ -109,7 +170,7 @@ export default function AdminTestsPage() {
 
           case 'progress':
             setProgress((data.current / data.total) * 100);
-            setCurrentTest('Running ' + data.current + '/' + data.total + ': ' + data.testName);
+            setCurrentTest(`Running ${data.current}/${data.total}: ${data.testName}`);
             break;
 
           case 'test_result':
@@ -138,7 +199,7 @@ export default function AdminTestsPage() {
 
           case 'error':
             console.error('Test error:', data.message);
-            setCurrentTest('Error: ' + data.message);
+            setCurrentTest(`Error: ${data.message}`);
             setIsRunning(false);
             eventSource.close();
             break;
@@ -148,10 +209,9 @@ export default function AdminTestsPage() {
       eventSource.onerror = (error) => {
         console.error('SSE error:', error);
         setIsRunning(false);
-        setCurrentTest('Connection error');
+        setCurrentTest('Connection error — check server logs');
         eventSource.close();
       };
-
     } catch (error) {
       console.error('Failed to start tests:', error);
       setIsRunning(false);
@@ -159,13 +219,12 @@ export default function AdminTestsPage() {
   }
 
   async function deleteAllRuns() {
-    if (!confirm('Are you sure you want to delete all test run history?')) {
-      return;
-    }
+    if (!confirm('Are you sure you want to delete all test run history?')) return;
 
     try {
       const response = await fetch('/api/test/delete-runs', {
         method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (response.ok) {
@@ -183,11 +242,8 @@ export default function AdminTestsPage() {
   function toggleExpand(testId: string) {
     setExpandedTests((prev) => {
       const next = new Set(prev);
-      if (next.has(testId)) {
-        next.delete(testId);
-      } else {
-        next.add(testId);
-      }
+      if (next.has(testId)) next.delete(testId);
+      else next.add(testId);
       return next;
     });
   }
@@ -270,9 +326,9 @@ export default function AdminTestsPage() {
               const trueCount = rahuResults.filter(p => p.nodeMode === 'TRUE').length + ketuResults.filter(p => p.nodeMode === 'TRUE').length;
               const meanCount = rahuResults.filter(p => p.nodeMode === 'MEAN').length + ketuResults.filter(p => p.nodeMode === 'MEAN').length;
               const noModeCount = results.flatMap(r => r.planets?.filter(p => (p.planet === 'Rahu' || p.planet === 'Ketu') && !p.nodeMode) || []).length;
-              
+
               if (trueCount + meanCount + noModeCount === 0) return null;
-              
+
               return (
                 <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                   <h4 className="font-semibold mb-2 text-blue-900 dark:text-blue-100">🔍 Rahu/Ketu Node Mode Analysis</h4>
@@ -292,7 +348,7 @@ export default function AdminTestsPage() {
                   </div>
                   {noModeCount > 0 && (
                     <p className="mt-2 text-xs text-orange-700 dark:text-orange-400">
-                      ⚠️ Some tests missing rahuKetuModes - check if API is returning this field
+                      ⚠️ Some tests missing rahuKetuModes — check if API is returning this field
                     </p>
                   )}
                   {meanCount > trueCount && trueCount + meanCount > 0 && (
@@ -308,7 +364,7 @@ export default function AdminTestsPage() {
                 </div>
               );
             })()}
-            
+
             <div className="space-y-2">
               {results.map((result) => (
                 <div key={result.testCaseId} className="border rounded-lg p-4">
@@ -343,7 +399,6 @@ export default function AdminTestsPage() {
 
                   {expandedTests.has(result.testCaseId) && result.planets && (
                     <div className="mt-4 pl-8 space-y-4">
-                      {/* Failed Planet Checks */}
                       {result.planets.filter(p => !p.passed).length > 0 && (
                         <div>
                           <p className="font-semibold text-red-600 mb-2">❌ Failed Planets:</p>
@@ -355,7 +410,6 @@ export default function AdminTestsPage() {
                                   <span className="text-red-600 font-semibold ml-2">Diff: {planet.difference.toFixed(2)}&apos;</span>
                                   <span className="text-muted-foreground ml-1">(tol: {planet.tolerance}&apos;)</span>
                                 </div>
-                                {/* Show Rahu/Ketu mode comparison */}
                                 {(planet.planet === 'Rahu' || planet.planet === 'Ketu') && planet.nodeMode && (
                                   <div className="mt-1 text-xs bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded">
                                     <span className="font-semibold">Mode Used: {planet.nodeMode}_NODE</span>
@@ -368,10 +422,9 @@ export default function AdminTestsPage() {
                                     )}
                                   </div>
                                 )}
-                                {/* Show warning if Rahu/Ketu has no mode data */}
                                 {(planet.planet === 'Rahu' || planet.planet === 'Ketu') && !planet.nodeMode && (
                                   <div className="mt-1 text-xs bg-orange-50 dark:bg-orange-900/20 p-2 rounded text-orange-700">
-                                    ⚠️ No TRUE/MEAN comparison data - rahuKetuModes may be missing from API response
+                                    ⚠️ No TRUE/MEAN comparison data — rahuKetuModes may be missing from API response
                                   </div>
                                 )}
                               </div>
@@ -379,30 +432,28 @@ export default function AdminTestsPage() {
                           </div>
                         </div>
                       )}
-                      
-                      {/* Failed Ascendant */}
+
                       {result.ascendant && !result.ascendant.passed && (
                         <div>
                           <p className="font-semibold text-red-600 mb-2">❌ Ascendant Failed:</p>
                           <div className="text-sm">
-                            Expected {result.ascendant.expected.toFixed(2)}°, Got {result.ascendant.actual.toFixed(2)}°,
-                            <span className="text-red-600 font-semibold"> Diff: {result.ascendant.difference.toFixed(2)} arcmin</span> (tolerance: {result.ascendant.tolerance})
+                            Expected {result.ascendant.expected.toFixed(2)}°, Got {result.ascendant.actual.toFixed(2)}°
+                            <span className="text-red-600 font-semibold"> Diff: {result.ascendant.difference.toFixed(2)} arcmin</span>
+                            {' '}(tolerance: {result.ascendant.tolerance})
                           </div>
                         </div>
                       )}
 
-                      {/* Failed Dasha */}
                       {result.dasha && !result.dasha.passed && (
                         <div>
                           <p className="font-semibold text-red-600 mb-2">❌ Dasha Failed:</p>
                           <div className="text-sm">
-                            Expected Mahadasha: <span className="font-medium">{result.dasha.expectedMahadasha}</span>, 
-                            Got: <span className="font-medium text-red-600">{result.dasha.actualMahadasha|| 'Unknown' }</span>
+                            Expected: <span className="font-medium">{result.dasha.expectedMahadasha}</span>,{' '}
+                            Got: <span className="font-medium text-red-600">{result.dasha.actualMahadasha || 'Unknown'}</span>
                           </div>
                         </div>
                       )}
 
-                      {/* Passed Planets */}
                       {result.planets.filter(p => p.passed).length > 0 && (
                         <div>
                           <p className="font-semibold text-green-600 mb-2">✅ Passed Planets:</p>
@@ -410,7 +461,6 @@ export default function AdminTestsPage() {
                             {result.planets.filter(p => p.passed).map(planet => (
                               <div key={planet.planet} className="text-muted-foreground">
                                 <span className="font-medium text-foreground">{planet.planet}:</span> {planet.difference.toFixed(2)}&apos;
-                                {/* Show Rahu/Ketu mode for passed items too */}
                                 {(planet.planet === 'Rahu' || planet.planet === 'Ketu') && planet.nodeMode && (
                                   <span className="ml-2 text-xs px-1.5 py-0.5 bg-green-100 dark:bg-green-900/30 rounded text-green-700 dark:text-green-400">
                                     {planet.nodeMode}_NODE
@@ -422,14 +472,12 @@ export default function AdminTestsPage() {
                         </div>
                       )}
 
-                      {/* Passed Ascendant */}
                       {result.ascendant && result.ascendant.passed && (
                         <div className="text-sm text-muted-foreground">
                           ✅ Ascendant: {result.ascendant.difference.toFixed(2)} arcmin
                         </div>
                       )}
 
-                      {/* Passed Dasha */}
                       {result.dasha && result.dasha.passed && (
                         <div className="text-sm text-muted-foreground">
                           ✅ Dasha: {result.dasha.actualMahadasha} (correct)
@@ -446,7 +494,7 @@ export default function AdminTestsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Test History (Last 10 Runs)</CardTitle>
+          <CardTitle>Test History (Last 20 Runs)</CardTitle>
         </CardHeader>
         <CardContent>
           {loadingHistory ? (
@@ -466,9 +514,7 @@ export default function AdminTestsPage() {
                 >
                   <div>
                     <p className="font-medium">Test Run</p>
-                    <p className="text-sm text-muted-foreground">
-                      {formatDate(run.run_at)}
-                    </p>
+                    <p className="text-sm text-muted-foreground">{formatDate(run.run_at)}</p>
                   </div>
                   <Badge variant={run.status === 'passed' ? 'default' : 'destructive'}>
                     {run.status.toUpperCase()}
@@ -481,4 +527,22 @@ export default function AdminTestsPage() {
       </Card>
     </div>
   );
+}
+
+// ─── Page Entry Point ─────────────────────────────────────────────────────────
+
+export default function AdminTestsPage() {
+  const [token, setToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Check if already authenticated in this session
+    const stored = sessionStorage.getItem(SESSION_TOKEN_KEY);
+    if (stored) setToken(stored);
+  }, []);
+
+  if (!token) {
+    return <TokenGate onAuthenticated={setToken} />;
+  }
+
+  return <TestDashboard token={token} />;
 }
