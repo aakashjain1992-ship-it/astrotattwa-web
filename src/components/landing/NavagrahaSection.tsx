@@ -92,7 +92,7 @@ export function NavagrahaSection() {
       padding: '96px 0 100px',
       borderTop: '1px solid var(--border)',
     }}>
-      <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '0 64px' }}>
+      <div className="nava-section-inner" style={{ maxWidth: '1280px', margin: '0 auto', padding: '0 64px' }}>
 
         {/* Header */}
         <div ref={headerRef} style={{ textAlign: 'center', marginBottom: '56px' }}>
@@ -116,13 +116,13 @@ export function NavagrahaSection() {
         </div>
 
         {/* Tab bar */}
-        <div style={{
+        <div className="nava-tab-bar"  style={{
           display: 'flex', justifyContent: 'center',
           flexWrap: 'wrap', gap: '4px',
           marginBottom: '48px', position: 'relative',
         }}>
           {PLANETS.map((p, i) => (
-            <button
+            <button className="nava-tab-btn"
               key={p.name}
               onClick={() => selectPlanet(i)}
               style={{
@@ -184,7 +184,7 @@ export function NavagrahaSection() {
           position: 'relative',
         }}>
           {PLANETS.map((p, i) => (
-            <div
+            <div className="nava-pane"
               key={p.name}
               style={{
                 position: i === active ? 'relative' : 'absolute',
@@ -199,7 +199,7 @@ export function NavagrahaSection() {
               } as React.CSSProperties}
             >
               {/* Left panel */}
-              <div style={{
+              <div className="nava-pane-left"  style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 background: `rgba(${p.rgb},.06)`,
                 borderRight: `1px solid rgba(${p.rgb},.12)`,
@@ -253,7 +253,7 @@ export function NavagrahaSection() {
               </div>
 
               {/* Right panel */}
-              <div style={{
+              <div className="nava-pane-right" style={{
                 padding: '44px 48px',
                 display: 'flex', flexDirection: 'column', justifyContent: 'center',
               }}>
@@ -317,8 +317,13 @@ export function NavagrahaSection() {
       </div>
 
       <style>{`
-        @media (max-width: 800px) {
-          .nava-pane-grid { grid-template-columns: 1fr !important; }
+        @media (max-width: 900px) {
+          .nava-section-inner { padding: 0 24px !important; }
+          .nava-tab-bar { gap: 2px !important; }
+          .nava-tab-btn { padding: 10px 10px 8px !important; min-width: 56px !important; }
+          .nava-pane { grid-template-columns: 1fr !important; }
+          .nava-pane-left { min-height: 180px !important; border-right: none !important; border-bottom: 1px solid rgba(0,0,0,.08) !important; }
+          .nava-pane-right { padding: 28px 24px !important; }
         }
       `}</style>
     </section>

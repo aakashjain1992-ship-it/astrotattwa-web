@@ -26,25 +26,15 @@ export default function HomePage() {
       <main style={{ flex: 1 }}>
 
         {/* ── HERO ── */}
-        <section
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 500px',
-            alignItems: 'start',
-            padding: '96px 64px 80px 64px',
-            position: 'relative',
-            overflow: 'hidden',
-            maxWidth: '1280px',
-            margin: '0 auto',
-            width: '100%',
-          }}
-        >
+        <section className="hero-section"> 
+         
           <Particles />
           <Glyphs />
-          <Yantra />
+          <div style={{position:'absolute',inset:0,pointerEvents:'none',zIndex:0}} className="hero-yantra"><Yantra /></div>
+
 
           {/* Left: Copy */}
-          <div style={{ padding: '20px 32px 24px 0', position: 'relative', zIndex: 2 }}>
+          <div className="hero-copy">
 
             {/* Eyebrow */}
             <div style={{
@@ -160,12 +150,8 @@ export default function HomePage() {
           </div>
 
           {/* Right: Form card */}
-          <div style={{
-            position: 'relative', zIndex: 2,
-            padding: '20px 0 24px 16px',
-            display: 'flex', justifyContent: 'flex-start', alignItems: 'flex-start',
-          }}>
-            <div style={{
+          <div className="hero-card-wrap" >
+             <div style={{
               background: '#fff',
               border: '1px solid var(--border)',
               borderRadius: '16px',
@@ -175,7 +161,7 @@ export default function HomePage() {
               animation: 'cardIn .85s cubic-bezier(.16,1,.3,1) .3s forwards',
             }}>
               <BirthDataFormWrapper />
-            </div>
+             </div>  
           </div>
 
         </section>
@@ -207,11 +193,30 @@ export default function HomePage() {
           from { opacity: 1; transform: translateY(24px); }
           to   { opacity: 1; transform: translateY(0); }
         }
+        .hero-section {
+          display: grid;
+          grid-template-columns: 1fr 500px;
+          align-items: start;
+          padding: 96px 64px 80px 64px;
+          position: relative;
+          overflow: hidden;
+          max-width: 1280px;
+          margin: 0 auto;
+          width: 100%;
+          box-sizing: border-box;
+        }
+        .hero-copy { padding: 20px 32px 24px 0; position: relative; z-index: 2; }
+        .hero-card-wrap { position: relative; z-index: 2; padding: 20px 0 24px 16px; display: flex; justify-content: flex-start; align-items: flex-start; }
+        .hero-yantra { display: block; }
         @media (max-width: 1100px) {
-          .hero-grid {
-            grid-template-columns: 1fr !important;
-            padding: 88px 40px 64px 40px !important;
-          }
+          .hero-section { grid-template-columns: 1fr; padding: 88px 40px 64px 40px; }
+          .hero-copy { padding: 20px 0 24px 0; }
+          .hero-card-wrap { padding: 0; justify-content: center; }
+          .hero-yantra { display: none; }
+        }
+        @media (max-width: 600px) {
+          .hero-section { padding: 80px 20px 48px 20px; }
+          .hero-stats { flex-direction: column; gap: 0 !important; }
         }
       `}</style>
     </div>

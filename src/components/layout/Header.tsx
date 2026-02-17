@@ -26,6 +26,8 @@ export function Header() {
         borderBottom: '1px solid var(--border)',
         transition: 'box-shadow .25s',
         boxShadow: scrolled ? '0 2px 16px rgba(0,0,0,.06)' : 'none',
+        borderBottom: '1px solid rgba(0,0,0,0.08)',
+
       }}
     >
       <div

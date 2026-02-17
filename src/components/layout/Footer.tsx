@@ -7,11 +7,11 @@ export function Footer({ className }: { className?: string }) {
     <footer
       className={className}
       style={{
-        borderTop: '1px solid var(--border)',
+        borderTop: '1px solid rgba(0,0,0,0.08)',
         padding: '24px 0',
       }}
     >
-      <div
+      <div className="footer-inner"
         style={{
           maxWidth: '1280px',
           margin: '0 auto',
@@ -19,6 +19,8 @@ export function Footer({ className }: { className?: string }) {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '12px',
         }}
       >
         <p style={{ fontSize: '13px', color: 'var(--text3)' }}>
@@ -54,6 +56,13 @@ export function Footer({ className }: { className?: string }) {
           </Link>
         </div>
       </div>
+
+     <style>{`
+        @media (max-width: 600px) {
+          .footer-inner { padding: 0 20px !important; }
+        }
+      `}</style>
+
     </footer>
   )
 }

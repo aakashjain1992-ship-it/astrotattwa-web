@@ -337,7 +337,7 @@ export default function ChartPage() {
       <Header showNav={false} />
 
       {/* Main Content */}
-      <main className="flex-1 container py-6 space-y-6">
+      <main className="flex-1 container py-6 space-y-6" style={{paddingTop:"80px"}}>
         {/* User Details Card */}
         <UserDetailsCard
           name={chartData.name}

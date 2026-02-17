@@ -38,6 +38,7 @@ export default function BirthDataFormWrapper() {
 
       // Temporarily store result until DB saving is implemented
       localStorage.setItem('lastChart', JSON.stringify(data.data))
+      await new Promise(resolve => setTimeout(resolve, 3000))
       router.push('/chart')
     } catch (err) {
       console.error('Chart calculation error:', err)
