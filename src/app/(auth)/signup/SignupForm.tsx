@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Stars, Eye, EyeOff, Loader2 } from 'lucide-react'
+import { Logo } from '@/components/ui/Logo'
 
 export function SignupForm() {
   const router = useRouter()
@@ -99,10 +99,7 @@ export function SignupForm() {
 
         {/* Logo + App Name */}
         <div className="flex flex-col items-center space-y-2 text-center">
-          <Link href="/" className="flex items-center gap-2">
-            <Stars className="h-6 w-6 text-primary" />
-            <span className="text-xl font-bold tracking-tight">Astrotattwa</span>
-          </Link>
+          <Logo />
           <h1 className="text-2xl font-bold tracking-tight">Create your account</h1>
           <p className="text-sm text-muted-foreground">Start exploring your cosmic blueprint</p>
         </div>
