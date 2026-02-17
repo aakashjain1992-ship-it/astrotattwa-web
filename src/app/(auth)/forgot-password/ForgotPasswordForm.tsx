@@ -81,10 +81,7 @@ export function ForgotPasswordForm() {
 
         {/* Logo + App Name */}
         <div className="flex flex-col items-center space-y-2 text-center">
-          <Link href="/" className="flex items-center gap-2">
-            <Stars className="h-6 w-6 text-primary" />
-            <span className="text-xl font-bold tracking-tight">Astrotattwa</span>
-          </Link>
+          <Logo />
           <h1 className="text-2xl font-bold tracking-tight">Reset password</h1>
           <p className="text-sm text-muted-foreground">
             Enter your email and we&apos;ll send you a reset link
