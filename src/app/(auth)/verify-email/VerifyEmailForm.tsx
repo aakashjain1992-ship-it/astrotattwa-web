@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
+import { Mail, CheckCircle, Loader2 } from 'lucide-react'
 import { Logo } from '@/components/ui/Logo'
 
 export function VerifyEmailForm() {
