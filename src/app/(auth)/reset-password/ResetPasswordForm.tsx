@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { CheckCircle, Loader2 } from 'lucide-react' 
+import { Eye, EyeOff, Loader2 } from 'lucide-react'
 import { Logo } from '@/components/ui/Logo'
 
 export function ResetPasswordForm() {
