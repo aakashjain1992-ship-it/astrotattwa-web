@@ -1,114 +1,224 @@
-import Link from 'next/link'
-import { Button } from '@/components/ui/button'
-import { Stars, Calculator, Lock, Zap } from 'lucide-react'
+import { Header } from '@/components/layout/Header'
+import { Footer } from '@/components/layout/Footer'
+import { NavagrahaSection } from '@/components/landing/NavagrahaSection'
+import { Yantra } from '@/components/landing/Yantra'
+import { Particles } from '@/components/landing/Particles'
+import { Glyphs } from '@/components/landing/Glyphs'
 import BirthDataFormWrapper from '@/components/forms/BirthDataFormWrapper'
+
+const HERO_BULLETS = [
+  'Your Dashas — the planetary periods timing every chapter of your life',
+  'All 9 planets across 12 houses, with nakshatras and padas',
+  'Divisional charts, yogas, and the complete traditional system',
+]
+
+const HERO_STATS = [
+  { icon: '⚡', num: 'Instant',     label: 'Chart in seconds' },
+  { icon: '✦', num: 'Complete',    label: 'All 9 planets · 16 charts' },
+  { icon: '◐', num: 'Traditional', label: 'Authentic Vedic system' },
+]
 
 export default function HomePage() {
   return (
-    <div className="flex min-h-screen flex-col">
-      {/* Header */}
-      <header className="border-b">
-        <div className="container flex h-16 items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Stars className="h-6 w-6 text-primary" />
-            <span className="text-xl font-bold">Astrotattwa</span>
-          </div>
-          <nav className="flex items-center gap-4">
-            <Link href="/login">
-              <Button variant="ghost">Login</Button>
-            </Link>
-            <Link href="/signup">
-              <Button>Get Started</Button>
-            </Link>
-          </nav>
-        </div>
-      </header>
+    <div style={{ display: 'flex', minHeight: '100vh', flexDirection: 'column' }}>
+      <Header />
 
-      {/* Main Content */}
-      <main className="flex-1">
-        {/* Hero + Form Section */}
-        <section className="container py-12">
-          <div className="mx-auto grid max-w-6xl gap-12 lg:grid-cols-2 lg:gap-16">
-            {/* Left: Hero Text */}
-            <div className="flex flex-col justify-center">
-              <h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
-                Your Cosmic Blueprint,
-                <span className="text-primary"> Accurately Calculated</span>
-              </h1>
-              <p className="mt-6 text-lg text-muted-foreground">
-                Free Vedic astrology birth charts with Swiss Ephemeris precision.
-                Explore your planets, dashas, and yogas—no hidden costs.
-              </p>
-              
-              {/* Features List */}
-              <div className="mt-8 space-y-3">
-                <div className="flex items-center gap-3">
-                  <Calculator className="h-5 w-5 text-primary" />
-                  <span className="text-sm">100% Accurate Swiss Ephemeris calculations</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Lock className="h-5 w-5 text-primary" />
-                  <span className="text-sm">All chart data is free forever</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Zap className="h-5 w-5 text-primary" />
-                  <span className="text-sm">No login required to calculate</span>
-                </div>
-              </div>
+      <main style={{ flex: 1 }}>
+
+        {/* ── HERO ── */}
+        <section className="hero-section"> 
+         
+          <Particles />
+          <Glyphs />
+          <div style={{position:'absolute',inset:0,pointerEvents:'none',zIndex:0}} className="hero-yantra"><Yantra /></div>
+
+
+          {/* Left: Copy */}
+          <div className="hero-copy">
+
+            {/* Eyebrow */}
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: '9px',
+              fontSize: '11px', fontWeight: 500, letterSpacing: '2.8px',
+              textTransform: 'uppercase', color: 'var(--blue)',
+              marginBottom: '18px',
+              animation: 'up .6s ease .15s forwards',
+            }}>
+              <span style={{
+                width: '5px', height: '5px', borderRadius: '50%',
+                background: 'var(--blue)', flexShrink: 0,
+              }} />
+              Vedic Astrology
             </div>
 
-            {/* Right: Chart Creation Form */}
-            <div className="rounded-lg border bg-card p-6 shadow-sm lg:p-8">
-              <h2 className="mb-6 text-2xl font-bold">Create Your Birth Chart</h2>
+            {/* Headline */}
+            <h1 style={{
+              fontFamily: "'Instrument Serif', serif",
+              letterSpacing: '-1.2px', lineHeight: 1.04,
+              marginBottom: '20px',
+            }}>
+              <span style={{
+                display: 'block', fontStyle: 'italic', fontWeight: 400,
+                fontSize: 'clamp(30px,3.8vw,52px)',
+                color: 'var(--text3)',
+                animation: 'up .75s ease .3s forwards',
+              }}>
+                the map
+              </span>
+              <span style={{
+                display: 'block', fontWeight: 400,
+                fontSize: 'clamp(52px,6.2vw,84px)',
+                color: 'var(--text)', lineHeight: 1,
+                animation: 'up .75s ease .45s forwards',
+              }}>
+                you were<br />
+                <span style={{ color: 'var(--blue)' }}>born with</span>
+              </span>
+            </h1>
+
+            {/* Subtext */}
+            <p style={{
+              fontSize: '15.5px', lineHeight: 1.72,
+              color: 'var(--text2)', maxWidth: '420px',
+              marginBottom: '28px',
+              animation: 'up .65s ease .65s forwards',
+            }}>
+              Your birth chart is a precise record of the sky at the moment
+              you arrived — the timing of life&apos;s chapters, the pattern of your
+              relationships, the shape of your path.
+            </p>
+
+            {/* Feature bullets */}
+            <ul style={{
+              listStyle: 'none', display: 'flex', flexDirection: 'column',
+              gap: '10px', marginBottom: '0',
+              animation: 'up .65s ease .82s forwards',
+            }}>
+              {HERO_BULLETS.map(text => (
+                <li key={text} style={{
+                  display: 'flex', alignItems: 'flex-start', gap: '10px',
+                  fontSize: '14px', color: 'var(--text2)', lineHeight: 1.55,
+                }}>
+                  <span style={{
+                    flexShrink: 0, marginTop: '7px',
+                    width: '5px', height: '5px', borderRadius: '50%',
+                    background: 'var(--blue)',
+                  }} />
+                  {text}
+                </li>
+              ))}
+            </ul>
+
+            {/* Stats bar */}
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 0,
+              marginTop: '24px',
+              padding: '14px 20px',
+              background: 'rgba(37,99,235,.04)',
+              border: '1px solid rgba(37,99,235,.1)',
+              borderRadius: '12px',
+              animation: 'up .65s ease 1.05s forwards',
+            }}>
+              {HERO_STATS.map((s, i) => (
+                <div key={s.num} style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
+                  {i > 0 && (
+                    <div style={{
+                      width: '1px', height: '36px',
+                      background: 'rgba(37,99,235,.15)',
+                      flexShrink: 0, margin: '0 4px',
+                    }} />
+                  )}
+                  <div style={{
+                    flex: 1, textAlign: 'center',
+                    display: 'flex', flexDirection: 'column',
+                    alignItems: 'center', gap: '4px',
+                  }}>
+                    <span style={{ fontSize: '16px', lineHeight: 1, color: 'var(--blue)', opacity: .7, marginBottom: '2px' }}>
+                      {s.icon}
+                    </span>
+                    <span style={{ fontSize: '15px', lineHeight: 1.2, color: 'var(--text1)', fontWeight: 600, letterSpacing: '.1px' }}>
+                      {s.num}
+                    </span>
+                    <span style={{ fontSize: '10.5px', letterSpacing: '.3px', color: 'rgba(15,23,42,.38)', marginTop: '2px' }}>
+                      {s.label}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+          </div>
+
+          {/* Right: Form card */}
+          <div className="hero-card-wrap" >
+             <div style={{
+              background: '#fff',
+              border: '1px solid var(--border)',
+              borderRadius: '16px',
+              padding: '32px 32px 28px',
+              width: '100%', maxWidth: '480px',
+              boxShadow: 'var(--shadow-md)',
+              animation: 'cardIn .85s cubic-bezier(.16,1,.3,1) .3s forwards',
+            }}>
               <BirthDataFormWrapper />
-            </div>
+             </div>  
           </div>
+
         </section>
 
-        {/* Features Section */}
-        <section className="border-t bg-muted/50 py-12 md:py-24">
-          <div className="container">
-            <div className="mx-auto grid max-w-5xl gap-8 md:grid-cols-3">
-              <div className="flex flex-col items-center text-center">
-                <Calculator className="mb-4 h-12 w-12 text-primary" />
-                <h3 className="text-lg font-semibold">100% Accurate</h3>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Swiss Ephemeris calculations match professional software
-                </p>
-              </div>
-              <div className="flex flex-col items-center text-center">
-                <Lock className="mb-4 h-12 w-12 text-primary" />
-                <h3 className="text-lg font-semibold">Always Free</h3>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  All your chart data is free forever—no paywalls
-                </p>
-              </div>
-              <div className="flex flex-col items-center text-center">
-                <Zap className="mb-4 h-12 w-12 text-primary" />
-                <h3 className="text-lg font-semibold">Modern & Fast</h3>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Beautiful mobile-first design that just works
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
+        {/* ── NAVAGRAHA ── */}
+        <NavagrahaSection />
+
       </main>
 
-      {/* Footer */}
-      <footer className="border-t py-6">
-        <div className="container flex flex-col gap-4 text-center text-sm text-muted-foreground md:flex-row md:justify-between">
-          <p>© 2026 Astrotattwa. All rights reserved.</p>
-          <div className="flex justify-center gap-4">
-            <Link href="/privacy" className="hover:text-foreground">
-              Privacy
-            </Link>
-            <Link href="/terms" className="hover:text-foreground">
-              Terms
-            </Link>
-          </div>
-        </div>
-      </footer>
+      <Footer />
+
+      <style>{`
+        @keyframes yRotate { to { transform: rotate(360deg); } }
+        @keyframes pTwinkle {
+          0%, 100% { opacity: .04; }
+          50% { opacity: .18; }
+        }
+        @keyframes gFloat {
+          0%   { opacity: 0; transform: translateY(0) rotate(0deg); }
+          15%  { opacity: .28; }
+          85%  { opacity: .15; }
+          100% { opacity: 0; transform: translateY(-70px) rotate(8deg); }
+        }
+        @keyframes up {
+          from { opacity: 1; transform: translateY(18px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes cardIn {
+          from { opacity: 1; transform: translateY(24px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        .hero-section {
+          display: grid;
+          grid-template-columns: 1fr 500px;
+          align-items: start;
+          padding: 96px 64px 80px 64px;
+          position: relative;
+          overflow: hidden;
+          max-width: 1280px;
+          margin: 0 auto;
+          width: 100%;
+          box-sizing: border-box;
+        }
+        .hero-copy { padding: 20px 32px 24px 0; position: relative; z-index: 2; }
+        .hero-card-wrap { position: relative; z-index: 2; padding: 20px 0 24px 16px; display: flex; justify-content: flex-start; align-items: flex-start; }
+        .hero-yantra { display: block; }
+        @media (max-width: 1100px) {
+          .hero-section { grid-template-columns: 1fr; padding: 88px 40px 64px 40px; }
+          .hero-copy { padding: 20px 0 24px 0; }
+          .hero-card-wrap { padding: 0; justify-content: center; }
+          .hero-yantra { display: none; }
+        }
+        @media (max-width: 600px) {
+          .hero-section { padding: 80px 20px 48px 20px; }
+          .hero-stats { flex-direction: column; gap: 0 !important; }
+        }
+      `}</style>
     </div>
   )
 }

@@ -242,7 +242,7 @@ export default function ChartPage() {
   // Handle edit form submission - call API and update
   const handleEditSubmit = useCallback(async (formData: {
     name: string;
-    gender: 'male' | 'female';
+    gender: 'Male' | 'Female';
     birthDate: string;
     birthTime: string;
     timePeriod: 'AM' | 'PM';
@@ -337,7 +337,7 @@ export default function ChartPage() {
       <Header showNav={false} />
 
       {/* Main Content */}
-      <main className="flex-1 container py-6 space-y-6">
+      <main className="flex-1 container py-6 space-y-6" style={{paddingTop:"80px"}}>
         {/* User Details Card */}
         <UserDetailsCard
           name={chartData.name}
@@ -352,7 +352,7 @@ export default function ChartPage() {
           isOpen={isEditing}
           currentData={{
             name: chartData.name,
-            gender: chartData.gender as "male" | "female",
+            gender: chartData.gender as "Male" | "Female",
             localDateTime: chartData.input.localDateTime,
             latitude: chartData.input.latitude,
             longitude: chartData.input.longitude,

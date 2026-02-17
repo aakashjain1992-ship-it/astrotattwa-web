@@ -1,17 +1,26 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { Instrument_Serif, DM_Sans } from 'next/font/google'
 import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster } from '@/components/ui/toaster'
 import 'react-day-picker/dist/style.css'
 import '@/styles/globals.css'
 
+const instrumentSerif = Instrument_Serif({
+  subsets: ['latin'],
+  weight: ['400'],
+  style: ['normal', 'italic'],
+  variable: '--font-serif',
+})
 
-
-const inter = Inter({ subsets: ['latin'] })
+const dmSans = DM_Sans({
+  subsets: ['latin'],
+  weight: ['300', '400', '500'],
+  variable: '--font-sans',
+})
 
 export const metadata: Metadata = {
   title: 'Astrotattwa - Accurate Vedic Astrology',
-  description: 'Free Vedic astrology birth charts with AI-powered insights. Accurate calculations using Swiss Ephemeris.',
+  description: 'Vedic astrology birth charts with accurate calculations and AI-powered insights.',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
@@ -29,8 +38,8 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
+    <html lang="en" suppressHydrationWarning className={`${instrumentSerif.variable} ${dmSans.variable}`}>
+      <body className={dmSans.className}>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
@@ -44,3 +53,4 @@ export default function RootLayout({
     </html>
   )
 }
+

@@ -1,64 +1,69 @@
-import Link from 'next/link';
-import { Stars } from 'lucide-react';
+'use client'
 
-interface FooterProps {
-  className?: string;
-}
+import Link from 'next/link'
 
-export function Footer({ className }: FooterProps) {
-  const currentYear = new Date().getFullYear();
-
+export function Footer({ className }: { className?: string }) {
   return (
-    <footer className={`border-t border-border bg-background ${className || ''}`}>
-      <div className="container py-8">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-          {/* Logo & Tagline */}
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-2">
-              <Stars className="h-5 w-5 text-primary" />
-              <span className="font-semibold">Astrotattwa</span>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Accurate Vedic astrology with Swiss Ephemeris precision.
-            </p>
-          </div>
+    <footer
+      className={className}
+      style={{
+        borderTop: '1px solid rgba(0,0,0,0.08)',
+        padding: '24px 0',
+      }}
+    >
+      <div className="footer-inner"
+        style={{
+          maxWidth: '1280px',
+          margin: '0 auto',
+          padding: '0 64px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '12px',
+        }}
+      >
+        <p style={{ fontSize: '13px', color: 'var(--text3)' }}>
+          © {new Date().getFullYear()} Astrotattwa. All rights reserved.
+        </p>
 
-          {/* Links */}
-          <div className="flex flex-wrap gap-6 text-sm">
-            <Link 
-              href="/about" 
-              className="text-muted-foreground hover:text-foreground transition-colors"
-            >
-              About
-            </Link>
-            <Link 
-              href="/privacy" 
-              className="text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Privacy
-            </Link>
-            <Link 
-              href="/terms" 
-              className="text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Terms
-            </Link>
-            <Link 
-              href="/contact" 
-              className="text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Contact
-            </Link>
-          </div>
-        </div>
-
-        {/* Copyright */}
-        <div className="mt-8 pt-6 border-t border-border">
-          <p className="text-center text-sm text-muted-foreground">
-            © {currentYear} Astrotattwa. All rights reserved.
-          </p>
+        <div style={{ display: 'flex', gap: '22px' }}>
+          <Link
+            href="/privacy"
+            style={{
+              fontSize: '13px',
+              color: 'var(--text3)',
+              textDecoration: 'none',
+              transition: 'color .18s',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.color = 'var(--text)')}
+            onMouseLeave={e => (e.currentTarget.style.color = 'var(--text3)')}
+          >
+            Privacy
+          </Link>
+          <Link
+            href="/terms"
+            style={{
+              fontSize: '13px',
+              color: 'var(--text3)',
+              textDecoration: 'none',
+              transition: 'color .18s',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.color = 'var(--text)')}
+            onMouseLeave={e => (e.currentTarget.style.color = 'var(--text3)')}
+          >
+            Terms
+          </Link>
         </div>
       </div>
+
+     <style>{`
+        @media (max-width: 600px) {
+          .footer-inner { padding: 0 20px !important; }
+        }
+      `}</style>
+
     </footer>
-  );
+  )
 }
+
