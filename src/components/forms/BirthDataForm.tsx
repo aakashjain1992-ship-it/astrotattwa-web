@@ -38,10 +38,11 @@ const DEFAULT_DATETIME: DateTimeValue = {
 }
 
 interface Props {
+  cardError?: string,  
   onSubmit: (values: ChartFormValues) => void
 }
 
-export function BirthDataForm({ onSubmit }: Props) {
+export function BirthDataForm({ onSubmit, cardError }: Props) {
   const [isTestData, setIsTestData]   = useState(false)
   const [dateTime, setDateTime]       = useState<DateTimeValue>(DEFAULT_DATETIME)
   const [coordsError, setCoordsError] = useState(false)
@@ -148,6 +149,7 @@ export function BirthDataForm({ onSubmit }: Props) {
       gender:     data.gender,
       birthDate:  data.birthDate,
       birthTime:  data.birthTime,
+      timePeriod: data.timePeriod,
       birthPlace: data.cityName,
       latitude:   coordsRef.current.lat,
       longitude:  coordsRef.current.lng,
@@ -159,9 +161,17 @@ export function BirthDataForm({ onSubmit }: Props) {
   return (
     <form onSubmit={handleSubmit(onValid)} noValidate className="space-y-6">
 
-      {/* Load Test Data */}
-      <div className="flex justify-end">
-        <Button type="button" variant="outline" size="sm" onClick={fillTestData}>
+      {/* Card header: title + button inline */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px', marginBottom: '4px' }}>
+        <div>
+          <h2 style={{ fontFamily: "FangSong, STFangSong, fangsong, Georgia, serif", fontSize: '26px', color: 'var(--text)', marginBottom: '4px', lineHeight: 1.2 }}>
+            Check your Kundli
+          </h2>
+          <p style={{ fontSize: '12.5px', color: 'var(--text3)', margin: 0 }}>
+            Enter your birth details to see your chart
+          </p>
+        </div>
+        <Button type="button" variant="outline" size="sm" onClick={fillTestData} style={{ flexShrink: 0, marginTop: '4px' }}>
           {isTestData ? '✓ Test Data Loaded' : 'Load Test Data'}
         </Button>
       </div>
@@ -209,13 +219,9 @@ export function BirthDataForm({ onSubmit }: Props) {
         onChange={syncDateTimeToForm}
         disabledFuture
         fromYear={1900}
+        errorDate={isSubmitted && errors.birthDate ? errors.birthDate.message : undefined}
+        errorTime={isSubmitted && errors.birthTime ? errors.birthTime.message : undefined}
       />
-      {isSubmitted && errors.birthDate && (
-        <p className="text-sm text-destructive">{errors.birthDate.message}</p>
-      )}
-      {isSubmitted && errors.birthTime && (
-        <p className="text-sm text-destructive">{errors.birthTime.message}</p>
-      )}
 
       {/* Birth Place */}
       <div className="space-y-2">
@@ -235,12 +241,17 @@ export function BirthDataForm({ onSubmit }: Props) {
       </div>
 
       {/* Submit */}
+      {cardError && (
+        <p style={{ fontSize: '13px', color: '#DC2626', textAlign: 'center', padding: '8px 12px', background: 'rgba(220,38,38,.06)', borderRadius: '8px' }}>
+          {cardError}
+        </p>
+      )}
+
       <Button type="submit" className="w-full" size="lg">
         See My Chart →
       </Button>
 
       <p className="text-center text-xs text-muted-foreground">
-        No login required. You can save your chart later.
       </p>
 
       {/* Hidden fields — sent to API but not shown */}

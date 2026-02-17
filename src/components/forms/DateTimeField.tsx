@@ -38,6 +38,8 @@ export function DateTimeField({
   onChange,
   disabledFuture = true,
   fromYear = 1900,
+  errorDate,
+  errorTime,
 }: {
   labelDate?: string
   labelTime?: string
@@ -45,6 +47,8 @@ export function DateTimeField({
   onChange: (next: DateTimeValue) => void
   disabledFuture?: boolean
   fromYear?: number
+  errorDate?: string
+  errorTime?: string
 }) {
   const today = new Date()
   const toYear = today.getFullYear()
@@ -203,6 +207,8 @@ export function DateTimeField({
             />
           </PopoverContent>
         </Popover>
+     {errorDate && <p className="text-sm text-destructive">{errorDate}</p>}
+
       </div>
 
       <div className="space-y-2">
@@ -247,6 +253,7 @@ export function DateTimeField({
             </SelectContent>
           </Select>
         </div>
+         {errorTime && <p className="text-sm text-destructive">{errorTime}</p>}
       </div>
     </div>
   )

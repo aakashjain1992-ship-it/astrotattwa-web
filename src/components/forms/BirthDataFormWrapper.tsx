@@ -9,7 +9,8 @@ export interface ChartFormValues {
   name: string
   gender?: string
   birthDate: string     // "YYYY-MM-DD"
-  birthTime: string     // "HH:MM AM/PM"
+  birthTime: string     // "HH:MM"
+  timePeriod: string    // "AM/PM"
   birthPlace: string
   latitude: number
   longitude: number
@@ -18,6 +19,8 @@ export interface ChartFormValues {
 
 export default function BirthDataFormWrapper() {
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
   const router = useRouter()
 
   async function handleSubmit(values: ChartFormValues) {
@@ -34,20 +37,21 @@ export default function BirthDataFormWrapper() {
       const data = await res.json()
 
       // Temporarily store result until DB saving is implemented
-      localStorage.setItem('lastChart', JSON.stringify(data))
+      localStorage.setItem('lastChart', JSON.stringify(data.data))
       router.push('/chart')
     } catch (err) {
       console.error('Chart calculation error:', err)
-      alert('Failed to calculate chart. Please try again.')
+      setError('Failed to calculate chart. Please check your details and try again.')
     } finally {
-      setLoading(false)
+      setLoading(true)
+      setError(null)
     }
   }
 
   return (
     <>
       <ChartLoader visible={loading} />
-      <BirthDataForm onSubmit={handleSubmit} />
+      <BirthDataForm onSubmit={handleSubmit} cardError={error ?? undefined} />
     </>
   )
 }

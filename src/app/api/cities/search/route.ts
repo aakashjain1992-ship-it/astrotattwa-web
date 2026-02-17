@@ -126,7 +126,7 @@ export const GET= withErrorHandling(async (request: NextRequest)=> {
   const query = searchParams.get('q');
 
   if (!query || query.length < 2) {
-    return NextResponse.json({ success: true, cities: [] });
+    return NextResponse.json({ cities: [] });
   }
 
   try {
@@ -134,7 +134,7 @@ export const GET= withErrorHandling(async (request: NextRequest)=> {
 
     const supabaseResults = await searchSupabase(supabase, query);
     if (supabaseResults.length > 0) {
-      return NextResponse.json({ success: true, cities: supabaseResults });
+      return NextResponse.json({ cities: supabaseResults });
     }
 
     let hereMapsResults: CityResult[] = [];
@@ -142,11 +142,11 @@ export const GET= withErrorHandling(async (request: NextRequest)=> {
       hereMapsResults = await searchHereMaps(query);
     } catch (error) {
       logError('Here Maps search failed', error, { query });
-      return NextResponse.json({ success: true, cities: [] });
+      return NextResponse.json({ cities: [] });
     }
 
     if (hereMapsResults.length === 0) {
-      return NextResponse.json({success: true, cities: [] });
+      return NextResponse.json({ cities: [] });
     }
 
     // Service role client created fresh here — no request context needed
@@ -154,10 +154,10 @@ export const GET= withErrorHandling(async (request: NextRequest)=> {
       logError('Background city cache failed', err)
     );
 
-    return NextResponse.json({ success: true, cities: hereMapsResults });
+    return NextResponse.json({ cities: hereMapsResults });
 
   } catch (error) {
     logError('City search route failed', error, { query });
-    return NextResponse.json({ success: true, cities: [] }, { status: 500 });
+    return NextResponse.json({ cities: [] }, { status: 500 });
   }
 })

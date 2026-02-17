@@ -1,5 +1,7 @@
 'use client'
 
+import { useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { Logo } from '@/components/ui/Logo'
 
 interface ChartLoaderProps {
@@ -18,7 +20,10 @@ interface ChartLoaderProps {
  *   - Bouncing dots
  */
 export function ChartLoader({ visible }: ChartLoaderProps) {
-  return (
+  const mounted = useRef(false)
+  useEffect(() => { mounted.current = true }, [])
+
+  const content = (
     <>
       {/* ── Keyframes (injected once) ── */}
       <style>{`
@@ -185,5 +190,7 @@ export function ChartLoader({ visible }: ChartLoaderProps) {
       </div>
     </>
   )
+ if (typeof document === 'undefined') return null
+  return createPortal(content, document.body)
 }
 

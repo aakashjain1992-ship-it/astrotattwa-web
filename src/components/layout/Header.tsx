@@ -1,67 +1,75 @@
-'use client';
+'use client'
 
-import Link from 'next/link';
-import { Menu, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Logo } from '@/components/ui/Logo';
-import { useState } from 'react';
-import { cn } from '@/lib/utils';
+import { useEffect, useState } from 'react'
+import Link from 'next/link'
+import { Logo } from '@/components/ui/Logo'
 
-interface HeaderProps {
-  variant?: 'default' | 'minimal';
-  showNav?: boolean;
-  className?: string;
-}
+export function Header() {
+  const [scrolled, setScrolled] = useState(false)
 
-export function Header({ variant = 'default', showNav = true, className }: HeaderProps) {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  useEffect(() => {
+    const handler = () => setScrolled(window.scrollY > 10)
+    window.addEventListener('scroll', handler, { passive: true })
+    return () => window.removeEventListener('scroll', handler)
+  }, [])
 
   return (
-    <header className={cn(
-      'border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60',
-      'sticky top-0 z-50',
-      className
-    )}>
-      <div className="container flex h-16 items-center justify-between">
-        {/* Logo */}
-        <Logo />
+    <header
+      style={{
+        position: 'fixed',
+        top: 0, left: 0, right: 0,
+        zIndex: 200,
+        height: '64px',
+        background: 'rgba(255,255,255,0.9)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        borderBottom: '1px solid var(--border)',
+        transition: 'box-shadow .25s',
+        boxShadow: scrolled ? '0 2px 16px rgba(0,0,0,.06)' : 'none',
+      }}
+    >
+      <div
+        style={{
+          maxWidth: '1280px',
+          margin: '0 auto',
+          height: '100%',
+          padding: '0 32px 0 64px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
+      >
+        <Logo variant="header" />
 
-        {/* Desktop Navigation */}
-        {showNav && (
-          <nav className="hidden md:flex items-center gap-2">
-            <Link href="/login">
-              <Button variant="ghost" size="sm">Login</Button>
-            </Link>
-          </nav>
-        )}
-
-        {/* Mobile Menu Button */}
-        {showNav && (
-          <button
-            type="button"
-            className="md:hidden p-2 rounded-md hover:bg-accent"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            aria-label="Toggle menu"
-          >
-            {mobileMenuOpen ? (
-              <X className="h-5 w-5" />
-            ) : (
-              <Menu className="h-5 w-5" />
-            )}
-          </button>
-        )}
+        <Link
+          href="/login"
+          style={{
+            fontSize: '13.5px',
+            fontWeight: 500,
+            color: 'var(--text2)',
+            background: 'transparent',
+            border: '1px solid var(--border2)',
+            padding: '7px 20px',
+            borderRadius: '8px',
+            textDecoration: 'none',
+            transition: 'all .18s',
+          }}
+          onMouseEnter={e => {
+            const el = e.currentTarget
+            el.style.borderColor = 'var(--blue)'
+            el.style.color = 'var(--blue)'
+            el.style.background = 'var(--blue-light)'
+          }}
+          onMouseLeave={e => {
+            const el = e.currentTarget
+            el.style.borderColor = 'var(--border2)'
+            el.style.color = 'var(--text2)'
+            el.style.background = 'transparent'
+          }}
+        >
+          Login
+        </Link>
       </div>
-
-      {/* Mobile Menu */}
-      {showNav && mobileMenuOpen && (
-        <div className="md:hidden border-t border-border bg-background">
-          <div className="container py-4 space-y-3">
-            <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
-              <Button variant="ghost" className="w-full justify-start">Login</Button>
-            </Link>
-          </div>
-        </div>
-      )}
     </header>
-  );
+  )
 }

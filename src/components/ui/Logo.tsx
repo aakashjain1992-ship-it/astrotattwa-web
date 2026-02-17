@@ -1,32 +1,12 @@
 import Image from 'next/image'
 import Link from 'next/link'
-import { cn } from '@/lib/utils'
-import type { CSSProperties } from 'react'
 
 interface LogoProps {
-  /** 'header' = 36px mark + wordmark (default)
-   *  'loader' = 96px mark only, for the loading animation */
   variant?: 'header' | 'loader'
-  /** Pass undefined to render without a link wrapper */
-  href?: string
   className?: string
-  style?: CSSProperties
 }
 
-/**
- * Astrotattwa Logo component — single source of truth.
- *
- * Public directory files required:
- *   /public/logo-mark.png   — 76×76  transparent PNG (header use)
- *   /public/logo-loader.png — 160×160 transparent PNG (loader animation)
- *
- * Usage:
- *   <Logo />                        — header mark + wordmark with home link
- *   <Logo href={undefined} />       — no link wrapper
- *   <Logo variant="loader" />       — large mark only, for ChartLoader
- */
-export function Logo({ variant = 'header', href = '/', className, style }: LogoProps) {
-
+export function Logo({ variant = 'header', className }: LogoProps) {
   if (variant === 'loader') {
     return (
       <Image
@@ -34,42 +14,40 @@ export function Logo({ variant = 'header', href = '/', className, style }: LogoP
         alt="Astrotattwa"
         width={96}
         height={96}
-        className={cn('object-contain', className)}
-        style={style}
-        priority
+        style={{ objectFit: 'contain' }}
       />
     )
   }
 
-  // Header variant: mark + wordmark
-  const inner = (
-    <span className={cn('flex items-center gap-2.5', className)} style={style}>
-      <Image
-        src="/logo-mark.png"
-        alt=""
-        width={36}
-        height={36}
-        className="flex-shrink-0 object-contain"
-        priority
-      />
-      <span
-        className="font-serif tracking-wide"
-        style={{ fontSize: '19px', lineHeight: 1 }}
-      >
-        Astro
-        <span className="text-primary">tattwa</span>
-      </span>
-    </span>
-  )
-
-  if (href === undefined) return inner
-
   return (
     <Link
-      href={href}
-      className="flex items-center outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-sm"
+      href="/"
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '10px',
+        textDecoration: 'none',
+      }}
+      className={className}
     >
-      {inner}
+      <Image
+        src="/logo-mark.png"
+        alt="Astrotattwa logo"
+        width={38}
+        height={38}
+        style={{ objectFit: 'contain', flexShrink: 0 }}
+      />
+      <span
+        style={{
+          fontFamily: "'DM Sans', sans-serif",
+          fontSize: '18px',
+          fontWeight: 600,
+          letterSpacing: '-0.3px',
+          color: 'var(--text)',
+        }}
+      >
+        Astrotattwa
+      </span>
     </Link>
   )
 }

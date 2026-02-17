@@ -1,6 +1,9 @@
 import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
 import { NavagrahaSection } from '@/components/landing/NavagrahaSection'
+import { Yantra } from '@/components/landing/Yantra'
+import { Particles } from '@/components/landing/Particles'
+import { Glyphs } from '@/components/landing/Glyphs'
 import BirthDataFormWrapper from '@/components/forms/BirthDataFormWrapper'
 
 const HERO_BULLETS = [
@@ -17,90 +20,164 @@ const HERO_STATS = [
 
 export default function HomePage() {
   return (
-    <div className="flex min-h-screen flex-col">
+    <div style={{ display: 'flex', minHeight: '100vh', flexDirection: 'column' }}>
       <Header />
 
-      <main className="flex-1">
+      <main style={{ flex: 1 }}>
 
         {/* ── HERO ── */}
-        <section className="container py-16 md:py-20 lg:py-24">
-          <div className="mx-auto grid max-w-6xl gap-12 lg:grid-cols-[1fr_460px] lg:gap-16 items-start">
+        <section
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 500px',
+            alignItems: 'start',
+            padding: '96px 64px 80px 64px',
+            position: 'relative',
+            overflow: 'hidden',
+            maxWidth: '1280px',
+            margin: '0 auto',
+            width: '100%',
+          }}
+        >
+          <Particles />
+          <Glyphs />
+          <Yantra />
 
-            {/* Left: Hero Text */}
-            <div className="flex flex-col justify-center">
+          {/* Left: Copy */}
+          <div style={{ padding: '20px 32px 24px 0', position: 'relative', zIndex: 2 }}>
 
-              {/* Eyebrow */}
-              <div className="mb-5 inline-flex items-center gap-2.5 text-[11px] font-medium tracking-[2.8px] uppercase text-primary">
-                <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-                Vedic Astrology
-              </div>
-
-              {/* Headline */}
-              <h1 className="font-serif mb-5 tracking-tight leading-[1.04]">
-                <span className="block italic font-normal text-muted-foreground"
-                  style={{ fontSize: 'clamp(28px, 3.6vw, 48px)' }}>
-                  the map
-                </span>
-                <span className="block font-normal leading-none"
-                  style={{ fontSize: 'clamp(50px, 6vw, 80px)' }}>
-                  you were<br />
-                  <span className="text-primary">born with</span>
-                </span>
-              </h1>
-
-              {/* Sub */}
-              <p className="mb-7 max-w-[420px] text-[15.5px] leading-relaxed text-muted-foreground">
-                Your birth chart is a precise record of the sky at the moment
-                you arrived — the timing of life&apos;s chapters, the pattern of your
-                relationships, the shape of your path.
-              </p>
-
-              {/* Feature bullets */}
-              <ul className="mb-8 space-y-2.5">
-                {HERO_BULLETS.map(text => (
-                  <li key={text} className="flex items-start gap-2.5 text-sm text-muted-foreground">
-                    <span className="mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-primary/10">
-                      <svg viewBox="0 0 10 8" fill="none" className="h-2.5 w-2.5">
-                        <path d="M1 4l3 3 5-6" stroke="hsl(var(--primary))" strokeWidth="1.5"
-                          strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    </span>
-                    {text}
-                  </li>
-                ))}
-              </ul>
-
-              {/* Stats row */}
-              <div className="flex items-center gap-0 border-t border-border pt-6">
-                {HERO_STATS.map((s, i) => (
-                  <div key={s.num} className="flex items-center">
-                    {i > 0 && <div className="mx-4 h-8 w-px bg-border" />}
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg leading-none">{s.icon}</span>
-                      <div>
-                        <div className="font-serif text-[15px] font-normal leading-tight text-foreground">
-                          {s.num}
-                        </div>
-                        <div className="text-[11px] text-muted-foreground">{s.label}</div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+            {/* Eyebrow */}
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: '9px',
+              fontSize: '11px', fontWeight: 500, letterSpacing: '2.8px',
+              textTransform: 'uppercase', color: 'var(--blue)',
+              marginBottom: '18px',
+              animation: 'up .6s ease .15s forwards',
+            }}>
+              <span style={{
+                width: '5px', height: '5px', borderRadius: '50%',
+                background: 'var(--blue)', flexShrink: 0,
+              }} />
+              Vedic Astrology
             </div>
 
-            {/* Right: Form card */}
-            <div className="rounded-2xl border border-border bg-card p-6 shadow-md lg:sticky lg:top-20 lg:p-8">
-              <div className="font-serif text-[22px] font-normal text-foreground mb-1">
-                Check your Kundli
-              </div>
-              <p className="text-[13px] text-muted-foreground mb-6">
-                Enter your birth details to see your chart
-              </p>
-              <BirthDataFormWrapper />
+            {/* Headline */}
+            <h1 style={{
+              fontFamily: "'Instrument Serif', serif",
+              letterSpacing: '-1.2px', lineHeight: 1.04,
+              marginBottom: '20px',
+            }}>
+              <span style={{
+                display: 'block', fontStyle: 'italic', fontWeight: 400,
+                fontSize: 'clamp(30px,3.8vw,52px)',
+                color: 'var(--text3)',
+                animation: 'up .75s ease .3s forwards',
+              }}>
+                the map
+              </span>
+              <span style={{
+                display: 'block', fontWeight: 400,
+                fontSize: 'clamp(52px,6.2vw,84px)',
+                color: 'var(--text)', lineHeight: 1,
+                animation: 'up .75s ease .45s forwards',
+              }}>
+                you were<br />
+                <span style={{ color: 'var(--blue)' }}>born with</span>
+              </span>
+            </h1>
+
+            {/* Subtext */}
+            <p style={{
+              fontSize: '15.5px', lineHeight: 1.72,
+              color: 'var(--text2)', maxWidth: '420px',
+              marginBottom: '28px',
+              animation: 'up .65s ease .65s forwards',
+            }}>
+              Your birth chart is a precise record of the sky at the moment
+              you arrived — the timing of life&apos;s chapters, the pattern of your
+              relationships, the shape of your path.
+            </p>
+
+            {/* Feature bullets */}
+            <ul style={{
+              listStyle: 'none', display: 'flex', flexDirection: 'column',
+              gap: '10px', marginBottom: '0',
+              animation: 'up .65s ease .82s forwards',
+            }}>
+              {HERO_BULLETS.map(text => (
+                <li key={text} style={{
+                  display: 'flex', alignItems: 'flex-start', gap: '10px',
+                  fontSize: '14px', color: 'var(--text2)', lineHeight: 1.55,
+                }}>
+                  <span style={{
+                    flexShrink: 0, marginTop: '7px',
+                    width: '5px', height: '5px', borderRadius: '50%',
+                    background: 'var(--blue)',
+                  }} />
+                  {text}
+                </li>
+              ))}
+            </ul>
+
+            {/* Stats bar */}
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 0,
+              marginTop: '24px',
+              padding: '14px 20px',
+              background: 'rgba(37,99,235,.04)',
+              border: '1px solid rgba(37,99,235,.1)',
+              borderRadius: '12px',
+              animation: 'up .65s ease 1.05s forwards',
+            }}>
+              {HERO_STATS.map((s, i) => (
+                <div key={s.num} style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
+                  {i > 0 && (
+                    <div style={{
+                      width: '1px', height: '36px',
+                      background: 'rgba(37,99,235,.15)',
+                      flexShrink: 0, margin: '0 4px',
+                    }} />
+                  )}
+                  <div style={{
+                    flex: 1, textAlign: 'center',
+                    display: 'flex', flexDirection: 'column',
+                    alignItems: 'center', gap: '4px',
+                  }}>
+                    <span style={{ fontSize: '16px', lineHeight: 1, color: 'var(--blue)', opacity: .7, marginBottom: '2px' }}>
+                      {s.icon}
+                    </span>
+                    <span style={{ fontSize: '15px', lineHeight: 1.2, color: 'var(--text1)', fontWeight: 600, letterSpacing: '.1px' }}>
+                      {s.num}
+                    </span>
+                    <span style={{ fontSize: '10.5px', letterSpacing: '.3px', color: 'rgba(15,23,42,.38)', marginTop: '2px' }}>
+                      {s.label}
+                    </span>
+                  </div>
+                </div>
+              ))}
             </div>
 
           </div>
+
+          {/* Right: Form card */}
+          <div style={{
+            position: 'relative', zIndex: 2,
+            padding: '20px 0 24px 16px',
+            display: 'flex', justifyContent: 'flex-start', alignItems: 'flex-start',
+          }}>
+            <div style={{
+              background: '#fff',
+              border: '1px solid var(--border)',
+              borderRadius: '16px',
+              padding: '32px 32px 28px',
+              width: '100%', maxWidth: '480px',
+              boxShadow: 'var(--shadow-md)',
+              animation: 'cardIn .85s cubic-bezier(.16,1,.3,1) .3s forwards',
+            }}>
+              <BirthDataFormWrapper />
+            </div>
+          </div>
+
         </section>
 
         {/* ── NAVAGRAHA ── */}
@@ -109,7 +186,34 @@ export default function HomePage() {
       </main>
 
       <Footer />
+
+      <style>{`
+        @keyframes yRotate { to { transform: rotate(360deg); } }
+        @keyframes pTwinkle {
+          0%, 100% { opacity: .04; }
+          50% { opacity: .18; }
+        }
+        @keyframes gFloat {
+          0%   { opacity: 0; transform: translateY(0) rotate(0deg); }
+          15%  { opacity: .28; }
+          85%  { opacity: .15; }
+          100% { opacity: 0; transform: translateY(-70px) rotate(8deg); }
+        }
+        @keyframes up {
+          from { opacity: 1; transform: translateY(18px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes cardIn {
+          from { opacity: 1; transform: translateY(24px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @media (max-width: 1100px) {
+          .hero-grid {
+            grid-template-columns: 1fr !important;
+            padding: 88px 40px 64px 40px !important;
+          }
+        }
+      `}</style>
     </div>
   )
 }
-
