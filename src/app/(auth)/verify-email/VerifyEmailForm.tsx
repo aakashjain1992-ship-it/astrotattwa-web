@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
-import { Stars, Mail, Loader2, CheckCircle } from 'lucide-react'
+import { Logo } from '@/components/ui/Logo'
 
 export function VerifyEmailForm() {
   const searchParams = useSearchParams()
@@ -35,10 +35,7 @@ export function VerifyEmailForm() {
 
         {/* Logo + App Name */}
         <div className="flex flex-col items-center gap-1">
-          <Link href="/" className="flex items-center gap-2">
-            <Stars className="h-6 w-6 text-primary" />
-            <span className="text-xl font-bold tracking-tight">Astrotattwa</span>
-          </Link>
+          <Logo />
         </div>
 
         <div className="rounded-xl border bg-card p-6 shadow-sm space-y-4 text-center">
