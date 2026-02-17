@@ -41,7 +41,7 @@ interface EditBirthDetailsFormProps {
   /** Current birth data */
   currentData: {
     name: string
-    gender?: 'male' | 'female'
+    gender?: 'Male' | 'Female'
     localDateTime: string
     latitude: number
     longitude: number
@@ -51,7 +51,7 @@ interface EditBirthDetailsFormProps {
   /** Callback when form is submitted */
   onSubmit: (data: {
     name: string
-    gender: 'male' | 'female'
+    gender: 'Male' | 'Female'
     birthDate: string
     birthTime: string
     timePeriod: 'AM' | 'PM'
@@ -185,7 +185,7 @@ export function EditBirthDetailsForm({
             <Select
               value={gender}
               onValueChange={(v) =>
-                setValue('gender', v as 'male' | 'female', { shouldValidate: true })
+                setValue('gender', v as 'Male' | 'Female', { shouldValidate: true })
               }
             >
               <SelectTrigger className={errors.gender ? 'border-destructive' : ''}>

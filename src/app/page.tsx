@@ -1,114 +1,115 @@
-import Link from 'next/link'
-import { Button } from '@/components/ui/button'
-import { Stars, Calculator, Lock, Zap } from 'lucide-react'
+import { Header } from '@/components/layout/Header'
+import { Footer } from '@/components/layout/Footer'
+import { NavagrahaSection } from '@/components/landing/NavagrahaSection'
 import BirthDataFormWrapper from '@/components/forms/BirthDataFormWrapper'
+
+const HERO_BULLETS = [
+  'Your Dashas — the planetary periods timing every chapter of your life',
+  'All 9 planets across 12 houses, with nakshatras and padas',
+  'Divisional charts, yogas, and the complete traditional system',
+]
+
+const HERO_STATS = [
+  { icon: '⚡', num: 'Instant',     label: 'Chart in seconds' },
+  { icon: '✦', num: 'Complete',    label: 'All 9 planets · 16 charts' },
+  { icon: '◐', num: 'Traditional', label: 'Authentic Vedic system' },
+]
 
 export default function HomePage() {
   return (
     <div className="flex min-h-screen flex-col">
-      {/* Header */}
-      <header className="border-b">
-        <div className="container flex h-16 items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Stars className="h-6 w-6 text-primary" />
-            <span className="text-xl font-bold">Astrotattwa</span>
-          </div>
-          <nav className="flex items-center gap-4">
-            <Link href="/login">
-              <Button variant="ghost">Login</Button>
-            </Link>
-            <Link href="/signup">
-              <Button>Get Started</Button>
-            </Link>
-          </nav>
-        </div>
-      </header>
+      <Header />
 
-      {/* Main Content */}
       <main className="flex-1">
-        {/* Hero + Form Section */}
-        <section className="container py-12">
-          <div className="mx-auto grid max-w-6xl gap-12 lg:grid-cols-2 lg:gap-16">
+
+        {/* ── HERO ── */}
+        <section className="container py-16 md:py-20 lg:py-24">
+          <div className="mx-auto grid max-w-6xl gap-12 lg:grid-cols-[1fr_460px] lg:gap-16 items-start">
+
             {/* Left: Hero Text */}
             <div className="flex flex-col justify-center">
-              <h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
-                Your Cosmic Blueprint,
-                <span className="text-primary"> Accurately Calculated</span>
+
+              {/* Eyebrow */}
+              <div className="mb-5 inline-flex items-center gap-2.5 text-[11px] font-medium tracking-[2.8px] uppercase text-primary">
+                <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                Vedic Astrology
+              </div>
+
+              {/* Headline */}
+              <h1 className="font-serif mb-5 tracking-tight leading-[1.04]">
+                <span className="block italic font-normal text-muted-foreground"
+                  style={{ fontSize: 'clamp(28px, 3.6vw, 48px)' }}>
+                  the map
+                </span>
+                <span className="block font-normal leading-none"
+                  style={{ fontSize: 'clamp(50px, 6vw, 80px)' }}>
+                  you were<br />
+                  <span className="text-primary">born with</span>
+                </span>
               </h1>
-              <p className="mt-6 text-lg text-muted-foreground">
-                Free Vedic astrology birth charts with Swiss Ephemeris precision.
-                Explore your planets, dashas, and yogas—no hidden costs.
+
+              {/* Sub */}
+              <p className="mb-7 max-w-[420px] text-[15.5px] leading-relaxed text-muted-foreground">
+                Your birth chart is a precise record of the sky at the moment
+                you arrived — the timing of life&apos;s chapters, the pattern of your
+                relationships, the shape of your path.
               </p>
-              
-              {/* Features List */}
-              <div className="mt-8 space-y-3">
-                <div className="flex items-center gap-3">
-                  <Calculator className="h-5 w-5 text-primary" />
-                  <span className="text-sm">100% Accurate Swiss Ephemeris calculations</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Lock className="h-5 w-5 text-primary" />
-                  <span className="text-sm">All chart data is free forever</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Zap className="h-5 w-5 text-primary" />
-                  <span className="text-sm">No login required to calculate</span>
-                </div>
+
+              {/* Feature bullets */}
+              <ul className="mb-8 space-y-2.5">
+                {HERO_BULLETS.map(text => (
+                  <li key={text} className="flex items-start gap-2.5 text-sm text-muted-foreground">
+                    <span className="mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-primary/10">
+                      <svg viewBox="0 0 10 8" fill="none" className="h-2.5 w-2.5">
+                        <path d="M1 4l3 3 5-6" stroke="hsl(var(--primary))" strokeWidth="1.5"
+                          strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </span>
+                    {text}
+                  </li>
+                ))}
+              </ul>
+
+              {/* Stats row */}
+              <div className="flex items-center gap-0 border-t border-border pt-6">
+                {HERO_STATS.map((s, i) => (
+                  <div key={s.num} className="flex items-center">
+                    {i > 0 && <div className="mx-4 h-8 w-px bg-border" />}
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg leading-none">{s.icon}</span>
+                      <div>
+                        <div className="font-serif text-[15px] font-normal leading-tight text-foreground">
+                          {s.num}
+                        </div>
+                        <div className="text-[11px] text-muted-foreground">{s.label}</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
 
-            {/* Right: Chart Creation Form */}
-            <div className="rounded-lg border bg-card p-6 shadow-sm lg:p-8">
-              <h2 className="mb-6 text-2xl font-bold">Create Your Birth Chart</h2>
+            {/* Right: Form card */}
+            <div className="rounded-2xl border border-border bg-card p-6 shadow-md lg:sticky lg:top-20 lg:p-8">
+              <div className="font-serif text-[22px] font-normal text-foreground mb-1">
+                Check your Kundli
+              </div>
+              <p className="text-[13px] text-muted-foreground mb-6">
+                Enter your birth details to see your chart
+              </p>
               <BirthDataFormWrapper />
             </div>
+
           </div>
         </section>
 
-        {/* Features Section */}
-        <section className="border-t bg-muted/50 py-12 md:py-24">
-          <div className="container">
-            <div className="mx-auto grid max-w-5xl gap-8 md:grid-cols-3">
-              <div className="flex flex-col items-center text-center">
-                <Calculator className="mb-4 h-12 w-12 text-primary" />
-                <h3 className="text-lg font-semibold">100% Accurate</h3>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Swiss Ephemeris calculations match professional software
-                </p>
-              </div>
-              <div className="flex flex-col items-center text-center">
-                <Lock className="mb-4 h-12 w-12 text-primary" />
-                <h3 className="text-lg font-semibold">Always Free</h3>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  All your chart data is free forever—no paywalls
-                </p>
-              </div>
-              <div className="flex flex-col items-center text-center">
-                <Zap className="mb-4 h-12 w-12 text-primary" />
-                <h3 className="text-lg font-semibold">Modern & Fast</h3>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Beautiful mobile-first design that just works
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
+        {/* ── NAVAGRAHA ── */}
+        <NavagrahaSection />
+
       </main>
 
-      {/* Footer */}
-      <footer className="border-t py-6">
-        <div className="container flex flex-col gap-4 text-center text-sm text-muted-foreground md:flex-row md:justify-between">
-          <p>© 2026 Astrotattwa. All rights reserved.</p>
-          <div className="flex justify-center gap-4">
-            <Link href="/privacy" className="hover:text-foreground">
-              Privacy
-            </Link>
-            <Link href="/terms" className="hover:text-foreground">
-              Terms
-            </Link>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   )
 }
+
