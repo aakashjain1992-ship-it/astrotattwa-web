@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Stars, CheckCircle, Loader2 } from 'lucide-react'
+import { Logo } from '@/components/ui/Logo'
 
 export function ForgotPasswordForm() {
   const [email, setEmail] = useState('')
@@ -42,12 +42,7 @@ export function ForgotPasswordForm() {
       <div className="flex min-h-screen flex-col items-center justify-center p-4">
         <div className="w-full max-w-sm space-y-6">
           <div className="flex flex-col items-center gap-1">
-            <Link href="/" className="flex items-center gap-2">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
-                <Stars className="h-7 w-7 text-primary" />
-              </div>
-              <span className="text-lg font-bold tracking-tight">Astrotattwa</span>
-            </Link>
+            <Logo />
           </div>
           <div className="rounded-xl border bg-card p-6 shadow-sm space-y-4 text-center">
             <div className="flex justify-center">
