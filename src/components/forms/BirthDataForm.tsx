@@ -6,13 +6,14 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
 import { baseBirthSchema } from '@/lib/validation/birthFormSchemas'
 import { format as formatDate } from 'date-fns'
+import { useDateTimeSync } from '@/hooks/useDateTimeSync'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { MapPin, User } from 'lucide-react'
 import { CitySearch } from './CitySearch'
-import { DateTimeField, DateTimeValue } from './DateTimeField'
+import { DateTimeField } from './DateTimeField'
 import {
   Select,
   SelectContent,
@@ -30,13 +31,6 @@ const birthDataSchema = baseBirthSchema.extend({
 
 type BirthDataFormValues = z.infer<typeof birthDataSchema>
 
-const DEFAULT_DATETIME: DateTimeValue = {
-  date:   undefined,
-  hour:   undefined,
-  minute: undefined,
-  period: 'AM',
-}
-
 interface Props {
   cardError?: string,  
   onSubmit: (values: ChartFormValues) => void
@@ -44,7 +38,6 @@ interface Props {
 
 export function BirthDataForm({ onSubmit, cardError }: Props) {
   const [isTestData, setIsTestData]   = useState(false)
-  const [dateTime, setDateTime]       = useState<DateTimeValue>(DEFAULT_DATETIME)
   const [coordsError, setCoordsError] = useState(false)
 
   // Coordinates + timezone stored outside form state (set by CitySearch)
@@ -73,6 +66,8 @@ export function BirthDataForm({ onSubmit, cardError }: Props) {
       timezone:  'Asia/Kolkata',
     },
   })
+
+  const { dateTime, setDateTime, syncDateTimeToForm } = useDateTimeSync(setValue)
 
   const cityName = watch('cityName')
 
@@ -111,27 +106,6 @@ export function BirthDataForm({ onSubmit, cardError }: Props) {
     setValue('cityName',  `${city.city_name}, ${city.state_name}`)
     coordsRef.current = { lat: city.latitude, lng: city.longitude, timezone: city.timezone }
     setCoordsError(false)
-  }
-
-  // ── Sync DateTimeField → form ────────────────────────────────────
-  const syncDateTimeToForm = (next: DateTimeValue) => {
-    setDateTime(next)
-
-    if (next.date) {
-      setValue('birthDate', formatDate(next.date, 'yyyy-MM-dd'), { shouldValidate: true })
-    } else {
-      setValue('birthDate', '', { shouldValidate: true })
-    }
-
-    if (next.hour && next.minute) {
-      setValue('birthTime', `${next.hour}:${next.minute}`, { shouldValidate: true })
-    } else {
-      setValue('birthTime', '', { shouldValidate: true })
-    }
-
-    if (next.period) {
-      setValue('timePeriod', next.period, { shouldValidate: true })
-    }
   }
 
   // ── Submit ──────────────────────────────────────────────────────
