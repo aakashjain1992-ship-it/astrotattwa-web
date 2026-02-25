@@ -299,8 +299,8 @@ export function buildDivisionalHouses(
     const statusFlags: StatusFlag[] = [];
     if (planetData.retrograde) statusFlags.push('R');
     if (planetData.combust) statusFlags.push('C');
-    if (planetData.exalted) statusFlags.push('E');
-    if (planetData.debilitated) statusFlags.push('D');
+    if (planetData.exalted) statusFlags.push('↑');
+    if (planetData.debilitated) statusFlags.push('↓');
     
     // Add planet to house
     houses[houseIndex].planets.push({
