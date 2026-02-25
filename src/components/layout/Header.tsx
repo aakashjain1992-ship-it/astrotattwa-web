@@ -7,6 +7,8 @@ import { createClient } from '@/lib/supabase/client'
 import { Logo } from '@/components/ui/Logo'
 import { LogOut, Settings, User, ChevronDown } from 'lucide-react'
 import type { AuthUser } from '@/hooks/useAuth'
+import { performLogout } from '@/lib/auth/logout'
+
 
 // ─── Avatar ──────────────────────────────────────────────────────────────────
 
@@ -278,16 +280,31 @@ export function Header({ showNav = true }: HeaderProps) {
   // Auth state
   useEffect(() => {
     fetch('/api/auth/me')
+    .then(r => {
+    if (r.status === 401) return { user: null }
+    return r.json()
+  })
     .then(r => r.json())
     .then(({ user }) => {
       setUser(user)
       setAuthLoading(false)
     })
     .catch(() => setAuthLoading(false))
-  }, [])
+
+    // Multi-tab logout sync
+
+   const handleStorage = (e: StorageEvent) => {
+    if (e.key === 'astrotattwa:logout') {
+      window.location.href = '/login'
+    }
+  }
+  window.addEventListener('storage', handleStorage)
+  return () => window.removeEventListener('storage', handleStorage)
+}, [])
+
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut()
+    await performLogout()
     router.push('/login')
     router.refresh()
   }

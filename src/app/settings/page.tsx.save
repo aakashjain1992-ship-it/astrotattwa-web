@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { SessionWatcher } from '@/components/auth/SessionWatcher'
 import { Header, Footer } from '@/components/layout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -23,7 +24,7 @@ import {
 } from 'lucide-react'
 import type { User as SupabaseUser } from '@supabase/supabase-js'
 import { performLogout } from '@/lib/auth/logout'
-import { useIdleLogout } from '@/hooks/useIdleLogout'
+
 
 
 // ─── Avatar ──────────────────────────────────────────────────────────────────
@@ -167,7 +168,8 @@ function ChangePasswordForm() {
     setTimeout(() => {
       setSuccess(false)
       setOpen(false)
-      performLogout()
+      // Sign out and redirect to login after password change
+      supabase.auth.signOut().then(() => router.push('/login?reset=success'))
     }, 2000)
   }
 
@@ -355,8 +357,6 @@ function ChangePasswordForm() {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function SettingsPage() {
-  useIdleLogout()
-
   const router = useRouter()
   const supabase = createClient()
 
@@ -369,20 +369,16 @@ export default function SettingsPage() {
   const [signOutLoading, setSignOutLoading] = useState(false)
 
   useEffect(() => {
-    fetch('/api/auth/me')
-    .then(r => r.json())
-    .then(({ user }) => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) {
         router.push('/login')
         return
       }
-      setUser(user as any)
-      setName(user.user_metadata?.full_name ?? user.user_metadata?.name ??'')
+      setUser(user)
+      setName(user.user_metadata?.full_name ?? user.user_metadata?.name ?? '')
       setLoading(false)
     })
-     .catch(() => router.push('/login'))
-
-  }, [router])
+  }, [router, supabase])
 
   const handleSaveName = useCallback(
     async (e: React.FormEvent) => {
@@ -405,7 +401,7 @@ export default function SettingsPage() {
 
   const handleSignOut = async () => {
     setSignOutLoading(true)
-    await performLogout()
+    await supabase.auth.signOut()
     router.push('/login')
   }
 
@@ -440,6 +436,7 @@ export default function SettingsPage() {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-subtle)', display: 'flex', flexDirection: 'column' }}>
       {/* Watches for session expiry / sign-out from another tab */}
+      <SessionWatcher />
 
       <Header showNav={false} />
 

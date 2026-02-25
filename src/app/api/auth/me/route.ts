@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
   const { data, error } = await supabase.auth.getUser()
 
   if (error || !data.user) {
-    return NextResponse.json({ user: null })
+    return NextResponse.json({ user: null }, { status: 401 })
   }
 
   // Return minimal safe user shape for header

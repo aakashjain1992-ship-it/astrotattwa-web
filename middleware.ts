@@ -18,7 +18,19 @@ export async function middleware(request: NextRequest) {
     {
       cookies: {
         get(name: string) {
-          return request.cookies.get(name)?.value
+              // Try exact name first
+    const exact = request.cookies.get(name)?.value
+    if (exact) return exact
+    // Reconstruct chunked cookies (auth-token.0, auth-token.1, etc.)
+    let chunks = ''
+    let i = 0
+    while (true) {
+      const chunk = request.cookies.get(`${name}.${i}`)?.value
+      if (!chunk) break
+      chunks += chunk
+      i++
+    }
+    return chunks || undefined
         },
         set(name: string, value: string, options: CookieOptions) {
           request.cookies.set({ name, value, ...options })
