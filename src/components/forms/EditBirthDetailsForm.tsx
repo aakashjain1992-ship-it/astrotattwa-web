@@ -11,15 +11,8 @@ import { format } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { CitySearch, type City } from '@/components/forms/CitySearch'
-import { DateTimeField } from '@/components/forms/DateTimeField'
+import { DateTimeField, GenderField } from '@/components/forms/DateTimeField'
 import { parseDateTime } from '@/lib/utils/parseDateTime'
 import { cn } from '@/lib/utils'
 
@@ -166,27 +159,17 @@ export function EditBirthDetailsForm({
           </div>
 
           {/* Gender */}
-          <div className="space-y-2">
-            <Label>Gender</Label>
-            <Controller
-              control={control}
-              name="gender"
-              render={({ field }) => (
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <SelectTrigger className={errors.gender ? 'border-destructive' : ''}>
-                    <SelectValue placeholder="Select gender" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Male">Male</SelectItem>
-                    <SelectItem value="Female">Female</SelectItem>
-                  </SelectContent>
-                </Select>
-              )}
-            />
-            {errors.gender && (
-              <p className="text-sm text-destructive">{errors.gender.message}</p>
+          <Controller
+            control={control}
+            name="gender"
+            render={({ field }) => (
+              <GenderField
+                value={field.value as "Male" | "Female" | ""}
+                onChange={field.onChange}
+                error={errors.gender?.message}
+              />
             )}
-          </div>
+          />
         </div>
 
         {/* Date + Time — reuses DateTimeField (same as home form) */}
