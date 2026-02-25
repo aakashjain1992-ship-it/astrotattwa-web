@@ -15,7 +15,7 @@ export const chartCalculationSchema = z.object({
   // Accept UI "Male/Female" and also lowercase
   gender: z
     .enum(['male', 'female', 'Male', 'Female'], { required_error: 'Gender is required' })
-    .transform((val) => val.toLowerCase()),
+    .transform((val) =>  (val.charAt(0).toUpperCase() + val.slice(1).toLowerCase()) as 'Male' | 'Female'),
 
   birthDate: z
     .string({ required_error: 'Birth date is required' })
