@@ -21,9 +21,19 @@ import {
   Shield,
   ChevronRight,
 } from 'lucide-react'
-import type { User as SupabaseUser } from '@supabase/supabase-js'
+// import type { User as SupabaseUser } from '@supabase/supabase-js'
 import { performLogout } from '@/lib/auth/logout'
 import { useIdleLogout } from '@/hooks/useIdleLogout'
+
+type MeUser = {
+  id: string
+  email: string
+  fullName: string | null
+  avatarUrl: string | null
+  createdAt: string | undefined
+  provider: string | null
+  signInMethod: string
+}
 
 
 // ─── Avatar ──────────────────────────────────────────────────────────────────
@@ -360,7 +370,7 @@ export default function SettingsPage() {
   const router = useRouter()
   const supabase = createClient()
 
-  const [user, setUser] = useState<SupabaseUser | null>(null)
+  const [user, setUser] = useState<MeUser | null>(null)
   const [loading, setLoading] = useState(true)
   const [name, setName] = useState('')
   const [nameLoading, setNameLoading] = useState(false)
@@ -370,43 +380,67 @@ export default function SettingsPage() {
 
   useEffect(() => {
     fetch('/api/auth/me')
-    .then(r => r.json())
+    .then((r) => (r.status === 401 ? { user: null } : r.json()))
     .then(({ user }) => {
       if (!user) {
         router.push('/login')
         return
       }
-      setUser(user as any)
-      setName(user.user_metadata?.full_name ?? user.user_metadata?.name ??'')
+      setUser(user as MeUser)
+      setName((user.fullName ?? '').trim())
       setLoading(false)
     })
      .catch(() => router.push('/login'))
-
   }, [router])
 
-  const handleSaveName = useCallback(
-    async (e: React.FormEvent) => {
-      e.preventDefault()
-      if (!name.trim()) { setNameError('Name cannot be empty'); return }
-      setNameLoading(true)
-      setNameError('')
-      const { data, error } = await supabase.auth.updateUser({ data: { full_name: name.trim() } })
+ const handleSaveName = useCallback(
+  async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!user) return
+
+    const trimmed = name.trim()
+    if (!trimmed) {
+      setNameError('Name cannot be empty')
+      return
+    }
+
+    setNameLoading(true)
+    setNameError('')
+
+    // 1) Update profiles (source of truth for display name)
+    const { error: profileErr } = await supabase
+      .from('profiles')
+      .upsert(
+        {
+          id: user.id,
+          email: user.email,
+          full_name: trimmed,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'id' }
+      )
+
+    if (profileErr) {
       setNameLoading(false)
-      if (error) {
-        setNameError(error.message)
-        return
-      }
-      if (data.user) setUser(data.user)
-      setNameSuccess(true)
-      setTimeout(() => setNameSuccess(false), 3000)
-    },
-    [name, supabase]
-  )
+      setNameError(profileErr.message)
+      return
+    }
+
+    // 2) Keep auth metadata in sync (optional but helpful)
+    await supabase.auth.updateUser({ data: { full_name: trimmed } })
+
+    // 3) Update local state
+    setUser((prev) => (prev ? { ...prev, fullName: trimmed } : prev))
+    setNameSuccess(true)
+    setTimeout(() => setNameSuccess(false), 3000)
+    setNameLoading(false)
+  },
+  [name, supabase, user]
+)
 
   const handleSignOut = async () => {
     setSignOutLoading(true)
     await performLogout()
-    router.push('/login')
   }
 
   const formatDate = (iso: string) =>
@@ -432,11 +466,10 @@ export default function SettingsPage() {
     )
   }
 
-  const displayName =
-    user?.user_metadata?.full_name ?? user?.user_metadata?.name ?? 'Your Account'
-
-  const isGoogleUser = user?.app_metadata?.provider === 'google'
-
+  const displayName = user?.fullName ?? 'Your Account'
+  
+  const isGoogleUser = user?.provider === 'google'
+  
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-subtle)', display: 'flex', flexDirection: 'column' }}>
       {/* Watches for session expiry / sign-out from another tab */}
@@ -468,7 +501,7 @@ export default function SettingsPage() {
         {/* Profile overview */}
         <SectionCard title="Profile">
           <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
-            <ProfileAvatar name={displayName} avatarUrl={user?.user_metadata?.avatar_url} />
+            <ProfileAvatar name={displayName} avatarUrl={user?.avatarUrl} />
             <div>
               <p style={{ margin: 0, fontSize: 17, fontWeight: 600, color: 'var(--text)' }}>
                 {displayName}
@@ -495,8 +528,8 @@ export default function SettingsPage() {
                 <Button
                   type="submit"
                   className="h-10 gap-1.5"
-                  disabled={nameLoading || name === (user?.user_metadata?.full_name ?? '')}
-                >
+                  disabled={nameLoading || name.trim() === (user?.fullName ?? '')}
+                  >
                   {nameLoading ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : nameSuccess ? (
@@ -524,13 +557,13 @@ export default function SettingsPage() {
             <InfoRow
               icon={<Calendar size={15} />}
               label="Member since"
-              value={user?.created_at ? formatDate(user.created_at) : '—'}
-            />
+              value={user?.createdAt ? formatDate(user.createdAt) : '—'}
+              />
             <InfoRow
               icon={<Shield size={15} />}
               label="Sign-in method"
-              value={isGoogleUser ? 'Google' : 'Email & Password'}
-            />
+              value={user?.signInMethod ?? (isGoogleUser ? 'Google' : 'Email & Password')}
+              />
           </div>
         </SectionCard>
 
