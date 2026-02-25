@@ -22,6 +22,7 @@ import { buildLagnaHouses, buildMoonHouses, buildNavamsaHouses } from '@/lib/uti
 
 // Import proper types from astrology module
 import type { PlanetData, AscendantData as AstroAscendantData } from '@/types/astrology';
+import { useIdleLogout } from '@/hooks/useIdleLogout'
 
 
 // ============================================
@@ -212,7 +213,11 @@ function MobileSubTabs({
 // MAIN PAGE COMPONENT
 // ============================================
 
+
+
 export default function ChartPage() {
+   useIdleLogout()
+
   const router = useRouter();
   
   // Data state

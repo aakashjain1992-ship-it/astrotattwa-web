@@ -21,7 +21,7 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline'",
       "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
       "font-src 'self' data:",
-      "img-src 'self' data: blob:",
+      "img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com",
       "frame-ancestors 'none'",
     ].join('; '),
   },
@@ -50,6 +50,16 @@ const nextConfig = {
 
   typescript: {
     ignoreBuildErrors: true, // Skip TS check - run separately
+  },
+
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'lh3.googleusercontent.com',
+        pathname: '/**',
+      },
+    ],
   },
 
   // ✅ Security headers on all routes + CORS on API routes

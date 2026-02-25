@@ -18,7 +18,19 @@ export async function middleware(request: NextRequest) {
     {
       cookies: {
         get(name: string) {
-          return request.cookies.get(name)?.value
+              // Try exact name first
+    const exact = request.cookies.get(name)?.value
+    if (exact) return exact
+    // Reconstruct chunked cookies (auth-token.0, auth-token.1, etc.)
+    let chunks = ''
+    let i = 0
+    while (true) {
+      const chunk = request.cookies.get(`${name}.${i}`)?.value
+      if (!chunk) break
+      chunks += chunk
+      i++
+    }
+    return chunks || undefined
         },
         set(name: string, value: string, options: CookieOptions) {
           request.cookies.set({ name, value, ...options })
@@ -39,6 +51,15 @@ export async function middleware(request: NextRequest) {
   )
 
   const { data: { user } } = await supabase.auth.getUser()
+  // Attach user info to headers for API routes
+   if (user) {
+      response.headers.set('x-user-id', user.id)
+      response.headers.set('x-user-email', user.email ?? '')
+      response.headers.set('x-user-name', user.user_metadata?.full_name ?? user.user_metadata?.name ?? '')
+      response.headers.set('x-user-avatar', user.user_metadata?.avatar_url ?? '')	
+}
+
+
   const pathname = request.nextUrl.pathname
 
   // Redirect unauthenticated users away from protected routes

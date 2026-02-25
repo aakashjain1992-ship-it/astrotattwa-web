@@ -7,8 +7,14 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Eye, EyeOff, Loader2 } from 'lucide-react'
+import { Eye, EyeOff, Loader2, Info } from 'lucide-react'
 import { Logo } from '@/components/ui/Logo'
+
+const SESSION_REASON_MESSAGES: Record<string, string> = {
+  session_expired: "Your session has expired. Please sign in again.",
+  signed_out: "You've been signed out. Please sign in to continue.",
+  account_deleted: "This account has been deleted.",
+}
 
 export function LoginForm() {
   const router = useRouter()
@@ -16,6 +22,7 @@ export function LoginForm() {
   const returnUrl = searchParams.get('returnUrl') || '/chart'
   const resetSuccess = searchParams.get('reset') === 'success'
   const oauthError = searchParams.get('error')
+  const sessionReason = searchParams.get('reason')
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -74,12 +81,19 @@ export function LoginForm() {
     <div className="flex min-h-screen flex-col items-center justify-center p-4">
       <div className="w-full max-w-sm space-y-6">
 
-        {/* Logo + App Name */}
         <div className="flex flex-col items-center space-y-2 text-center">
           <Logo />
           <h1 className="text-2xl font-bold tracking-tight">Welcome back</h1>
           <p className="text-sm text-muted-foreground">Sign in to access your charts</p>
         </div>
+
+        {/* Session expiry / sign out reason */}
+        {sessionReason && SESSION_REASON_MESSAGES[sessionReason] && (
+          <div className="flex items-start gap-2 rounded-lg bg-blue-50 border border-blue-200 px-3 py-2 text-sm text-blue-700">
+            <Info className="h-4 w-4 mt-0.5 flex-shrink-0" />
+            <span>{SESSION_REASON_MESSAGES[sessionReason]}</span>
+          </div>
+        )}
 
         {resetSuccess && (
           <div className="rounded-lg bg-green-500/10 px-3 py-2 text-sm text-green-600 dark:text-green-400 text-center">
@@ -88,7 +102,9 @@ export function LoginForm() {
         )}
         {oauthError && (
           <div className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive text-center">
-            {oauthError}
+            {oauthError === 'access_denied'
+              ? 'Google sign-in was cancelled. Please try again.'
+              : oauthError}
           </div>
         )}
 
@@ -108,33 +124,70 @@ export function LoginForm() {
           <form onSubmit={handleEmailLogin} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" placeholder="you@example.com" value={email} onChange={(e) => { setEmail(e.target.value); if (emailError) setEmailError('') }} onBlur={(e) => setEmailError(validateEmail(e.target.value) || '')} disabled={loading} autoComplete="email" className="h-11" />
+              <Input
+                id="email"
+                type="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => { setEmail(e.target.value); if (emailError) setEmailError('') }}
+                onBlur={(e) => setEmailError(validateEmail(e.target.value) || '')}
+                disabled={loading}
+                autoComplete="email"
+                className="h-11"
+              />
+              {emailError && <p className="text-xs text-destructive">{emailError}</p>}
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">Password</Label>
-                <Link href="/forgot-password" className="text-xs text-muted-foreground hover:text-primary">Forgot password?</Link>
+                <Link href="/forgot-password" className="text-xs text-muted-foreground hover:text-primary">
+                  Forgot password?
+                </Link>
               </div>
               <div className="relative">
-                <Input id="password" type={showPassword ? 'text' : 'password'} placeholder="••••••••••" value={password} onChange={(e) => { setPassword(e.target.value); if (passwordError) setPasswordError('') }} disabled={loading} autoComplete="current-password" className="h-11 pr-10" />
-                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" tabIndex={-1}>
+                <Input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="••••••••••"
+                  value={password}
+                  onChange={(e) => { setPassword(e.target.value); if (passwordError) setPasswordError('') }}
+                  disabled={loading}
+                  autoComplete="current-password"
+                  className="h-11 pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  tabIndex={-1}
+                >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
             </div>
-            {error && <div className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</div>}
+            {error && (
+              <div className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                {error}
+              </div>
+            )}
             <Button type="submit" className="w-full h-11" disabled={loading || googleLoading}>
-              {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Signing in...</> : 'Sign in'}
+              {loading
+                ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Signing in…</>
+                : 'Sign in'}
             </Button>
           </form>
         </div>
 
         <p className="text-center text-sm text-muted-foreground">
           Don&apos;t have an account?{' '}
-          <Link href="/signup" className="text-primary hover:underline font-medium">Create account</Link>
+          <Link href="/signup" className="text-primary hover:underline font-medium">
+            Create account
+          </Link>
         </p>
         <div className="text-center">
-          <Link href="/" className="text-sm text-muted-foreground hover:text-foreground">← Back to home</Link>
+          <Link href="/" className="text-sm text-muted-foreground hover:text-foreground">
+            ← Back to home
+          </Link>
         </div>
         <p className="text-center text-xs text-muted-foreground">
           <Link href="/privacy" className="hover:underline">Privacy Policy</Link>
