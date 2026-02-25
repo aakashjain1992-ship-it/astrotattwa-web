@@ -216,7 +216,7 @@ function MobileSubTabs({
 
 
 
-export default function ChartPage() {
+export default function ChartClient() {
    useIdleLogout()
 
   const router = useRouter();
