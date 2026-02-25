@@ -410,22 +410,18 @@ export default function SettingsPage() {
     // 1) Update profiles (source of truth for display name)
     const { error: profileErr } = await supabase
       .from('profiles')
-      .upsert(
-        {
-          id: user.id,
-          email: user.email,
-          full_name: trimmed,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'id' }
-      )
+      .update({
+       full_name: trimmed,
+       updated_at: new Date().toISOString(),
+  })
+  .eq('id', user.id)
 
-    if (profileErr) {
-      setNameLoading(false)
-      setNameError(profileErr.message)
-      return
-    }
-
+if (profileErr) {
+ // console.error('profiles update failed:', profileErr)
+  setNameLoading(false)
+  setNameError('Unable to update your name right now. Please try again.')
+  return
+}
     // 2) Keep auth metadata in sync (optional but helpful)
     await supabase.auth.updateUser({ data: { full_name: trimmed } })
 
