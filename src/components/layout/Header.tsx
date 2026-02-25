@@ -284,8 +284,7 @@ export function Header({ showNav = true }: HeaderProps) {
     if (r.status === 401) return { user: null }
     return r.json()
   })
-    .then(r => r.json())
-    .then(({ user }) => {
+    .then(({user}) => {
       setUser(user)
       setAuthLoading(false)
     })
