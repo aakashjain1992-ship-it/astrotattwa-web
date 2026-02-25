@@ -177,7 +177,7 @@ function ChangePasswordForm() {
     setTimeout(() => {
       setSuccess(false)
       setOpen(false)
-      performLogout()
+      void performLogout()
     }, 2000)
   }
 
