@@ -45,7 +45,7 @@ export default function BirthDataFormWrapper() {
       setError('Failed to calculate chart. Please check your details and try again.')
     } finally {
       setLoading(true)
-      setError(null)
+//      setError(null)
     }
   }
 

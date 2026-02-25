@@ -5,8 +5,9 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { baseBirthSchema } from '@/lib/validation/birthFormSchemas'
-import { format } from 'date-fns'
 import { Loader2, RefreshCw } from 'lucide-react'
+import { useDateTimeSync } from '@/hooks/useDateTimeSync'
+import { format } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -18,7 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { CitySearch, type City } from '@/components/forms/CitySearch'
-import { DateTimeField, type DateTimeValue } from '@/components/forms/DateTimeField'
+import { DateTimeField } from '@/components/forms/DateTimeField'
 import { parseDateTime } from '@/lib/utils/parseDateTime'
 import { cn } from '@/lib/utils'
 
@@ -76,7 +77,6 @@ export function EditBirthDetailsForm({
 
   // Parse incoming datetime into DateTimeValue for DateTimeField
   const parsed = parseDateTime(currentData.localDateTime)
-  const [dateTime, setDateTime] = useState<DateTimeValue>(parsed)
 
   const {
     register,
@@ -99,27 +99,11 @@ export function EditBirthDetailsForm({
     },
   })
 
+  const { dateTime, syncDateTimeToForm } = useDateTimeSync(setValue, parsed)
+
   const latitude = watch('latitude')
   const longitude = watch('longitude')
   const gender = watch('gender')
-
-  // Sync DateTimeField changes → form fields (same pattern as BirthDataForm)
-  const syncDateTimeToForm = (next: DateTimeValue) => {
-    setDateTime(next)
-    if (next.date) {
-      setValue('birthDate', format(next.date, 'yyyy-MM-dd'), { shouldValidate: true })
-    } else {
-      setValue('birthDate', '', { shouldValidate: true })
-    }
-    if (next.hour && next.minute) {
-      setValue('birthTime', `${next.hour}:${next.minute}`, { shouldValidate: true })
-    } else {
-      setValue('birthTime', '', { shouldValidate: true })
-    }
-    if (next.period) {
-      setValue('timePeriod', next.period, { shouldValidate: true })
-    }
-  }
 
   // Handle city selection
   const handleCitySelect = (city: City) => {
