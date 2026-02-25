@@ -4,7 +4,6 @@
  * 
  * FIXED ISSUES:
  * ✅ Removed code duplication for D9 and D10 (now uses divisionalChartBuilder)
- * ✅ Changed status flags from arrows (↑↓) to letters (E, D) for consistency
  * ✅ Removed duplicate type definitions (now imports from @/types/astrology)
  * ✅ Removed unnecessary type aliases (HouseData → HouseInfo)
  */
@@ -68,13 +67,12 @@ export function buildLagnaHouses(
     // House 1 = ascendant sign, House 2 = next sign, etc.
     const houseIndex = (planetSignNumber - ascSignNumber + 12) % 12;
     
-    // Build status flags (FIXED: Using letters E, D instead of arrows ↑, ↓)
     const statusFlags: StatusFlag[] = [];
     if (planetData.retrograde) statusFlags.push('R');
     if (planetData.combust) statusFlags.push('C');
-    if (planetData.exalted) statusFlags.push('E');      // Changed from '↑'
-    if (planetData.debilitated) statusFlags.push('D');  // Changed from '↓'
-
+    if (planetData.exalted) statusFlags.push('↑');
+    if (planetData.debilitated) statusFlags.push('↓');
+    
     const planet: PlanetDisplayInfo = {
       key: planetKey as PlanetKey,
       symbol: PLANET_SYMBOLS[planetKey] || planetKey.substring(0, 2),
@@ -134,12 +132,11 @@ export function buildMoonHouses(
     // Calculate which house this sign falls into relative to Moon's sign
     const houseIndex = (planetSignNumber - moonSignNumber + 12) % 12;
     
-    // Build status flags (FIXED: Using letters E, D instead of arrows ↑, ↓)
     const statusFlags: StatusFlag[] = [];
     if (planetData.retrograde) statusFlags.push('R');
     if (planetData.combust) statusFlags.push('C');
-    if (planetData.exalted) statusFlags.push('E');      // Changed from '↑'
-    if (planetData.debilitated) statusFlags.push('D');  // Changed from '↓'
+if (planetData.exalted) statusFlags.push('↑');
+if (planetData.debilitated) statusFlags.push('↓');
 
     const planet: PlanetDisplayInfo = {
       key: planetKey as PlanetKey,

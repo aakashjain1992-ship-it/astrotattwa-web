@@ -10,6 +10,31 @@ import { Label } from '@/components/ui/label'
 import { Eye, EyeOff, Loader2, Info } from 'lucide-react'
 import { Logo } from '@/components/ui/Logo'
 
+function safeReturnUrl(value: string | null): string {
+  if (!value) {
+    // fallback depends on whether chart exists
+    try {
+      const raw = localStorage.getItem('lastChart')
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        if (parsed?.input && parsed?.planets && parsed?.ascendant) {
+          return '/chart'
+        }
+      }
+    } catch {}
+    return '/'
+  }
+  const v = value.trim()
+
+  // allow only internal paths
+  if (!v.startsWith('/')) return '/'
+  if (v.startsWith('//')) return '/'
+  if (v.includes('://')) return '/'
+  if (v.length > 2048) return '/'
+
+  return v
+}
+
 const SESSION_REASON_MESSAGES: Record<string, string> = {
   session_expired: "Your session has expired. Please sign in again.",
   signed_out: "You've been signed out. Please sign in to continue.",
@@ -19,7 +44,7 @@ const SESSION_REASON_MESSAGES: Record<string, string> = {
 export function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const returnUrl = searchParams.get('returnUrl') || '/chart'
+  const returnUrl = safeReturnUrl(searchParams.get('returnUrl'))
   const resetSuccess = searchParams.get('reset') === 'success'
   const oauthError = searchParams.get('error')
   const sessionReason = searchParams.get('reason')
