@@ -11,7 +11,19 @@ import { Eye, EyeOff, Loader2, Info } from 'lucide-react'
 import { Logo } from '@/components/ui/Logo'
 
 function safeReturnUrl(value: string | null): string {
-  if (!value) return '/'
+  if (!value) {
+    // fallback depends on whether chart exists
+    try {
+      const raw = localStorage.getItem('lastChart')
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        if (parsed?.input && parsed?.planets && parsed?.ascendant) {
+          return '/chart'
+        }
+      }
+    } catch {}
+    return '/'
+  }
   const v = value.trim()
 
   // allow only internal paths
