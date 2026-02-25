@@ -1,35 +1,55 @@
 /**
  * Chart Helper Utilities
  * Functions for building house data for divisional charts
- * 
- * FIXED ISSUES:
- * ✅ Removed code duplication for D9 and D10 (now uses divisionalChartBuilder)
- * ✅ Changed status flags from arrows (↑↓) to letters (E, D) for consistency
- * ✅ Removed duplicate type definitions (now imports from @/types/astrology)
- * ✅ Removed unnecessary type aliases (HouseData → HouseInfo)
  */
 
 import type { 
-  HouseInfo,
-  PlanetDisplayInfo,
+  HouseInfo as HouseData,
+  PlanetDisplayInfo as PlanetInHouse,
   HouseNumber,
   RashiNumber,
   PlanetKey,
   StatusFlag,
-  PlanetData,
-  AscendantData
-} from '@/types/astrology';
+  PlanetData } from '@/types/astrology';
 
-import { RASHI_NAMES, PLANET_SYMBOLS } from '@/types/astrology';
-import { buildDivisionalHouses, NAVAMSA_CONFIG, DASAMSA_CONFIG } from '@/lib/astrology/divisionalChartBuilder';
 
 // ============================================
 // CONSTANTS
 // ============================================
 
+export const RASHI_NAMES = [
+  'Aries', 'Taurus', 'Gemini', 'Cancer',
+  'Leo', 'Virgo', 'Libra', 'Scorpio',
+  'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces',
+] as const;
+
+export const PLANET_SYMBOLS: Record<string, string> = {
+  Sun: 'Su',
+  Moon: 'Mo',
+  Mars: 'Ma',
+  Mercury: 'Me',
+  Jupiter: 'Ju',
+  Venus: 'Ve',
+  Saturn: 'Sa',
+  Rahu: 'Ra',
+  Ketu: 'Ke',
+  Ascendant: 'Asc',
+};
+
 export const PLANET_ORDER = [
   'Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu'
 ] as const;
+
+// ============================================
+// TYPE DEFINITIONS
+// ============================================
+
+
+export interface AscendantData {
+  sign: string;
+  signNumber: number;
+  degreeInSign: number;
+}
 
 // ============================================
 // HOUSE BUILDING FUNCTIONS
@@ -42,9 +62,9 @@ export const PLANET_ORDER = [
 export function buildLagnaHouses(
   planets: Record<string, PlanetData>,
   ascendant: AscendantData
-): HouseInfo[] {
+): HouseData[] {
   const ascSignNumber = ascendant.signNumber; // 1-12
-  const houses: HouseInfo[] = [];
+  const houses: HouseData[] = [];
 
   // Create 12 empty houses starting from ascendant sign
   for (let i = 0; i < 12; i++) {
@@ -68,14 +88,14 @@ export function buildLagnaHouses(
     // House 1 = ascendant sign, House 2 = next sign, etc.
     const houseIndex = (planetSignNumber - ascSignNumber + 12) % 12;
     
-    // Build status flags (FIXED: Using letters E, D instead of arrows ↑, ↓)
+    // Build status flags
     const statusFlags: StatusFlag[] = [];
     if (planetData.retrograde) statusFlags.push('R');
     if (planetData.combust) statusFlags.push('C');
-    if (planetData.exalted) statusFlags.push('E');      // Changed from '↑'
-    if (planetData.debilitated) statusFlags.push('D');  // Changed from '↓'
+    if (planetData.exalted) statusFlags.push('↑');
+    if (planetData.debilitated) statusFlags.push('↓');
 
-    const planet: PlanetDisplayInfo = {
+    const planet: PlanetInHouse = {
       key: planetKey as PlanetKey,
       symbol: PLANET_SYMBOLS[planetKey] || planetKey.substring(0, 2),
       degree: planetData.degreeInSign,
@@ -102,7 +122,7 @@ export function buildLagnaHouses(
 export function buildMoonHouses(
   planets: Record<string, PlanetData>,
   ascendant: AscendantData
-): HouseInfo[] {
+): HouseData[] {
   // Get Moon's position to use as the ascendant
   const moonData = planets['Moon'];
   if (!moonData) {
@@ -111,7 +131,7 @@ export function buildMoonHouses(
   }
 
   const moonSignNumber = moonData.signNumber; // 1-12
-  const houses: HouseInfo[] = [];
+  const houses: HouseData[] = [];
 
   // Create 12 empty houses starting from Moon's sign
   for (let i = 0; i < 12; i++) {
@@ -134,14 +154,14 @@ export function buildMoonHouses(
     // Calculate which house this sign falls into relative to Moon's sign
     const houseIndex = (planetSignNumber - moonSignNumber + 12) % 12;
     
-    // Build status flags (FIXED: Using letters E, D instead of arrows ↑, ↓)
+    // Build status flags
     const statusFlags: StatusFlag[] = [];
     if (planetData.retrograde) statusFlags.push('R');
     if (planetData.combust) statusFlags.push('C');
-    if (planetData.exalted) statusFlags.push('E');      // Changed from '↑'
-    if (planetData.debilitated) statusFlags.push('D');  // Changed from '↓'
+    if (planetData.exalted) statusFlags.push('↑');
+    if (planetData.debilitated) statusFlags.push('↓');
 
-    const planet: PlanetDisplayInfo = {
+    const planet: PlanetInHouse = {
       key: planetKey as PlanetKey,
       symbol: PLANET_SYMBOLS[planetKey] || planetKey.substring(0, 2),
       degree: planetData.degreeInSign,
@@ -164,29 +184,126 @@ export function buildMoonHouses(
 /**
  * Build houses for D9 (Navamsa) chart
  * Each sign is divided into 9 parts (3°20' each)
- * 
- * FIXED: Now uses divisionalChartBuilder instead of duplicate logic
- * @deprecated Use buildDivisionalHouses(planets, ascendant, NAVAMSA_CONFIG) directly
  */
 export function buildNavamsaHouses(
   planets: Record<string, PlanetData>,
   ascendant: AscendantData
-): HouseInfo[] {
-  return buildDivisionalHouses(planets, ascendant, NAVAMSA_CONFIG);
+): HouseData[] {
+  // Calculate Navamsa positions
+  const getNavamsaSign = (longitude: number): number => {
+    const signIndex = Math.floor(longitude / 30); // 0-11
+    const degreeInSign = longitude % 30;
+    const navamsaPada = Math.floor(degreeInSign / (30 / 9)); // 0-8
+    
+    // Navamsa calculation: depends on the element of the sign
+    // Fire signs (0,4,8): start from Aries (0)
+    // Earth signs (1,5,9): start from Capricorn (9)
+    // Air signs (2,6,10): start from Libra (6)
+    // Water signs (3,7,11): start from Cancer (3)
+    const elementOffset = [0, 9, 6, 3][signIndex % 4];
+    
+    return ((elementOffset + navamsaPada) % 12) + 1; // 1-12
+  };
+
+  // Get ascendant navamsa sign
+  const ascNavamsaSign = getNavamsaSign(
+    (ascendant.signNumber - 1) * 30 + ascendant.degreeInSign
+  );
+
+  const houses: HouseData[] = [];
+
+  // Create 12 empty houses
+  for (let i = 0; i < 12; i++) {
+    const houseNumber = i + 1;
+    const rasiNumber = ((ascNavamsaSign - 1 + i) % 12) + 1;
+    
+    houses.push({
+      houseNumber: houseNumber as HouseNumber,
+      rasiNumber: rasiNumber as RashiNumber,
+      rasiName: RASHI_NAMES[rasiNumber - 1],
+      planets: [],
+      isAscendant: houseNumber === 1,
+    });
+  }
+
+  // Place planets based on navamsa position
+  Object.entries(planets).forEach(([planetKey, planetData]) => {
+    const navamsaSign = getNavamsaSign(planetData.longitude);
+    const houseIndex = (navamsaSign - ascNavamsaSign + 12) % 12;
+    
+    const statusFlags: StatusFlag[] = [];
+    if (planetData.retrograde) statusFlags.push('R');
+
+    houses[houseIndex].planets.push({
+      key: planetKey as PlanetKey,
+      symbol: PLANET_SYMBOLS[planetKey] || planetKey.substring(0, 2),
+      degree: planetData.degreeInSign,
+      longitude: planetData.longitude,
+      statusFlags,
+      fullData: planetData,
+    });
+  });
+
+  return houses;
 }
 
 /**
  * Build houses for D10 (Dasamsa) chart
  * Career and profession chart - each sign divided into 10 parts (3° each)
- * 
- * FIXED: Now uses divisionalChartBuilder instead of duplicate logic
- * @deprecated Use buildDivisionalHouses(planets, ascendant, DASAMSA_CONFIG) directly
  */
 export function buildDasamsaHouses(
   planets: Record<string, PlanetData>,
   ascendant: AscendantData
-): HouseInfo[] {
-  return buildDivisionalHouses(planets, ascendant, DASAMSA_CONFIG);
+): HouseData[] {
+  const getDasamsaSign = (longitude: number): number => {
+    const signIndex = Math.floor(longitude / 30); // 0-11
+    const degreeInSign = longitude % 30;
+    const dasamsaPart = Math.floor(degreeInSign / 3); // 0-9
+    
+    // Dasamsa: Odd signs start from same sign, even signs start from 9th
+    const isOddSign = signIndex % 2 === 0;
+    const startSign = isOddSign ? signIndex : (signIndex + 8) % 12;
+    
+    return ((startSign + dasamsaPart) % 12) + 1; // 1-12
+  };
+
+  const ascDasamsaSign = getDasamsaSign(
+    (ascendant.signNumber - 1) * 30 + ascendant.degreeInSign
+  );
+
+  const houses: HouseData[] = [];
+
+  for (let i = 0; i < 12; i++) {
+    const houseNumber = i + 1;
+    const rasiNumber = ((ascDasamsaSign - 1 + i) % 12) + 1;
+    
+    houses.push({
+      houseNumber: houseNumber as HouseNumber,
+      rasiNumber: rasiNumber as RashiNumber,
+      rasiName: RASHI_NAMES[rasiNumber - 1],
+      planets: [],
+      isAscendant: houseNumber === 1,
+    });
+  }
+
+  Object.entries(planets).forEach(([planetKey, planetData]) => {
+    const dasamsaSign = getDasamsaSign(planetData.longitude);
+    const houseIndex = (dasamsaSign - ascDasamsaSign + 12) % 12;
+    
+    const statusFlags: StatusFlag[] = [];
+    if (planetData.retrograde) statusFlags.push('R');
+
+    houses[houseIndex].planets.push({
+      key: planetKey as PlanetKey,
+      symbol: PLANET_SYMBOLS[planetKey] || planetKey.substring(0, 2),
+      degree: planetData.degreeInSign,
+      longitude: planetData.longitude,
+      statusFlags,
+      fullData: planetData,
+    });
+  });
+
+  return houses;
 }
 
 // ============================================
@@ -258,7 +375,7 @@ export function buildHouses(
   planets: Record<string, PlanetData>,
   ascendant: AscendantData,
   houseSystem: HouseSystem = 'whole-sign'
-): HouseInfo[] {
+): HouseData[] {
   // For whole-sign system, use buildLagnaHouses
   // Other house systems can be implemented later
   return buildLagnaHouses(planets, ascendant);

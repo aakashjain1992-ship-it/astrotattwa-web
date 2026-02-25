@@ -300,22 +300,7 @@ export function DiamondChart({
                       tabIndex={isClickable ? 0 : undefined}
                       aria-label={`${planet.key} at ${planet.degree}°${planet.statusFlags.length > 0 ? `, ${planet.statusFlags.join(' ')}` : ''}`}
                     >
-                      {/* Status Arrow (↑ or ↓) - Before planet symbol */}
-                      {digbalaStatus && (
-                        <text
-                          x={x - (fontSizes.symbol / 2 + 3)}
-                          y={y}
-                          fontSize={fontSizes.arrow}
-                          fontWeight="bold"
-                          textAnchor="end"
-                          dominantBaseline="middle"
-                          className={digbalaStatus === 'exalted' ? 'fill-green-500' : 'fill-red-500'}
-                        >
-                          {digbalaStatus === 'exalted' ? '↑' : '↓'}
-                        </text>
-                      )}
-
-                      {/* Planet Symbol */}
+                     {/* Planet Symbol with arrow prefix */}
                       <text
                         x={x}
                         y={y}
@@ -323,9 +308,19 @@ export function DiamondChart({
                         fontWeight="bold"
                         textAnchor="middle"
                         dominantBaseline="middle"
-                        className="fill-[hsl(var(--chart-text))]"
                       >
-                        {planet.symbol}
+                        {/* Green ↑ for exalted */}
+                        {digbalaStatus === 'exalted' && (
+                          <tspan className="fill-green-500">↑</tspan>
+                        )}
+                        
+                        {/* Red ↓ for debilitated */}
+                        {digbalaStatus === 'debilitated' && (
+                          <tspan className="fill-red-500">↓</tspan>
+                        )}
+                        
+                        {/* Planet symbol */}
+                        <tspan className="fill-[hsl(var(--chart-text))]">{planet.symbol}</tspan>
                       </text>
 
                       {/* Degree (top-right superscript) - Hide if 6 planets */}

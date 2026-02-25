@@ -3,8 +3,6 @@
  * 
  * THE MOST IMPORTANT divisional chart after D1 (Rasi)
  * Shows: spouse characteristics, dharma, inner strength, spiritual life
- * 
- * FIXED: Added missing buildNavamsaHouses() export
  */
 
 import { 
@@ -13,17 +11,10 @@ import {
 } from '@/lib/astrology/divisionalChartBuilder';
 import type { PlanetData, AscendantData, HouseInfo } from '@/types/astrology';
 
-/**
- * Calculate Navamsa sign for a given longitude
- */
 export function getNavamsaSign(longitude: number): number {
   return NAVAMSA_CONFIG.calculateSign(longitude);
 }
 
-/**
- * Build Navamsa (D9) houses
- * FIXED: Added this export that was missing
- */
 export function buildNavamsaHouses(
   planets: Record<string, PlanetData>,
   ascendant: AscendantData

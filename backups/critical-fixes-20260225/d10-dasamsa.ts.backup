@@ -2,8 +2,6 @@
  * Dasamsa (D10) Divisional Chart
  * 
  * Shows career, profession, status, achievements, and public life
- * 
- * FIXED: Added missing buildDasamsaHouses() export
  */
 
 import { 
@@ -12,17 +10,10 @@ import {
 } from '@/lib/astrology/divisionalChartBuilder';
 import type { PlanetData, AscendantData, HouseInfo } from '@/types/astrology';
 
-/**
- * Calculate Dasamsa sign for a given longitude
- */
 export function getDasamsaSign(longitude: number): number {
   return DASAMSA_CONFIG.calculateSign(longitude);
 }
 
-/**
- * Build Dasamsa (D10) houses
- * FIXED: Added this export that was missing
- */
 export function buildDasamsaHouses(
   planets: Record<string, PlanetData>,
   ascendant: AscendantData
