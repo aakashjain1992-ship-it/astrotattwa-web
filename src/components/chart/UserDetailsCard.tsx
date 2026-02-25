@@ -19,6 +19,8 @@ interface UserDetailsCardProps {
   gender?: 'male' | 'female' | string;
   /** Birth input data */
   input: BirthInput;
+  /** City name to display e.g. "Baghpat, Uttar Pradesh, IN" */
+  birthPlace?: string;
   /** Whether edit form is expanded */
   isEditing?: boolean;
   /** Toggle edit mode */
@@ -87,12 +89,14 @@ export function UserDetailsCard({
   name,
   gender,
   input,
+  birthPlace,
   isEditing = false,
   onEditToggle,
   className,
 }: UserDetailsCardProps) {
   const { date, time } = parseBirthDateTime(input.localDateTime);
-  const coordinates = formatCoordinates(input.latitude, input.longitude);
+  // Show city name if available, fall back to coordinates
+  const locationDisplay = birthPlace || formatCoordinates(input.latitude, input.longitude);
 
   return (
     <div className={cn(
@@ -127,7 +131,7 @@ export function UserDetailsCard({
             {/* Location */}
             <div className="flex items-center gap-1.5">
               <MapPin className="h-4 w-4 flex-shrink-0" />
-              <span>{coordinates}</span>
+              <span>{locationDisplay}</span>
             </div>
             
             {/* Timezone */}
