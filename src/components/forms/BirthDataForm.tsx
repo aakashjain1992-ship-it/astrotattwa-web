@@ -13,14 +13,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { MapPin, User } from 'lucide-react'
 import { CitySearch } from './CitySearch'
-import { DateTimeField } from './DateTimeField'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { DateTimeField, GenderField } from './DateTimeField'
 import type { ChartFormValues } from './BirthDataFormWrapper'
 
 // Extend the shared base schema with city-specific fields
@@ -167,25 +160,17 @@ export function BirthDataForm({ onSubmit, cardError }: Props) {
       </div>
 
       {/* Gender */}
-      <div className="space-y-2">
-        <Label>Gender</Label>
-        <Controller
-          control={control}
-          name="gender"
-          render={({ field }) => (
-            <Select onValueChange={field.onChange} value={field.value}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select gender" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Male">Male</SelectItem>
-                <SelectItem value="Female">Female</SelectItem>
-              </SelectContent>
-            </Select>
-          )}
-        />
-        {errors.gender && <p className="text-sm text-destructive">{errors.gender.message}</p>}
-      </div>
+      <Controller
+        control={control}
+        name="gender"
+        render={({ field }) => (
+          <GenderField
+            value={field.value as "Male" | "Female" | ""}
+            onChange={field.onChange}
+            error={errors.gender?.message}
+          />
+        )}
+      />
 
       {/* Date + Time via DateTimeField */}
       <DateTimeField
