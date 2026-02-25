@@ -31,6 +31,65 @@ const MONTHS = [
   "July","August","September","October","November","December",
 ]
 
+// ============================================
+// DATE PARSING FUNCTIONS
+// ============================================
+
+function parseDateInput(input: string, fromYear: number, toYear: number, disabledFuture: boolean): Date | null {
+  const cleaned = input.trim()
+  
+  // Try DD/MM/YYYY format (25/03/1992)
+  const ddmmyyyyMatch = cleaned.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/)
+  if (ddmmyyyyMatch) {
+    const [, day, month, year] = ddmmyyyyMatch
+    const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
+    if (isValidDate(date, fromYear, toYear, disabledFuture)) return date
+  }
+  
+  // Try DDMMYYYY format (25031992)
+  const compactMatch = cleaned.match(/^(\d{2})(\d{2})(\d{4})$/)
+  if (compactMatch) {
+    const [, day, month, year] = compactMatch
+    const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
+    if (isValidDate(date, fromYear, toYear, disabledFuture)) return date
+  }
+  
+  // Try YYYY-MM-DD format (1992-03-25)
+  const isoMatch = cleaned.match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})$/)
+  if (isoMatch) {
+    const [, year, month, day] = isoMatch
+    const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
+    if (isValidDate(date, fromYear, toYear, disabledFuture)) return date
+  }
+  
+  return null
+}
+
+function isValidDate(date: Date, fromYear: number, toYear: number, disabledFuture: boolean): boolean {
+  if (isNaN(date.getTime())) return false
+  
+  // Check year range
+  const year = date.getFullYear()
+  if (year < fromYear || year > toYear) return false
+  
+  // Check against disabled dates
+  if (disabledFuture) {
+    const today = new Date()
+    const endOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999)
+    if (date.getTime() > endOfToday.getTime()) return false
+  }
+  
+  // Check if date is actually valid (e.g., not Feb 30)
+  const testDate = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+  if (testDate.getDate() !== date.getDate()) return false
+  
+  return true
+}
+
+// ============================================
+// MAIN COMPONENT
+// ============================================
+
 export function DateTimeField({
   labelDate = "Birth Date",
   labelTime = "Birth Time",
@@ -58,80 +117,99 @@ export function DateTimeField({
   const initialMonth = value.date ? new Date(value.date.getFullYear(), value.date.getMonth(), 1) : new Date(2000, 0, 1)
   const [month, setMonth] = React.useState<Date>(initialMonth)
 
+  // Track display text separately from parsed date
+  const [dateText, setDateText] = React.useState(() => 
+    value.date ? formatDate(value.date, "dd/MM/yyyy") : ""
+  )
+
   // Track open state per Select so we only intercept keys when closed
-  // (when open, Radix handles keyboard natively)
   const [isHourOpen,   setIsHourOpen]   = React.useState(false)
   const [isMinOpen,    setIsMinOpen]    = React.useState(false)
   const [isPeriodOpen, setIsPeriodOpen] = React.useState(false)
 
-  // Digit buffers — no timers, purely key-sequence logic
+  // Digit buffers for time inputs
   const hourBuf = React.useRef("")
   const minBuf  = React.useRef("")
 
+  // Sync dateText when value.date changes externally
+  React.useEffect(() => {
+    if (value.date) {
+      setDateText(formatDate(value.date, "dd/MM/yyyy"))
+    } else {
+      setDateText("")
+    }
+  }, [value.date])
+
+  // Handle date input from keyboard
+  const handleDateInput = (input: string) => {
+    setDateText(input)
+    
+    // Try to parse the input
+    const parsed = parseDateInput(input, fromYear, toYear, disabledFuture)
+    if (parsed) {
+      onChange({ ...value, date: parsed })
+      setMonth(new Date(parsed.getFullYear(), parsed.getMonth(), 1))
+    }
+  }
+
+  // Handle keyboard input for hour
   const handleHourKey = (e: React.KeyboardEvent) => {
     if (isHourOpen || !/^\d$/.test(e.key)) return
     e.preventDefault()
     const key = e.key
 
     if (hourBuf.current === "1") {
-      // Waiting after "1" — only 0, 1, 2 can extend to a valid 2-digit hour (10, 11, 12)
       if (key === "0" || key === "1" || key === "2") {
         onChange({ ...value, hour: "1" + key })
         hourBuf.current = ""
       } else if (key === "1") {
-        // Another "1": commit "01", restart wait with new "1"
         onChange({ ...value, hour: "01" })
         hourBuf.current = "1"
       } else {
-        // 3–9: not a valid continuation — commit "01", set new hour 03–09
         onChange({ ...value, hour: "0" + key })
         hourBuf.current = ""
       }
     } else {
       if (key === "1") {
-        // Could be 1, 10, 11, 12 — show "01" tentatively, wait for next key
         hourBuf.current = "1"
         onChange({ ...value, hour: "01" })
       } else {
         const num = Number(key)
         if (num >= 2 && num <= 9) onChange({ ...value, hour: "0" + key })
-        // 0 alone is not a valid hour — ignore
         hourBuf.current = ""
       }
     }
   }
 
+  // Handle keyboard input for minute
   const handleMinKey = (e: React.KeyboardEvent) => {
     if (isMinOpen || !/^\d$/.test(e.key)) return
     e.preventDefault()
     const key = e.key
 
     if (minBuf.current !== "") {
-      // Have first digit — combine and commit
       const combined = minBuf.current + key
       const num = Number(combined)
       if (num <= 59) {
         onChange({ ...value, minute: combined })
         minBuf.current = ""
       } else {
-        // e.g. "67" — invalid, treat second key as a fresh first digit
         minBuf.current = key
         onChange({ ...value, minute: "0" + key })
       }
     } else {
       const num = Number(key)
       if (num >= 6) {
-        // 6–9 first: can only be 06–09 (no valid minute starts 60–99)
         onChange({ ...value, minute: "0" + key })
         minBuf.current = ""
       } else {
-        // 0–5: show tentatively, wait for second digit
         minBuf.current = key
         onChange({ ...value, minute: "0" + key })
       }
     }
   }
 
+  // Handle keyboard input for period
   const handlePeriodKey = (e: React.KeyboardEvent) => {
     if (isPeriodOpen) return
     if (e.key === "a" || e.key === "A") { e.preventDefault(); onChange({ ...value, period: "AM" }) }
@@ -141,8 +219,6 @@ export function DateTimeField({
   React.useEffect(() => {
     if (value.date) setMonth(new Date(value.date.getFullYear(), value.date.getMonth(), 1))
   }, [value.date])
-
-  const dateText = value.date ? formatDate(value.date, "dd/MM/yyyy") : "Select date"
 
   const hours = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, "0"))
   const minutes = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, "0"))
@@ -172,26 +248,22 @@ export function DateTimeField({
     setMonth(new Date(y, monthIndex, 1))
   }
 
- // Navigation: go to previous month
   const goToPrevMonth = () => {
     const prevMonth = new Date(yearValue, monthIndex - 1, 1)
-    // Don't go before fromYear
     if (prevMonth.getFullYear() >= fromYear) {
       setMonth(prevMonth)
     }
   }
-  // Navigation: go to next month
+
   const goToNextMonth = () => {
     const nextMonth = new Date(yearValue, monthIndex + 1, 1)
-    // Don't go past current month if disabledFuture
     if (!disabledFuture || nextMonth <= new Date(today.getFullYear(), today.getMonth(), 1)) {
       setMonth(nextMonth)
     }
   }
-  // Check if prev/next should be disabled
+
   const isPrevDisabled = yearValue <= fromYear && monthIndex === 0
   const isNextDisabled = disabledFuture && yearValue >= today.getFullYear() && monthIndex >= today.getMonth()
-
 
   return (
     <div className="space-y-4">
@@ -203,25 +275,27 @@ export function DateTimeField({
 
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>
-            <Button
-              type="button"
-              variant="outline"
+            <input
+              type="text"
+              value={dateText}
+              onChange={(e) => handleDateInput(e.target.value)}
+              onFocus={(e) => e.target.select()}
+              placeholder="DD/MM/YYYY"
               className={cn(
-                "w-full justify-between font-normal bg-white",
+                "flex h-10 w-full items-center justify-between rounded-md border border-input",
+                "bg-white px-3 py-2 text-sm ring-offset-background",
+                "placeholder:text-muted-foreground",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                "disabled:cursor-not-allowed disabled:opacity-50",
+                "cursor-pointer",
                 !value.date && "text-muted-foreground"
               )}
-            >
-              <span>{dateText}</span>
-            </Button>
+            />
           </PopoverTrigger>
 
-          <PopoverContent className="w-auto p-4 bg-white shadow-lg border rounded-lg"
-            align="start"  >
-         
+          <PopoverContent className="w-auto p-4 bg-white shadow-lg border rounded-lg" align="start">
             {/* Navigation Header */}
-
             <div className="flex items-center justify-between gap-1 mb-3">
-              {/* Previous Month Button */}
               <Button
                 type="button"
                 variant="ghost"
@@ -232,8 +306,6 @@ export function DateTimeField({
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-
-              {/* Month Dropdown */}
 
               <Select value={String(monthIndex)} onValueChange={setMonthIndex}>
                 <SelectTrigger className="h-8 w-[110px] border bg-white text-black text-sm">
@@ -260,7 +332,7 @@ export function DateTimeField({
                   ))}
                 </SelectContent>
               </Select>
-	    {/* Next Month Button */}
+
               <Button
                 type="button"
                 variant="ghost"
@@ -287,8 +359,7 @@ export function DateTimeField({
             />
           </PopoverContent>
         </Popover>
-     {errorDate && <p className="text-sm text-destructive">{errorDate}</p>}
-
+        {errorDate && <p className="text-sm text-destructive">{errorDate}</p>}
       </div>
 
       <div className="space-y-2">
@@ -336,7 +407,7 @@ export function DateTimeField({
             </SelectContent>
           </Select>
         </div>
-         {errorTime && <p className="text-sm text-destructive">{errorTime}</p>}
+        {errorTime && <p className="text-sm text-destructive">{errorTime}</p>}
       </div>
     </div>
   )
