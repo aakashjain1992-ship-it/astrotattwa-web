@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { Loader2, Stars } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ChartFocusMode, type ChartConfig } from '@/components/chart/ChartFocusMode';
@@ -131,9 +131,9 @@ function LoadingScreen() {
         <h1 className="text-xl font-semibold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
           Astrotattwa
         </h1>
-        <div className="flex items-center gap-2 text-muted-foreground">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
-          <span>Loading your chart...</span>
+          Calculating cosmic blueprint...
         </div>
       </div>
     </div>
@@ -145,22 +145,22 @@ function LoadingScreen() {
 // ============================================
 
 function TabButton({
+  children,
   active,
   onClick,
-  children,
 }: {
+  children: React.ReactNode;
   active: boolean;
   onClick: () => void;
-  children: React.ReactNode;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
       className={cn(
-        'px-4 py-2 text-sm font-medium rounded-lg transition-colors',
+        'px-4 py-2 text-sm font-medium rounded-md transition-all duration-200',
         active
-          ? 'bg-primary text-primary-foreground'
+          ? 'bg-primary text-primary-foreground shadow-sm'
           : 'text-muted-foreground hover:text-foreground hover:bg-accent'
       )}
     >
@@ -220,6 +220,8 @@ export default function ChartPage() {
    useIdleLogout()
 
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   
   // Data state
   const [chartData, setChartData] = useState<ChartData | null>(null);
@@ -227,6 +229,36 @@ export default function ChartPage() {
   
   // UI state
   const [activeTab, setActiveTab] = useState<TabType>('overview');
+
+  // Sync tab state with URL (?tab=overview|dasha|divisional)
+  const tabParam = searchParams.get('tab') as TabType | null;
+
+  useEffect(() => {
+    if (tabParam === 'overview' || tabParam === 'dasha' || tabParam === 'divisional') {
+      setActiveTab(tabParam);
+    } else {
+      setActiveTab('overview');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tabParam]);
+
+  const setTab = useCallback(
+    (tab: TabType) => {
+      setActiveTab(tab);
+
+      const params = new URLSearchParams(searchParams.toString());
+      if (tab === 'overview') {
+        params.delete('tab'); // keep /chart clean
+      } else {
+        params.set('tab', tab);
+      }
+
+      const qs = params.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    },
+    [router, pathname, searchParams]
+  );
+
   const [mobileSubTab, setMobileSubTab] = useState<MobileSubTab>('planets');
   const [isEditing, setIsEditing] = useState(false);
   const [, setIsRecalculating] = useState(false);
@@ -251,125 +283,107 @@ export default function ChartPage() {
     gender: 'Male' | 'Female';
     birthDate: string;
     birthTime: string;
-    timePeriod: 'AM' | 'PM';
+    birthPlace: string;
+    timezone: string;
     latitude: number;
     longitude: number;
-    timezone: string;
-    cityName?: string;
+    timePeriod?: string;
   }) => {
-    setIsRecalculating(true);
-    
     try {
-      const apiPayload = {
+      setIsRecalculating(true);
+      
+      const payload = {
         name: formData.name,
         gender: formData.gender,
         birthDate: formData.birthDate,
         birthTime: formData.birthTime,
-        timePeriod: formData.timePeriod,
+        birthPlace: formData.birthPlace,
+        timezone: formData.timezone,
         latitude: formData.latitude,
         longitude: formData.longitude,
-        timezone: formData.timezone,
+        ...(formData.timePeriod ? { timePeriod: formData.timePeriod } : {}),
       };
-      
-      // Call API to recalculate
-      const response = await fetch('/api/calculate', {
+
+      const res = await fetch('/api/calculate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(apiPayload),
+        body: JSON.stringify(payload),
       });
-      
-      const result = await response.json();
-      
-      if (result.success && result.data) {
-        const updatedData = {
-          ...result.data,
-          birthPlace: formData.cityName ?? chartData?.birthPlace,
-        };
-        setChartData(updatedData);
-        saveChartToStorage(updatedData);
-        setIsEditing(false);
-      } else {
-        throw new Error(result.error || 'Calculation failed');
+
+      if (!res.ok) {
+        throw new Error('Failed to recalculate chart');
       }
-    } catch {
-      // Could show a toast here
+
+      const updated = await res.json();
+      
+      // Save updated chart data
+      saveChartToStorage(updated);
+      setChartData(updated);
+      
+      // Close edit mode
+      setIsEditing(false);
+    } catch (err) {
+      console.error(err);
     } finally {
       setIsRecalculating(false);
     }
   }, []);
 
-  // Show loading screen
-  if (isLoading || !chartData) {
+  // ============================================
+  // LOADING AND ERROR STATES
+  // ============================================
+
+  if (isLoading) {
     return <LoadingScreen />;
   }
 
-  // Cast ascendant to proper type for chartHelpers functions
-  const ascendant = chartData.ascendant as AstroAscendantData;
+  if (!chartData) {
+    return null;
+  }
 
-  // Build houses using chartHelpers (proper types)
-  const houses = buildLagnaHouses(chartData.planets, ascendant);
-  
-  // Build Moon Chart (Chandra Lagna)
-  const moonHouses = buildMoonHouses(chartData.planets, ascendant);
-  
-  // Build D9 Navamsa Chart
-  const navamsaHouses = buildNavamsaHouses(chartData.planets, ascendant);
+  // ============================================
+  // CHART COMPUTATIONS
+  // ============================================
 
+  const planets = chartData.planets;
 
-  const chartConfigs: ChartConfig[] = [
-  {
-    id: 'lagna',
-    title: 'D1 - Lagna',
-    subtitle: `Ascendant: ${chartData.ascendant.sign} ${chartData.ascendant.degreeInSign.toFixed(2)}°`,
-    houses: houses,
-    insights: generateChartInsights(houses, 'lagna'),
-  },
-  {
-    id: 'moon',
-    title: 'Moon Chart',
-    subtitle: `Moon: ${chartData.planets.Moon.sign} ${chartData.planets.Moon.degreeInSign.toFixed(2)}°`,
-    houses: moonHouses,
-    insights: generateChartInsights(moonHouses, 'moon'),
-  },
-  {
-    id: 'd9',
-    title: 'D9 - Navamsa',
-    subtitle: 'Marriage & Dharma',
-    houses: navamsaHouses,
-    insights: generateChartInsights(navamsaHouses, 'd9'),
-  },
-];
+  // Build houses for each chart type
+  const lagnaHouses = buildLagnaHouses(planets, chartData.ascendant as unknown as AstroAscendantData);
+  const moonHouses = buildMoonHouses(planets);
+  const navamsaHouses = buildNavamsaHouses(planets);
 
+  // Generate chart insights
+  const insights = generateChartInsights(chartData);
+
+  // Chart config for focus mode
+  const chartConfig: ChartConfig = {
+    planets: chartData.planets,
+    ascendant: chartData.ascendant as unknown as AstroAscendantData,
+    lagnaHouses,
+    moonHouses,
+    navamsaHouses,
+    name: chartData.name,
+    gender: chartData.gender,
+    birthPlace: chartData.birthPlace,
+    ayanamsha: chartData.ayanamsha,
+  };
+
+  // ============================================
+  // MAIN RENDER
+  // ============================================
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      {/* Header */}
-      <Header showNav={false} />
+    <div className="min-h-screen bg-background">
+      <Header showNav={true} />
 
-      {/* Main Content */}
-      <main className="flex-1 py-6 space-y-6" style={{ paddingTop: "80px", maxWidth: 1280, margin: "0 auto", width: "100%", paddingLeft: "1rem", paddingRight: "1rem" }}>
-        {/* User Details Card */}
-        <UserDetailsCard
-          name={chartData.name}
-          gender={chartData.gender}
-          input={chartData.input}
-          birthPlace={chartData.birthPlace}
-          isEditing={isEditing}
-          onEditToggle={() => setIsEditing(!isEditing)}
-        />
+      <main className="container mx-auto px-4 py-8 max-w-6xl">
+        {/* User details card */}
+        <UserDetailsCard chartData={chartData} />
 
-        {/* Edit Form (Collapsible) */}
+        {/* Edit form */}
         <EditBirthDetailsForm
           isOpen={isEditing}
-          currentData={{
-            name: chartData.name,
-            gender: chartData.gender as "Male" | "Female",
-            localDateTime: chartData.input.localDateTime,
-            latitude: chartData.input.latitude,
-            longitude: chartData.input.longitude,
-            timezone: chartData.input.timezone,
-            cityName: chartData.birthPlace,
-          }}
+          chartData={chartData}
           onSubmit={handleEditSubmit}
           onCancel={() => setIsEditing(false)}
         />
@@ -378,19 +392,19 @@ export default function ChartPage() {
         <div className="flex gap-2 p-1 rounded-lg bg-muted w-fit">
           <TabButton
             active={activeTab === 'overview'}
-            onClick={() => setActiveTab('overview')}
+            onClick={() => setTab('overview')}
           >
             Overview
           </TabButton>
           <TabButton
             active={activeTab === 'dasha'}
-            onClick={() => setActiveTab('dasha')}
+            onClick={() => setTab('dasha')}
           >
             Dasha Timeline
           </TabButton>
           <TabButton
             active={activeTab === 'divisional'}
-            onClick={() => setActiveTab('divisional')}
+            onClick={() => setTab('divisional')}
           >
             Divisional Charts
           </TabButton>
@@ -406,54 +420,40 @@ export default function ChartPage() {
               onTabChange={setMobileSubTab}
             />
 
-            {/* Two-column section: Planets + Avakahada */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Planetary Table - always visible on desktop, conditional on mobile */}
-              <div className={cn(
-                'md:block',
-                mobileSubTab === 'planets' ? 'block' : 'hidden'
-              )}>
+            {/* Chart focus mode */}
+            <ChartFocusMode config={chartConfig} insights={insights} />
+
+            {/* Tables */}
+            <div className="grid md:grid-cols-2 gap-6">
+              {/* Planetary table */}
+              <div className={cn(mobileSubTab !== 'planets' && 'hidden md:block')}>
                 <PlanetaryTable planets={chartData.planets} />
               </div>
 
-              {/* Avakahada Table - always visible on desktop, conditional on mobile */}
-              <div className={cn(
-                'md:block',
-                mobileSubTab === 'avakahada' ? 'block' : 'hidden'              )}>
-                <AvakhadaTable data={chartData.avakahada} variant="compact" />
+              {/* Avakhada table */}
+              <div className={cn(mobileSubTab !== 'avakahada' && 'hidden md:block')}>
+                <AvakhadaTable avakahada={chartData.avakahada} />
               </div>
             </div>
 
-           
-            {/* Focus Mode with all 4 enhancements */}
-              <ChartFocusMode charts={chartConfigs} />
-
-             {/* Chart Legend below */}
-             <div className="max-w-2xl mx-auto">
-               <ChartLegend variant="accordion" />
-              </div>  
-            </div>
-               
-             
+            {/* Legend */}
+            <ChartLegend />
+          </div>
         )}
 
         {activeTab === 'dasha' && (
-          <div className="animate-fade-in">
-            <DashaNavigator dashaData={chartData.dasa} />
+          <div className="space-y-6 animate-fade-in">
+            <DashaNavigator dasha={chartData.dasa} />
           </div>
         )}
 
         {activeTab === 'divisional' && (
-          <div className="animate-fade-in">
-            <DivisionalChartsTab
-              planets={chartData.planets}
-              ascendant={ascendant}
-            />
+          <div className="space-y-6 animate-fade-in">
+            <DivisionalChartsTab config={chartConfig} />
           </div>
         )}
       </main>
 
-      {/* Footer */}
       <Footer />
     </div>
   );
