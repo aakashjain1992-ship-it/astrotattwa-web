@@ -58,6 +58,86 @@ export function DateTimeField({
   const initialMonth = value.date ? new Date(value.date.getFullYear(), value.date.getMonth(), 1) : new Date(2000, 0, 1)
   const [month, setMonth] = React.useState<Date>(initialMonth)
 
+  // Track open state per Select so we only intercept keys when closed
+  // (when open, Radix handles keyboard natively)
+  const [isHourOpen,   setIsHourOpen]   = React.useState(false)
+  const [isMinOpen,    setIsMinOpen]    = React.useState(false)
+  const [isPeriodOpen, setIsPeriodOpen] = React.useState(false)
+
+  // Digit buffers — no timers, purely key-sequence logic
+  const hourBuf = React.useRef("")
+  const minBuf  = React.useRef("")
+
+  const handleHourKey = (e: React.KeyboardEvent) => {
+    if (isHourOpen || !/^\d$/.test(e.key)) return
+    e.preventDefault()
+    const key = e.key
+
+    if (hourBuf.current === "1") {
+      // Waiting after "1" — only 0, 1, 2 can extend to a valid 2-digit hour (10, 11, 12)
+      if (key === "0" || key === "1" || key === "2") {
+        onChange({ ...value, hour: "1" + key })
+        hourBuf.current = ""
+      } else if (key === "1") {
+        // Another "1": commit "01", restart wait with new "1"
+        onChange({ ...value, hour: "01" })
+        hourBuf.current = "1"
+      } else {
+        // 3–9: not a valid continuation — commit "01", set new hour 03–09
+        onChange({ ...value, hour: "0" + key })
+        hourBuf.current = ""
+      }
+    } else {
+      if (key === "1") {
+        // Could be 1, 10, 11, 12 — show "01" tentatively, wait for next key
+        hourBuf.current = "1"
+        onChange({ ...value, hour: "01" })
+      } else {
+        const num = Number(key)
+        if (num >= 2 && num <= 9) onChange({ ...value, hour: "0" + key })
+        // 0 alone is not a valid hour — ignore
+        hourBuf.current = ""
+      }
+    }
+  }
+
+  const handleMinKey = (e: React.KeyboardEvent) => {
+    if (isMinOpen || !/^\d$/.test(e.key)) return
+    e.preventDefault()
+    const key = e.key
+
+    if (minBuf.current !== "") {
+      // Have first digit — combine and commit
+      const combined = minBuf.current + key
+      const num = Number(combined)
+      if (num <= 59) {
+        onChange({ ...value, minute: combined })
+        minBuf.current = ""
+      } else {
+        // e.g. "67" — invalid, treat second key as a fresh first digit
+        minBuf.current = key
+        onChange({ ...value, minute: "0" + key })
+      }
+    } else {
+      const num = Number(key)
+      if (num >= 6) {
+        // 6–9 first: can only be 06–09 (no valid minute starts 60–99)
+        onChange({ ...value, minute: "0" + key })
+        minBuf.current = ""
+      } else {
+        // 0–5: show tentatively, wait for second digit
+        minBuf.current = key
+        onChange({ ...value, minute: "0" + key })
+      }
+    }
+  }
+
+  const handlePeriodKey = (e: React.KeyboardEvent) => {
+    if (isPeriodOpen) return
+    if (e.key === "a" || e.key === "A") { e.preventDefault(); onChange({ ...value, period: "AM" }) }
+    if (e.key === "p" || e.key === "P") { e.preventDefault(); onChange({ ...value, period: "PM" }) }
+  }
+
   React.useEffect(() => {
     if (value.date) setMonth(new Date(value.date.getFullYear(), value.date.getMonth(), 1))
   }, [value.date])
@@ -218,8 +298,9 @@ export function DateTimeField({
         </Label>
 
         <div className="grid grid-cols-3 gap-2">
-          <Select value={value.hour ?? ""} onValueChange={(hour) => onChange({ ...value, hour })}>
-            <SelectTrigger>
+          <Select value={value.hour ?? ""} onValueChange={(hour) => onChange({ ...value, hour })}
+            open={isHourOpen} onOpenChange={setIsHourOpen}>
+            <SelectTrigger onKeyDown={handleHourKey}>
               <SelectValue placeholder="HH" />
             </SelectTrigger>
             <SelectContent className="max-h-[260px] overflow-auto">
@@ -229,8 +310,9 @@ export function DateTimeField({
             </SelectContent>
           </Select>
 
-          <Select value={value.minute ?? ""} onValueChange={(minute) => onChange({ ...value, minute })}>
-            <SelectTrigger>
+          <Select value={value.minute ?? ""} onValueChange={(minute) => onChange({ ...value, minute })}
+            open={isMinOpen} onOpenChange={setIsMinOpen}>
+            <SelectTrigger onKeyDown={handleMinKey}>
               <SelectValue placeholder="MM" />
             </SelectTrigger>
             <SelectContent className="max-h-[260px] overflow-auto">
@@ -243,8 +325,9 @@ export function DateTimeField({
           <Select
             value={value.period ?? ""}
             onValueChange={(period) => onChange({ ...value, period: period as TimePeriod })}
+            open={isPeriodOpen} onOpenChange={setIsPeriodOpen}
           >
-            <SelectTrigger>
+            <SelectTrigger onKeyDown={handlePeriodKey}>
               <SelectValue placeholder="AM/PM" />
             </SelectTrigger>
             <SelectContent>
