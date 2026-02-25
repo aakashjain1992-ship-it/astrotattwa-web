@@ -33,14 +33,28 @@ export function PlanetDisplay({ planet, onClick, className }: PlanetDisplayProps
         {planet.degree}
       </div>
       
-      <div className={cn('text-base font-bold leading-none')}>
-        {planet.symbol}
+<div className={cn('text-base font-bold leading-none flex items-center justify-center')}>
+        {/* Green ↑ for exalted */}
+        {planet.statusFlags.includes('↑') && (
+          <span className="text-green-500 mr-0.5">↑</span>
+        )}
+        
+        {/* Red ↓ for debilitated */}
+        {planet.statusFlags.includes('↓') && (
+          <span className="text-red-500 mr-0.5">↓</span>
+        )}
+        
+        {/* Planet symbol */}
+        <span>{planet.symbol}</span>
       </div>
       
-      {hasFlags && (
+      {/* Other status flags (R, C, D) - excluding arrows */}
+      {planet.statusFlags.filter(f => f !== '↑' && f !== '↓').length > 0 && (
         <div className="text-xs font-normal text-orange-600 dark:text-orange-400 leading-none">
-          {planet.statusFlags.join(' ')}
+          {planet.statusFlags.filter(f => f !== '↑' && f !== '↓').join(' ')}
         </div>
+      )}
+      
       )}
     </button>
   );
