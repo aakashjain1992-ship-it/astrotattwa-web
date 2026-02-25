@@ -37,7 +37,10 @@ export default function BirthDataFormWrapper() {
       const data = await res.json()
 
       // Temporarily store result until DB saving is implemented
-      localStorage.setItem('lastChart', JSON.stringify(data.data))
+      localStorage.setItem('lastChart', JSON.stringify({
+        ...data.data,
+        birthPlace: values.birthPlace,  // preserve city name for display & edit form
+      }))
       await new Promise(resolve => setTimeout(resolve, 3000))
       router.push('/chart')
     } catch (err) {

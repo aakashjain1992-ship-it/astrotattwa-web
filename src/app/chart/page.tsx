@@ -86,6 +86,7 @@ interface ChartData {
   avakahada: AvakhadaData;
   name: string;
   gender?: string;
+  birthPlace?: string;   // city name e.g. "Baghpat, Uttar Pradesh, IN"
   ayanamsha?: string;
 }
 
@@ -254,6 +255,7 @@ export default function ChartPage() {
     latitude: number;
     longitude: number;
     timezone: string;
+    cityName?: string;
   }) => {
     setIsRecalculating(true);
     
@@ -279,9 +281,12 @@ export default function ChartPage() {
       const result = await response.json();
       
       if (result.success && result.data) {
-        // Update state and storage
-        setChartData(result.data);
-        saveChartToStorage(result.data);
+        const updatedData = {
+          ...result.data,
+          birthPlace: formData.cityName ?? chartData?.birthPlace,
+        };
+        setChartData(updatedData);
+        saveChartToStorage(updatedData);
         setIsEditing(false);
       } else {
         throw new Error(result.error || 'Calculation failed');
@@ -342,12 +347,13 @@ export default function ChartPage() {
       <Header showNav={false} />
 
       {/* Main Content */}
-      <main className="flex-1 container py-6 space-y-6" style={{paddingTop:"80px"}}>
+      <main className="flex-1 py-6 space-y-6" style={{ paddingTop: "80px", maxWidth: 1280, margin: "0 auto", width: "100%", paddingLeft: "1rem", paddingRight: "1rem" }}>
         {/* User Details Card */}
         <UserDetailsCard
           name={chartData.name}
           gender={chartData.gender}
           input={chartData.input}
+          birthPlace={chartData.birthPlace}
           isEditing={isEditing}
           onEditToggle={() => setIsEditing(!isEditing)}
         />
@@ -362,6 +368,7 @@ export default function ChartPage() {
             latitude: chartData.input.latitude,
             longitude: chartData.input.longitude,
             timezone: chartData.input.timezone,
+            cityName: chartData.birthPlace,
           }}
           onSubmit={handleEditSubmit}
           onCancel={() => setIsEditing(false)}

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { baseBirthSchema } from '@/lib/validation/birthFormSchemas'
@@ -59,6 +59,7 @@ interface EditBirthDetailsFormProps {
     latitude: number
     longitude: number
     timezone: string
+    cityName?: string
   }) => Promise<void>
   /** Callback to close the form */
   onCancel: () => void
@@ -83,6 +84,7 @@ export function EditBirthDetailsForm({
     handleSubmit,
     setValue,
     watch,
+    control,
     formState: { errors },
   } = useForm<EditFormData>({
     resolver: zodResolver(editFormSchema),
@@ -103,14 +105,13 @@ export function EditBirthDetailsForm({
 
   const latitude = watch('latitude')
   const longitude = watch('longitude')
-  const gender = watch('gender')
 
   // Handle city selection
   const handleCitySelect = (city: City) => {
     setValue('latitude', city.latitude)
     setValue('longitude', city.longitude)
     setValue('timezone', city.timezone)
-    setValue('cityName', city.city_name)
+    setValue('cityName', `${city.city_name}, ${city.state_name}`)
   }
 
   const handleFormSubmit = async (data: EditFormData) => {
@@ -128,6 +129,7 @@ export function EditBirthDetailsForm({
         latitude: data.latitude,
         longitude: data.longitude,
         timezone: data.timezone,
+        cityName: data.cityName,
       })
     } finally {
       setIsSubmitting(false)
@@ -166,20 +168,21 @@ export function EditBirthDetailsForm({
           {/* Gender */}
           <div className="space-y-2">
             <Label>Gender</Label>
-            <Select
-              value={gender}
-              onValueChange={(v) =>
-                setValue('gender', v as 'Male' | 'Female', { shouldValidate: true })
-              }
-            >
-              <SelectTrigger className={errors.gender ? 'border-destructive' : ''}>
-                <SelectValue placeholder="Select gender" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Male">Male</SelectItem>
-                <SelectItem value="Female">Female</SelectItem>
-              </SelectContent>
-            </Select>
+            <Controller
+              control={control}
+              name="gender"
+              render={({ field }) => (
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <SelectTrigger className={errors.gender ? 'border-destructive' : ''}>
+                    <SelectValue placeholder="Select gender" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Male">Male</SelectItem>
+                    <SelectItem value="Female">Female</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            />
             {errors.gender && (
               <p className="text-sm text-destructive">{errors.gender.message}</p>
             )}
