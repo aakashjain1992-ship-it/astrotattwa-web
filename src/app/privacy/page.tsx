@@ -17,22 +17,20 @@ export default function PrivacyPage() {
 
       {/* Content */}
       <main className="flex-1 mx-auto max-w-3xl px-4 py-10 space-y-8">
-        <div className="space-y-2">
-          <div className="flex items-center justify-between mb-4">
-            <h1 className="text-3xl font-bold">Privacy Policy</h1>
-            <span className="text-xs text-muted-foreground">Last updated: February 26, 2026</span>
+        <div class="space-y-2">
+          
+          <div class="flex items-center justify-between mb-4">
+            <h1 class="text-3xl font-bold">Privacy Policy</h1>
           </div>
-          <p className="text-muted-foreground">
-            Astrotattwa (&quot;we&quot;, &quot;our&quot;, &quot;us&quot;) values your privacy. This Privacy Policy explains how we collect, use, protect, and process your information when you access or use{' '}
-            <a href="https://astrotattwa.com" className="text-primary hover:underline">
-              https://astrotattwa.com
-            </a>
-            .
-          </p>
-          <p className="text-sm text-muted-foreground mt-2">
-            By using our services, you agree to this policy.
-          </p>
-        </div>
+          <div class="flex items-center justify-between mb-4">
+            <span class="text-xs text-muted-foreground">Last updated: February 26, 2026
+            </span>
+          </div>
+           <br>
+             <p class="text-muted-foreground">Astrotattwa ("we", "our", "us") values your privacy. This Privacy Policy explains how we collect, use, protect, and process your information when you access or use<!-- --> <a href="https://astrotattwa.com" class="text-primary hover:underline">https://astrotattwa.com</a>.
+             </p>
+               
+               <p class="text-sm text-muted-foreground mt-2">By using our services, you agree to this policy.</p></div>
 
         <Section title="1. Overview">
           <p className="text-sm text-muted-foreground">
@@ -202,11 +200,6 @@ export default function PrivacyPage() {
             </p>
           </div>
         </Section>
-
-        <div className="border-t pt-6 flex items-center justify-between text-sm text-muted-foreground">
-          <Link href="/" className="hover:text-foreground transition-colors">← Back to home</Link>
-          <Link href="/terms" className="hover:text-foreground transition-colors">Terms of Service →</Link>
-        </div>
       </main>
 
       <Footer />
