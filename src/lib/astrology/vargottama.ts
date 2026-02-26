@@ -8,7 +8,6 @@
  */
 
 import type { HouseInfo as HouseData } from '@/types/astrology';
-import type { ChartInsight } from '@/components/chart/divisional/ChartInsights';
 
 // ============================================
 // TYPE DEFINITIONS
@@ -35,6 +34,13 @@ export interface VargottamaPlanet {
   
   /** Strength level based on degree proximity */
   strength: 'very_strong' | 'strong' | 'moderate';
+}
+
+// ChartInsight type matching ChartFocusMode expectations
+export interface ChartInsight {
+  type: 'strength' | 'challenge' | 'highlight';
+  icon: string;
+  text: string;  // ← FIXED: Using 'text' instead of 'title' and 'description'
 }
 
 // ============================================
@@ -87,7 +93,7 @@ export function detectVargottama(
 
 /**
  * Generate ChartInsight[] format for vargottama planets
- * Integrates seamlessly with existing Key Insights system
+ * ⭐ FIXED: Now uses 'text' field to match ChartFocusMode expectations
  * 
  * @param vargottamaPlanets - Array of detected vargottama planets
  * @returns Array of insights in ChartInsight format
@@ -105,25 +111,15 @@ export function getVargottamaInsights(
     return strengthOrder[a.strength] - strengthOrder[b.strength];
   });
   
-  // Header insight
-  insights.push({
-    type: 'strength',
-    icon: '⭐',
-    title: `${sorted.length} Vargottama Planet${sorted.length > 1 ? 's' : ''} - Exceptional Strength`,
-    description: 'These planets are in the same sign in both D1 and D9 charts, indicating exceptional strength and favorable results.',
-    planetsConcerned: sorted.map(p => p.key),
-  });
-  
-  // Individual planet insights
+  // Individual planet insights (no header, direct to highlights)
   sorted.forEach(planet => {
     const houseOrdinal = getOrdinalSuffix(planet.houseInD1);
     const strengthDesc = getStrengthDescription(planet.strength);
     
     insights.push({
-      type: 'highlight',
-      icon: '🔥',
-      title: `${planet.key} - ${planet.sign} (${planet.houseInD1}${houseOrdinal} house)`,
-      description: `Same sign in D1 & D9. ${strengthDesc}`,
+      type: 'strength',
+      icon: '⭐',
+      text: `${planet.key} vargottama in ${planet.sign} (${planet.houseInD1}${houseOrdinal} house) - same sign in D1 & D9. ${strengthDesc}`,
     });
   });
   
@@ -177,11 +173,11 @@ function calculateStrength(d1Degree: number, d9Degree: number): 'very_strong' | 
 function getStrengthDescription(strength: VargottamaPlanet['strength']): string {
   switch (strength) {
     case 'very_strong':
-      return 'Very strong placement - degrees are very close in both charts.';
+      return 'Exceptionally strong - degrees very close';
     case 'strong':
-      return 'Strong placement - gives excellent results.';
+      return 'Strong placement - excellent results';
     case 'moderate':
-      return 'Moderate strength - still beneficial but less intense.';
+      return 'Moderate strength - beneficial';
   }
 }
 
