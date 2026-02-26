@@ -71,7 +71,19 @@ export function LoginForm() {
     if (!email || !password) return
     setLoading(true)
     setError('')
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const res = await fetch('/api/auth/login', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ email, password }),
+})
+
+const data = await res.json()
+
+if (!res.ok) {
+  setError(data.error || 'Login failed')
+  setLoading(false)
+  return
+}
     if (error) {
       if (error.message.includes('Invalid login credentials')) {
         setError('Incorrect email or password. Please try again.')
