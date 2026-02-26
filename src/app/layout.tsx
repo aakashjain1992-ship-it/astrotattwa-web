@@ -20,7 +20,7 @@ const dmSans = DM_Sans({
 
 export const metadata: Metadata = {
   title: 'Astrotattwa - Accurate Vedic Astrology',
-  description: 'Vedic astrology birth charts with accurate calculations and AI-powered insights.',
+  description: 'Astrotattwa is a Vedic astrology platform where users can generate personalised birth charts (Kundli) and explore planetary insights based on birth details.',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
