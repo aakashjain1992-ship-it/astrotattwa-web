@@ -67,8 +67,9 @@ export function ChartEducation({ chartInfo, className }: ChartEducationProps) {
             <Section icon={<BookMarked className="h-4 w-4" />} title="Examples">
               <div className="space-y-3">
                 {chartInfo.examples.map((example, i) => (
-                  <div key={i} className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900">
-                    <p className="text-sm text-blue-900 dark:text-blue-100">{example}</p>
+               <div key={i} className="p-3 rounded-lg bg-accent border text-foreground">
+   
+                    <p className="text-sm">{example}</p>
                   </div>
                 ))}
               </div>
