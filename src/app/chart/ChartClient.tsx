@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { ChartFocusMode, type ChartConfig } from '@/components/chart/ChartFocusMode';
 import { DivisionalChartsTab } from '@/components/chart/divisional';
 import { generateChartInsights } from '@/lib/utils/generateChartInsights';
+import { detectVargottama, getVargottamaInsights } from '@/lib/astrology/vargottama';
 
 // Layout
 import { Header, Footer } from '@/components/layout';
@@ -231,7 +232,7 @@ export default function ChartClient() {
   const [isEditing, setIsEditing] = useState(false);
   const [, setIsRecalculating] = useState(false);
 
-  // ✅ TAB URL SYNC (only change vs original)
+  // ✅ TAB URL SYNC
   const tabParam = searchParams.get('tab') as TabType | null;
 
   useEffect(() => {
@@ -269,7 +270,7 @@ export default function ChartClient() {
       return;
     }
 
-    // ✅ minimal guard to prevent "signNumber of undefined" crashes from bad cache
+    // ✅ minimal guard to prevent crashes from bad cache
     if (!data.ascendant || typeof (data.ascendant as any).signNumber !== 'number') {
       try { localStorage.removeItem(STORAGE_KEY); } catch {}
       router.push('/');
@@ -285,7 +286,7 @@ export default function ChartClient() {
     setIsLoading(false);
   }, [router]);
 
-  // Handle edit form submission - call API and update
+  // Handle edit form submission
   const handleEditSubmit = useCallback(async (formData: {
     name: string;
     gender: 'Male' | 'Female';
@@ -311,7 +312,6 @@ export default function ChartClient() {
         timezone: formData.timezone,
       };
       
-      // Call API to recalculate
       const response = await fetch('/api/calculate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -343,25 +343,29 @@ export default function ChartClient() {
     return <LoadingScreen />;
   }
 
-  // Cast ascendant to proper type for chartHelpers functions
+  // Cast ascendant to proper type
   const ascendant = chartData.ascendant as AstroAscendantData;
 
-  // Build houses using chartHelpers (proper types)
+  // Build houses
   const houses = buildLagnaHouses(chartData.planets, ascendant);
-  
-  // Build Moon Chart (Chandra Lagna)
   const moonHouses = buildMoonHouses(chartData.planets, ascendant);
-  
-  // Build D9 Navamsa Chart
   const navamsaHouses = buildNavamsaHouses(chartData.planets, ascendant);
 
+  // ⭐ DETECT VARGOTTAMA
+  const vargottamaPlanets = detectVargottama(houses, navamsaHouses);
+  const vargottamaInsights = getVargottamaInsights(vargottamaPlanets);
+
+  // Chart configs with vargottama insights injected at the top
   const chartConfigs: ChartConfig[] = [
     {
       id: 'lagna',
       title: 'D1 - Lagna',
       subtitle: `Ascendant: ${chartData.ascendant.sign} ${chartData.ascendant.degreeInSign.toFixed(2)}°`,
       houses: houses,
-      insights: generateChartInsights(houses, 'lagna'),
+      insights: [
+        ...vargottamaInsights,  // ⭐ Vargottama first!
+        ...generateChartInsights(houses, 'lagna'),
+      ],
     },
     {
       id: 'moon',
@@ -406,7 +410,7 @@ export default function ChartClient() {
           onEditToggle={() => setIsEditing(!isEditing)}
         />
 
-        {/* Edit Form (Collapsible) */}
+        {/* Edit Form */}
         <EditBirthDetailsForm
           isOpen={isEditing}
           currentData={{
@@ -447,19 +451,19 @@ export default function ChartClient() {
         {/* Tab Content */}
         {activeTab === 'overview' && (
           <div className="space-y-6 animate-fade-in">
-            {/* Mobile Sub-tabs for tables */}
+            {/* Mobile Sub-tabs */}
             <MobileSubTabs
               activeTab={mobileSubTab}
               onTabChange={setMobileSubTab}
             />
 
-            {/* Two-column section: Planets + Avakahada */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className={cn('md:block', mobileSubTab === 'planets' ? 'block' : 'hidden')}>
+             {/* Two-column section: Planets + Avakahada */}
+            <div className="grid grid-cols-1 lg:grid-cols-[70%_30%] gap-6">
+              <div className={cn('lg:block', mobileSubTab === 'planets' ? 'block' : 'hidden')}>
                 <PlanetaryTable planets={chartData.planets} />
               </div>
 
-              <div className={cn('md:block', mobileSubTab === 'avakahada' ? 'block' : 'hidden')}>
+              <div className={cn('lg:block', mobileSubTab === 'avakahada' ? 'block' : 'hidden')}>
                 <AvakhadaTable data={chartData.avakahada} variant="compact" />
               </div>
             </div>

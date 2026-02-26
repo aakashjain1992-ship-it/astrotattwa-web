@@ -61,7 +61,7 @@ function AttributeRow({
   if (!value) return null;
   
   return (
-    <div className="flex justify-between items-center py-2 border-b border-border last:border-0">
+    <div className="flex justify-between items-center py-2.5 border-b border-border last:border-0">
       <span className="text-sm text-muted-foreground">{label}</span>
       <span className="text-sm font-medium text-foreground">{value}</span>
     </div>
@@ -130,8 +130,7 @@ export function AvakhadaTable({
     // Compact single-column layout
     return (
       <div className={cn('rounded-lg border border-border bg-card p-4', className)}>
-        <h3 className="text-lg font-semibold mb-4">Avakahada Chakra</h3>
-        
+        <h3 className="text-2xl font-semibold pb-2.5">Avakahada Chakra</h3>        
         <div className="space-y-0">
           <AttributeRow label="Rasi" value={getRasiDisplay()} />
           <AttributeRow label="Nakshatra" value={getNakshatraDisplay()} />
