@@ -103,9 +103,15 @@ function MobileDropdown({
             )}
           </SelectValue>
         </SelectTrigger>
-        <SelectContent>
+        
+        {/* FIXED: Added max-height and scrolling for mobile */}
+        <SelectContent 
+          className="max-h-[70vh] overflow-y-auto"
+          position="popper"
+          sideOffset={5}
+        >
           {/* Essential Charts Section */}
-          <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground border-b">
+          <div className="sticky top-0 bg-popover z-10 px-2 py-1.5 text-xs font-semibold text-muted-foreground border-b">
             ⭐ Essential Charts ({essentialCharts.length})
           </div>
           {essentialCharts.map(chart => (
@@ -119,7 +125,7 @@ function MobileDropdown({
           ))}
           
           {/* Important Charts Section */}
-          <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground border-t border-b mt-2">
+          <div className="sticky top-0 bg-popover z-10 px-2 py-1.5 text-xs font-semibold text-muted-foreground border-t border-b mt-2">
             📊 Important Charts ({importantCharts.length})
           </div>
           {importantCharts.map(chart => (
@@ -132,7 +138,7 @@ function MobileDropdown({
           ))}
           
           {/* Advanced Charts Section */}
-          <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground border-t border-b mt-2">
+          <div className="sticky top-0 bg-popover z-10 px-2 py-1.5 text-xs font-semibold text-muted-foreground border-t border-b mt-2">
             🔬 Advanced Charts ({advancedCharts.length})
           </div>
           {advancedCharts.map(chart => (
