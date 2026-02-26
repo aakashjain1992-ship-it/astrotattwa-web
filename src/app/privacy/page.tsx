@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { Stars } from 'lucide-react'
+import { Header, Footer } from '@/components/layout'
 
 export const metadata: Metadata = {
   title: 'Privacy Policy — Astrotattwa',
@@ -9,22 +9,19 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b">
-        <div className="mx-auto max-w-3xl px-4 py-4 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <Stars className="h-5 w-5 text-primary" />
-            <span className="font-semibold">Astrotattwa</span>
-          </Link>
-          <span className="text-sm text-muted-foreground">Last updated: February 26, 2026</span>
-        </div>
-      </header>
+    <div className="min-h-screen bg-background flex flex-col">
+      <Header />
+      
+      {/* Spacer for fixed header (Header is 64px tall) */}
+      <div className="h-16" />
 
       {/* Content */}
-      <main className="mx-auto max-w-3xl px-4 py-10 space-y-8">
+      <main className="flex-1 mx-auto max-w-3xl px-4 py-10 space-y-8">
         <div className="space-y-2">
-          <h1 className="text-3xl font-bold">Privacy Policy</h1>
+          <div className="flex items-center justify-between mb-4">
+            <h1 className="text-3xl font-bold">Privacy Policy</h1>
+            <span className="text-xs text-muted-foreground">Last updated: February 26, 2026</span>
+          </div>
           <p className="text-muted-foreground">
             Astrotattwa (&quot;we&quot;, &quot;our&quot;, &quot;us&quot;) values your privacy. This Privacy Policy explains how we collect, use, protect, and process your information when you access or use{' '}
             <a href="https://astrotattwa.com" className="text-primary hover:underline">
@@ -207,10 +204,12 @@ export default function PrivacyPage() {
         </Section>
 
         <div className="border-t pt-6 flex items-center justify-between text-sm text-muted-foreground">
-          <Link href="/" className="hover:text-foreground">← Back to home</Link>
-          <Link href="/terms" className="hover:text-foreground">Terms of Service →</Link>
+          <Link href="/" className="hover:text-foreground transition-colors">← Back to home</Link>
+          <Link href="/terms" className="hover:text-foreground transition-colors">Terms of Service →</Link>
         </div>
       </main>
+
+      <Footer />
     </div>
   )
 }
