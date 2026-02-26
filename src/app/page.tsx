@@ -80,12 +80,22 @@ export default function HomePage() {
             <p style={{
               fontSize: '15.5px', lineHeight: 1.72,
               color: 'var(--text2)', maxWidth: '420px',
-              marginBottom: '28px',
+              marginBottom: '10px',
               animation: 'up .65s ease .65s forwards',
             }}>
               Your birth chart is a precise record of the sky at the moment
               you arrived — the timing of life&apos;s chapters, the pattern of your
               relationships, the shape of your path.
+            </p>
+
+             <p style={{
+              fontSize: '15.5px', lineHeight: 1.72,
+              color: 'var(--text2)', maxWidth: '420px',
+              marginBottom: '28px',
+              animation: 'up .65s ease .65s forwards',
+            }}>
+              Astrotattwa helps you decode your chart through -
+
             </p>
 
             {/* Feature bullets */}
