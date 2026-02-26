@@ -40,8 +40,24 @@ export interface VargottamaPlanet {
 export interface ChartInsight {
   type: 'strength' | 'challenge' | 'highlight';
   icon: string;
-  text: string;  // ← FIXED: Using 'text' instead of 'title' and 'description'
+  text: string;
 }
+
+// Zodiac sign mapping
+const ZODIAC_SIGNS: Record<number, string> = {
+  1: 'Aries',
+  2: 'Taurus',
+  3: 'Gemini',
+  4: 'Cancer',
+  5: 'Leo',
+  6: 'Virgo',
+  7: 'Libra',
+  8: 'Scorpio',
+  9: 'Sagittarius',
+  10: 'Capricorn',
+  11: 'Aquarius',
+  12: 'Pisces',
+};
 
 // ============================================
 // CORE DETECTION FUNCTION
@@ -60,6 +76,11 @@ export function detectVargottama(
 ): VargottamaPlanet[] {
   const vargottamaPlanets: VargottamaPlanet[] = [];
   
+  // Safety check
+  if (!d1Houses || !d9Houses || d1Houses.length === 0 || d9Houses.length === 0) {
+    return vargottamaPlanets;
+  }
+  
   // Build planet position maps for quick lookup
   const d1PlanetMap = buildPlanetMap(d1Houses);
   const d9PlanetMap = buildPlanetMap(d9Houses);
@@ -70,8 +91,14 @@ export function detectVargottama(
     
     if (!d9Position) continue;
     
-    // Check if same sign in both charts
-    if (d1Position.sign === d9Position.sign) {
+    // ✅ FIXED: Validate sign numbers are in valid range (1-12) AND match
+    if (
+      d1Position.signNumber >= 1 && 
+      d1Position.signNumber <= 12 &&
+      d9Position.signNumber >= 1 &&
+      d9Position.signNumber <= 12 &&
+      d1Position.signNumber === d9Position.signNumber
+    ) {
       vargottamaPlanets.push({
         key: planetKey,
         symbol: getSymbol(planetKey),
@@ -93,7 +120,6 @@ export function detectVargottama(
 
 /**
  * Generate ChartInsight[] format for vargottama planets
- * ⭐ FIXED: Now uses 'text' field to match ChartFocusMode expectations
  * 
  * @param vargottamaPlanets - Array of detected vargottama planets
  * @returns Array of insights in ChartInsight format
@@ -111,7 +137,7 @@ export function getVargottamaInsights(
     return strengthOrder[a.strength] - strengthOrder[b.strength];
   });
   
-  // Individual planet insights (no header, direct to highlights)
+  // Individual planet insights
   sorted.forEach(planet => {
     const houseOrdinal = getOrdinalSuffix(planet.houseInD1);
     const strengthDesc = getStrengthDescription(planet.strength);
@@ -132,20 +158,28 @@ export function getVargottamaInsights(
 
 interface PlanetPosition {
   sign: string;
+  signNumber: number;
   degree: number;
   houseNumber: number;
 }
 
 /**
  * Build a map of planet positions from houses
+ * ✅ FIXED: Gets sign from HOUSE, validates data
  */
 function buildPlanetMap(houses: HouseData[]): Map<string, PlanetPosition> {
   const map = new Map<string, PlanetPosition>();
   
   houses.forEach((house, index) => {
+    // ✅ Validate house has valid rasiNumber
+    if (!house.rasiNumber || house.rasiNumber < 1 || house.rasiNumber > 12) {
+      return; // Skip invalid houses
+    }
+    
     house.planets.forEach(planet => {
       map.set(planet.key, {
-        sign: planet.sign,
+        sign: ZODIAC_SIGNS[house.rasiNumber],
+        signNumber: house.rasiNumber,
         degree: planet.degreeInSign,
         houseNumber: index + 1,
       });
