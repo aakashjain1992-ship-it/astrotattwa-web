@@ -28,7 +28,7 @@ export function Footer({ className }: { className?: string }) {
         </p>
 
         <div style={{ display: 'flex', gap: '22px' }}>
-          <Link
+          <a
             href="https://astrotattwa.com/privacy"
             style={{
               fontSize: '13px',
@@ -40,8 +40,8 @@ export function Footer({ className }: { className?: string }) {
             onMouseLeave={e => (e.currentTarget.style.color = 'var(--text3)')}
           >
             Privacy Policy
-          </Link>
-          <Link
+          </a>
+          <a
             href="https://astrotattwa.com/terms"
             style={{
               fontSize: '13px',
@@ -53,7 +53,7 @@ export function Footer({ className }: { className?: string }) {
             onMouseLeave={e => (e.currentTarget.style.color = 'var(--text3)')}
           >
             Terms of Service
-          </Link>
+          </a>
         </div>
       </div>
 
