@@ -29,7 +29,7 @@ export function Footer({ className }: { className?: string }) {
 
         <div style={{ display: 'flex', gap: '22px' }}>
           <Link
-            href="/privacy"
+            href="https://astrotattwa.com/privacy"
             style={{
               fontSize: '13px',
               color: 'var(--text3)',
@@ -42,7 +42,7 @@ export function Footer({ className }: { className?: string }) {
             Privacy Policy
           </Link>
           <Link
-            href="/terms"
+            href="https://astrotattwa.com/terms"
             style={{
               fontSize: '13px',
               color: 'var(--text3)',
