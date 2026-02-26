@@ -27,10 +27,10 @@ export default function PrivacyPage() {
             </span>
           </div>
            <br>
-             <p class="text-muted-foreground">Astrotattwa ("we", "our", "us") values your privacy. This Privacy Policy explains how we collect, use, protect, and process your information when you access or use<!-- --> <a href="https://astrotattwa.com" class="text-primary hover:underline">https://astrotattwa.com</a>.
+             <p class="text-muted-foreground">Astrotattwa ("we", "our", "us") values your privacy. This Privacy Policy explains how we collect, use, protect, and process your information when you access or use<!-- --> <a href="https://astrotattwa.com" class="text-primary hover:underline">https://astrotattwa.com</a>
              </p>
                
-               <p class="text-sm text-muted-foreground mt-2">By using our services, you agree to this policy.</p></div>
+               <p class="text-sm text-muted-foreground mt-2"> By using our services, you agree to this policy.</p></div>
 
         <Section title="1. Overview">
           <p className="text-sm text-muted-foreground">
