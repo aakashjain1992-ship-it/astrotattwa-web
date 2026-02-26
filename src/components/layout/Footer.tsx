@@ -39,7 +39,7 @@ export function Footer({ className }: { className?: string }) {
             onMouseEnter={e => (e.currentTarget.style.color = 'var(--text)')}
             onMouseLeave={e => (e.currentTarget.style.color = 'var(--text3)')}
           >
-            Privacy
+            Privacy Policy
           </Link>
           <Link
             href="/terms"
@@ -52,7 +52,7 @@ export function Footer({ className }: { className?: string }) {
             onMouseEnter={e => (e.currentTarget.style.color = 'var(--text)')}
             onMouseLeave={e => (e.currentTarget.style.color = 'var(--text3)')}
           >
-            Terms
+            Terms of Service
           </Link>
         </div>
       </div>
