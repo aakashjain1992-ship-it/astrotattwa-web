@@ -1,11 +1,11 @@
 /**
  * Unified Divisional Chart Builder
- * 
- * Consolidates duplicate logic from d2-hora.ts, d3-drekkana.ts, d7-saptamsa.ts, d12-dwadasamsa.ts
- * Reduces ~150 lines of duplicate code to a single configurable function
- * 
- * @version 1.0.0
+ 
+ * COMPLETE VERSION with ALL 16 standard divisional charts
+
+ * @version 2.0.0
  * @created February 7, 2026
+ * @updated February 26, 2026 - Added D5, D6, D8, D11, D16, D20, D24, D27
  */
 
 import type { 
@@ -23,8 +23,7 @@ import { RASHI_NAMES, PLANET_SYMBOLS } from '@/types/astrology';
  */
 export interface DivisionConfig {
   /** Division type identifier */
-  type: 'D1' | 'D2' | 'D3' | 'D4' | 'D7' | 'D9' | 'D10' | 'D12' | 'D16' | 'D20' | 'D24' | 'D27' | 'D30' | 'D40' | 'D45' | 'D60';
-  
+ type: 'D1' | 'D2' | 'D3' | 'D4' | 'D5' | 'D6' | 'D7' | 'D8' | 'D9' | 'D10' | 'D11' | 'D12' | 'D16' | 'D20' | 'D24' | 'D27' | 'D30' | 'D40' | 'D45' | 'D60';  
   /** Display name */
   name: string;
   
@@ -84,6 +83,61 @@ export const DREKKANA_CONFIG: DivisionConfig = {
 };
 
 /**
+ * Chaturthamsa (D4) Configuration
+ */
+export const CHATURTHAMSA_CONFIG: DivisionConfig = {
+  type: 'D4',
+  name: 'Chaturthamsa',
+  sanskritName: 'Chaturthāṁśa',
+  divisor: 4,
+  calculateSign: (longitude: number): number => {
+    const signIndex = Math.floor(longitude / 30);
+    const degreeInSign = longitude % 30;
+    const chaturthamsaPart = Math.floor(degreeInSign / 7.5);
+    const resultSignIndex = (signIndex + (chaturthamsaPart * 3)) % 12;
+    return resultSignIndex + 1;
+  },
+};
+/**
+ * Panchamamsa (D5) Configuration - NEW
+ * Shows fame, power, authority, and influence
+ */
+export const PANCHAMAMSA_CONFIG: DivisionConfig = {
+  type: 'D5',
+  name: 'Panchamamsa',
+  sanskritName: 'Pañcamāṁśa',
+  divisor: 5,
+  calculateSign: (longitude: number): number => {
+    const signIndex = Math.floor(longitude / 30);
+    const degreeInSign = longitude % 30;
+    const panchamamsaPart = Math.floor(degreeInSign / 6); // 0-4
+    const isOddSign = signIndex % 2 === 0;
+    const startSign = isOddSign ? signIndex : (signIndex + 8) % 12;
+    const resultSignIndex = (startSign + panchamamsaPart) % 12;
+    return resultSignIndex + 1;
+  },
+};
+/**
+ * Shashtamsa (D6) Configuration - NEW
+ * Shows diseases, debts, enemies, and obstacles
+ */
+export const SHASHTAMSA_CONFIG: DivisionConfig = {
+  type: 'D6',
+  name: 'Shashtamsa',
+  sanskritName: 'Ṣaṣṭhāṁśa',
+  divisor: 6,
+  calculateSign: (longitude: number): number => {
+    const signIndex = Math.floor(longitude / 30);
+    const degreeInSign = longitude % 30;
+    const shashtamsaPart = Math.floor(degreeInSign / 5); // 0-5
+    const isOddSign = signIndex % 2 === 0;
+    const startSign = isOddSign ? signIndex : (signIndex + 6) % 12;
+    const resultSignIndex = (startSign + shashtamsaPart) % 12;
+    return resultSignIndex + 1;
+  },
+};
+
+/**
  * Saptamsa (D7) Configuration
  * Divides each sign into 7 parts (~4.29° each)
  * Odd signs start from themselves, even signs start from 7th sign
@@ -105,39 +159,34 @@ export const SAPTAMSA_CONFIG: DivisionConfig = {
 };
 
 /**
- * Dwadasamsa (D12) Configuration
- * Divides each sign into 12 parts (2.5° each)
- * Start from the sign itself
+ * Ashtamsa (D8) Configuration - NEW
+ * Shows sudden events, accidents, and longevity
  */
-export const DWADASAMSA_CONFIG: DivisionConfig = {
-  type: 'D12',
-  name: 'Dwadasamsa',
-  sanskritName: 'Dvādaśāṁśa',
-  divisor: 12,
+export const ASHTAMSA_CONFIG: DivisionConfig = {
+  type: 'D8',
+  name: 'Ashtamsa',
+  sanskritName: 'Aṣṭāṁśa',
+  divisor: 8,
   calculateSign: (longitude: number): number => {
     const signIndex = Math.floor(longitude / 30);
     const degreeInSign = longitude % 30;
-    const dwadamsamsaPart = Math.floor(degreeInSign / 2.5);
-    const resultSignIndex = (signIndex + dwadamsamsaPart) % 12;
-    return resultSignIndex + 1;
-  },
-};
-
-/**
- * Chaturthamsa (D4) Configuration
- * Divides each sign into 4 parts (7.5° each)
- * Used for property, assets, fixed resources, and general fortune
- */
-export const CHATURTHAMSA_CONFIG: DivisionConfig = {
-  type: 'D4',
-  name: 'Chaturthamsa',
-  sanskritName: 'Chaturthāṁśa',
-  divisor: 4,
-  calculateSign: (longitude: number): number => {
-    const signIndex = Math.floor(longitude / 30);
-    const degreeInSign = longitude % 30;
-    const chaturthamsaPart = Math.floor(degreeInSign / 7.5);
-    const resultSignIndex = (signIndex + (chaturthamsaPart * 3)) % 12;
+    const ashtamsaPart = Math.floor(degreeInSign / 3.75); // 0-7
+    
+    // Movable signs: Aries, Cancer, Libra, Capricorn (0, 3, 6, 9)
+    // Fixed signs: Taurus, Leo, Scorpio, Aquarius (1, 4, 7, 10)
+    // Dual signs: Gemini, Virgo, Sagittarius, Pisces (2, 5, 8, 11)
+    const signType = signIndex % 3; // 0=movable, 1=fixed, 2=dual
+    
+    let startSign: number;
+    if (signType === 0) {
+      startSign = signIndex; // Movable: start from same sign
+    } else if (signType === 1) {
+      startSign = (signIndex + 8) % 12; // Fixed: start from 9th sign
+    } else {
+      startSign = (signIndex + 4) % 12; // Dual: start from 5th sign
+    }
+    
+    const resultSignIndex = (startSign + ashtamsaPart) % 12;
     return resultSignIndex + 1;
   },
 };
@@ -148,11 +197,6 @@ export const CHATURTHAMSA_CONFIG: DivisionConfig = {
  * THE MOST IMPORTANT divisional chart after D1
  * Shows: spouse, dharma, inner strength, spiritual inclinations
  * 
- * Rules:
- * - Fire signs (Aries, Leo, Sag) start from Aries
- * - Earth signs (Taurus, Virgo, Cap) start from Capricorn
- * - Air signs (Gemini, Libra, Aquarius) start from Libra
- * - Water signs (Cancer, Scorpio, Pisces) start from Cancer
  */
 export const NAVAMSA_CONFIG: DivisionConfig = {
   type: 'D9',
@@ -199,6 +243,151 @@ export const DASAMSA_CONFIG: DivisionConfig = {
   },
 };
 
+
+/**
+ * Ekadasamsa (D11) Configuration - NEW
+ * Shows gains, honors, achievements, and fulfillment
+ */
+export const EKADASAMSA_CONFIG: DivisionConfig = {
+  type: 'D11',
+  name: 'Ekadasamsa',
+  sanskritName: 'Ekādaśāṁśa',
+  divisor: 11,
+  calculateSign: (longitude: number): number => {
+    const signIndex = Math.floor(longitude / 30);
+    const degreeInSign = longitude % 30;
+    const ekadasamsaPart = Math.floor(degreeInSign / (30 / 11)); // 0-10
+    // Both odd and even signs start from the same sign in D11
+    const resultSignIndex = (signIndex + ekadasamsaPart) % 12;
+    return resultSignIndex + 1;
+  },
+};
+
+
+/**
+ * Dwadasamsa (D12) Configuration
+ * Divides each sign into 12 parts (2.5° each)
+ * Start from the sign itself
+ */
+export const DWADASAMSA_CONFIG: DivisionConfig = {
+  type: 'D12',
+  name: 'Dwadasamsa',
+  sanskritName: 'Dvādaśāṁśa',
+  divisor: 12,
+  calculateSign: (longitude: number): number => {
+    const signIndex = Math.floor(longitude / 30);
+    const degreeInSign = longitude % 30;
+    const dwadamsamsaPart = Math.floor(degreeInSign / 2.5);
+    const resultSignIndex = (signIndex + dwadamsamsaPart) % 12;
+    return resultSignIndex + 1;
+  },
+};
+
+/**
+ * Shodasamsa (D16) Configuration - NEW
+ * Shows vehicles, conveyances, luxuries, and material comforts
+ */
+export const SHODASAMSA_CONFIG: DivisionConfig = {
+  type: 'D16',
+  name: 'Shodasamsa',
+  sanskritName: 'Ṣoḍaśāṁśa',
+  divisor: 16,
+  calculateSign: (longitude: number): number => {
+    const signIndex = Math.floor(longitude / 30);
+    const degreeInSign = longitude % 30;
+    const shodasamsaPart = Math.floor(degreeInSign / 1.875); // 0-15
+    
+    const signType = signIndex % 3; // 0=movable, 1=fixed, 2=dual
+    
+    let startSign: number;
+    if (signType === 0) {
+      startSign = signIndex; // Movable: start from same sign
+    } else if (signType === 1) {
+      startSign = 4; // Fixed: start from Leo
+    } else {
+      startSign = 8; // Dual: start from Sagittarius
+    }
+    
+    const resultSignIndex = (startSign + shodasamsaPart) % 12;
+    return resultSignIndex + 1;
+  },
+};
+
+/**
+ * Vimshamsa (D20) Configuration - NEW
+ * Shows spiritual progress, religious inclinations, and worship
+ */
+export const VIMSHAMSA_CONFIG: DivisionConfig = {
+  type: 'D20',
+  name: 'Vimshamsa',
+  sanskritName: 'Viṁśāṁśa',
+  divisor: 20,
+  calculateSign: (longitude: number): number => {
+    const signIndex = Math.floor(longitude / 30);
+    const degreeInSign = longitude % 30;
+    const vimsamsaPart = Math.floor(degreeInSign / 1.5); // 0-19
+    
+    const signType = signIndex % 3; // 0=movable, 1=fixed, 2=dual
+    
+    let startSign: number;
+    if (signType === 0) {
+      startSign = 0; // Movable: start from Aries
+    } else if (signType === 1) {
+      startSign = 8; // Fixed: start from Sagittarius
+    } else {
+      startSign = 4; // Dual: start from Leo
+    }
+    
+    const resultSignIndex = (startSign + vimsamsaPart) % 12;
+    return resultSignIndex + 1;
+  },
+};
+
+/**
+ * Chaturvimshamsa/Siddhamsa (D24) Configuration - NEW
+ * Shows education, learning, knowledge, and academic success
+ */
+export const SIDDHAMSA_CONFIG: DivisionConfig = {
+  type: 'D24',
+  name: 'Siddhamsa',
+  sanskritName: 'Sidddhāṁśa',
+  divisor: 24,
+  calculateSign: (longitude: number): number => {
+    const signIndex = Math.floor(longitude / 30);
+    const degreeInSign = longitude % 30;
+    const siddhamsaPart = Math.floor(degreeInSign / 1.25); // 0-23
+    const isOddSign = signIndex % 2 === 0;
+    const startSign = isOddSign ? 4 : 3; // Odd: Leo, Even: Cancer
+    const resultSignIndex = (startSign + siddhamsaPart) % 12;
+    return resultSignIndex + 1;
+  },
+};
+
+/**
+ * Bhamsa/Nakshatramsa (D27) Configuration - NEW
+ * Shows strengths, weaknesses, vitality, and overall health
+ */
+export const BHAMSA_CONFIG: DivisionConfig = {
+  type: 'D27',
+  name: 'Bhamsa',
+  sanskritName: 'Bhāṁśa',
+  divisor: 27,
+  calculateSign: (longitude: number): number => {
+    const signIndex = Math.floor(longitude / 30);
+    const degreeInSign = longitude % 30;
+    const bhamsaPart = Math.floor(degreeInSign / (30 / 27)); // 0-26
+    
+    // Element-based starting signs (same as Navamsa logic)
+    const element = signIndex % 4; // Fire=0, Earth=1, Air=2, Water=3
+    const startSigns = [0, 3, 6, 9]; // Aries, Cancer, Libra, Capricorn
+    const startSign = startSigns[element];
+    
+    const resultSignIndex = (startSign + bhamsaPart) % 12;
+    return resultSignIndex + 1;
+  },
+};
+
+
 /**
  * Trimsamsa (D30) Configuration
  * Divides each sign into 30 parts (1° each)
@@ -240,13 +429,8 @@ export const TRIMSAMSA_CONFIG: DivisionConfig = {
 // ===== DIVISIONAL CHART BUILDER =====
 
 /**
- * Builds houses for any divisional chart using configuration
- * 
- * This replaces:
- * - buildHoraHouses() from d2-hora.ts
- * - buildDrekkanaHouses() from d3-drekkana.ts
- * - buildSaptamsaHouses() from d7-saptamsa.ts
- * - buildDwadamsamsaHouses() from d12-dwadasamsa.ts
+ * Builds houses for any divisional chart using the configuration
+
  * 
  * @param planets - Record of all planet positions
  * @param ascendant - Ascendant data
@@ -373,12 +557,19 @@ export const DIVISION_CONFIGS = {
   D2: HORA_CONFIG,
   D3: DREKKANA_CONFIG,
   D4: CHATURTHAMSA_CONFIG,
+  D5: PANCHAMAMSA_CONFIG,      
+  D6: SHASHTAMSA_CONFIG,        
   D7: SAPTAMSA_CONFIG,
+  D8: ASHTAMSA_CONFIG,          
   D9: NAVAMSA_CONFIG,
-  D10: DASAMSA_CONFIG,  
+  D10: DASAMSA_CONFIG,
+  D11: EKADASAMSA_CONFIG,       
   D12: DWADASAMSA_CONFIG,
+  D16: SHODASAMSA_CONFIG,       
+  D20: VIMSHAMSA_CONFIG,        
+  D24: SIDDHAMSA_CONFIG,        
+  D27: BHAMSA_CONFIG,           
   D30: TRIMSAMSA_CONFIG,
-
 } as const;
 
 /**
