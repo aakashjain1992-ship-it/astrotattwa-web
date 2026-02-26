@@ -17,15 +17,15 @@ export default function TermsPage() {
 
       {/* Content */}
       <main className="flex-1 mx-auto max-w-3xl px-4 py-10 space-y-8">
-        <div class="space-y-2">
-          <div class="flex items-center justify-between mb-4">
-            <h1 class="text-3xl font-bold">Terms of Service</h1>
+        <div className="space-y-2">
+          <div className="flex items-center justify-between mb-4">
+            <h1 className="text-3xl font-bold">Terms of Service</h1>
           </div>
-          <div class="flex items-center justify-between mb-4">
-            <span class="text-xs text-muted-foreground">Last updated: February 26, 2026 </span>
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-xs text-muted-foreground">Last updated: February 26, 2026 </span>
           </div>
-          <br>
-         <p class="text-muted-foreground">By accessing or using Astrotattwa, you agree to these Terms.</p>
+          <br></br>
+         <p className="text-muted-foreground">By accessing or using Astrotattwa, you agree to these Terms.</p>
           </div>
 
         <Section title="1. Acceptance">
