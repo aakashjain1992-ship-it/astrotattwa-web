@@ -472,6 +472,56 @@ export const DIVISIONAL_CHARTS: DivisionalChartInfo[] = [
       { house: 4, meaning: 'Inner peace, emotional security' },
       { house: 7, meaning: 'Emotional relationships, how you connect with others' }
     ]
+  },
+  {
+    id: 'd45',
+    label: 'D45',
+    name: 'Akshavedamsa',
+    division: 45,
+    primarySignifies: 'Character, conduct, moral values, and ethical disposition',
+    alsoSignifies: [
+      'Moral character and integrity',
+      'Ethical behavior and values',
+      'Righteousness and virtue',
+      'Inner moral compass and conscience'
+    ],
+    interpretation: `Akshavedamsa divides each sign into 45 equal parts of ~40' each. This chart reveals the native's character, moral values, and ethical conduct. It shows how one behaves in moral dilemmas and the strength of ethical principles. The 9th house and Jupiter are key indicators of dharma and righteousness.`,
+    importance: 'advanced',
+    isPopular: false,
+    examples: [
+      'Jupiter strong in D45: High moral character, ethical conduct, virtuous nature',
+      'Malefics afflicting 9th house in D45: Moral challenges, ethical dilemmas'
+    ],
+    keyHouses: [
+      { house: 9, meaning: 'Dharma, righteousness, moral values' },
+      { house: 1, meaning: 'Overall character and personality' },
+      { house: 10, meaning: 'Professional ethics, integrity in career' }
+    ]
+  },
+  {
+    id: 'd60',
+    label: 'D60',
+    name: 'Shashtiamsa',
+    division: 60,
+    primarySignifies: 'Past life karma, subtle karmic influences, and hidden destiny',
+    alsoSignifies: [
+      'Karmic debts from previous lives',
+      'Subtle effects from past actions',
+      'Hidden blessings and curses',
+      'Deep karmic patterns'
+    ],
+    interpretation: `Shashtiamsa is the most subtle divisional chart, dividing each sign into 60 equal parts of 30' each. It reveals deep karmic patterns and influences from past lives. This chart shows the most refined effects of planetary positions and can indicate hidden blessings or challenges. Used for very detailed predictive work.`,
+    importance: 'advanced',
+    isPopular: false,
+    examples: [
+      'Benefics exalted in D60: Past life good karma, hidden blessings manifest',
+      'Malefics in 6th/8th/12th of D60: Karmic debts, hidden obstacles to overcome'
+    ],
+    keyHouses: [
+      { house: 12, meaning: 'Past life karma, spiritual debts, moksha' },
+      { house: 9, meaning: 'Fortune from past lives, dharma' },
+      { house: 8, meaning: 'Hidden karmic transformations, mysteries' }
+    ]
   }
 ];
 
@@ -496,7 +546,7 @@ export const getPhase1Charts = (): DivisionalChartInfo[] => {
   const phase1Ids = [
     'd1', 'd2', 'd3', 'd4', 'd5', 'd6', 'd7', 'd8',
     'd9', 'd10', 'd11', 'd12', 'd16', 'd20', 'd24', 'd27',
-    'd30', 'moon'
+    'd30', 'moon', 'd45', 'd60'
   ];
   return DIVISIONAL_CHARTS.filter(chart => phase1Ids.includes(chart.id));
 };
