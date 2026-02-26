@@ -20,8 +20,12 @@ export default function TermsPage() {
         <div className="space-y-2">
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-3xl font-bold">Terms of Service</h1>
+          </div>
+          <div className="space-y-2">
+          <div className="flex items-center justify-between mb-4">
             <span className="text-xs text-muted-foreground">Last updated: February 26, 2026</span>
           </div>
+          <br>
           <p className="text-muted-foreground">
             By accessing or using Astrotattwa, you agree to these Terms.
           </p>
@@ -124,11 +128,6 @@ export default function TermsPage() {
             </p>
           </div>
         </Section>
-
-        <div className="border-t pt-6 flex items-center justify-between text-sm text-muted-foreground">
-          <Link href="/" className="hover:text-foreground transition-colors">← Back to home</Link>
-          <Link href="/privacy" className="hover:text-foreground transition-colors">Privacy Policy →</Link>
-        </div>
       </main>
 
       <Footer />
