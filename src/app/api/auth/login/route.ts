@@ -200,8 +200,8 @@ async function handleSuccess(emailNorm: string, ipHash: string) {
       last_success_at: now,
       updated_at: now,
     })
-    .in('scope', ['email_ip', 'email'])
-    .in('scope_key', [`${emailNorm}|${ipHash}`, emailNorm])
+    .in('scope', ['email_ip', 'email', 'ip'])
+    .in('scope_key', [`${emailNorm}|${ipHash}`, emailNorm, ipHash])
 }
 
 // =======================
