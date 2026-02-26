@@ -49,6 +49,7 @@ export function DivisionalChartsTab({ planets, ascendant, className }: Divisiona
   
   return (
     <div className={className}>
+      {/* Mobile horizontal selector */}
       <div className="mb-6">
         <ChartSelector
           selectedChartId={selectedChartId}
@@ -56,10 +57,10 @@ export function DivisionalChartsTab({ planets, ascendant, className }: Divisiona
           variant="horizontal"
         />
       </div>
-
+      
       {/* ⭐ NEW LAYOUT: Key Insights on LEFT (like Overview page) */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6">
-                {/* LEFT: Chart + Education */}
+        {/* LEFT: Chart + Education */}
         <div className="space-y-6">
           <div className="text-center space-y-2">
             <h2 className="text-2xl md:text-3xl font-bold">
@@ -94,8 +95,9 @@ export function DivisionalChartsTab({ planets, ascendant, className }: Divisiona
               </div>
             </div>
           )}
+          
           <ChartEducation chartInfo={chartInfo} />
-          </div>
+        </div>
         
         {/* RIGHT: Key Insights Sidebar */}
         <div className="lg:block hidden">
@@ -103,13 +105,10 @@ export function DivisionalChartsTab({ planets, ascendant, className }: Divisiona
             <div className="sticky top-24">
               <ChartInsights houses={houses} chartInfo={chartInfo} />
             </div>
-            {!error && houses.length > 0 && (
-              <div className="md:col-span-2">
-                <ChartInsights houses={houses} chartInfo={chartInfo} />
-              </div>
-            )}
-          </div>
-         {/* Mobile: Key Insights below chart */}
+          )}
+        </div>
+        
+        {/* Mobile: Key Insights below chart */}
         <div className="lg:hidden">
           {!error && houses.length > 0 && (
             <ChartInsights houses={houses} chartInfo={chartInfo} />
@@ -124,7 +123,6 @@ export function DivisionalChartsTab({ planets, ascendant, className }: Divisiona
           onSelectChart={(id) => setSelectedChartId(id as DivisionalChartId)}
           variant="sidebar"
         />
-        </div>
       </div>
     </div>
   );
