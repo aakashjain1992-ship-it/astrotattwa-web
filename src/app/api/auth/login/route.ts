@@ -8,14 +8,18 @@ export const runtime = 'nodejs'
 // =======================
 // CONFIG (tunable)
 // =======================
+
+// email+ip combo: strict (stops targeted brute force)
 const EMAIL_IP_FAIL_LIMIT = 5
 const EMAIL_IP_WINDOW_MIN = 10
 const EMAIL_IP_LOCK_MIN = 15
 
+// email-only: catches distributed attacks across many IPs
 const EMAIL_FAIL_LIMIT = 10
 const EMAIL_WINDOW_MIN = 30
 const EMAIL_LOCK_MIN = 30
 
+// ip-only: stops IP spraying many accounts
 const IP_FAIL_LIMIT = 30
 const IP_WINDOW_MIN = 10
 const IP_LOCK_MIN = 15
@@ -53,12 +57,16 @@ function minutesAgo(min: number) {
 // =======================
 
 export async function POST(req: NextRequest) {
-  const body = await req.json()
-  const { email, password } = body
+  const body = await req.json().catch(() => null)
+  const email = body?.email
+  const password = body?.password
 
   if (!email || !password) {
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
   }
+
+  const country = req.headers.get('cf-ipcountry') || null
+  const cfRay = req.headers.get('cf-ray') || null
 
   const emailNorm = normalizeEmail(email)
   const ip = getClientIP(req)
@@ -73,7 +81,7 @@ export async function POST(req: NextRequest) {
   // ----- Check existing locks -----
   const { data: locks } = await supabaseAdmin
     .from('auth_login_attempts_v2')
-    .select('*')
+    .select('scope, scope_key, locked_until')
     .in('scope', ['email_ip', 'email', 'ip'])
     .in('scope_key', [emailIpKey, emailKey, ipKey])
 
@@ -81,7 +89,7 @@ export async function POST(req: NextRequest) {
 
   for (const row of locks || []) {
     if (row.locked_until && new Date(row.locked_until) > now) {
-      await logEvent(emailNorm, ipHash, userAgent, 'locked', 'account_locked')
+      await logEvent(emailNorm, ipHash, userAgent, 'locked', 'account_locked', country, cfRay)
       return NextResponse.json(
         { error: 'Too many login attempts. Please try again later.' },
         { status: 429 }
@@ -89,8 +97,11 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // ----- Attempt Supabase Login -----
-  const response = NextResponse.next()
+  // IMPORTANT:
+  // We must return the SAME response object that receives cookies from Supabase.
+  const response = NextResponse.json({ success: true }, { status: 200 })
+  response.headers.set('Cache-Control', 'no-store')
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -115,32 +126,61 @@ export async function POST(req: NextRequest) {
   })
 
   if (error) {
-    await handleFailure(emailNorm, ipHash, userAgent)
-    return NextResponse.json(
-      { error: 'Invalid email or password' },
-      { status: 401 }
-    )
+    await handleFailure(emailNorm, ipHash, userAgent, country, cfRay)
+
+    // don’t leak whether email exists
+    return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 })
   }
 
-  // Success
+  // Success: clear fail counters + log
   await handleSuccess(emailNorm, ipHash)
-  await logEvent(emailNorm, ipHash, userAgent, 'success', null)
+  await logEvent(emailNorm, ipHash, userAgent, 'success', null, country, cfRay)
 
-  return NextResponse.json({ success: true })
+  return response
 }
 
 // =======================
 // Failure Handler
 // =======================
 
-async function handleFailure(emailNorm: string, ipHash: string, userAgent: string) {
-  const now = new Date().toISOString()
+async function handleFailure(
+  emailNorm: string,
+  ipHash: string,
+  userAgent: string,
+  country: string | null,
+  cfRay: string | null
+) {
+  await incrementScope(
+    'email_ip',
+    `${emailNorm}|${ipHash}`,
+    emailNorm,
+    ipHash,
+    EMAIL_IP_FAIL_LIMIT,
+    EMAIL_IP_WINDOW_MIN,
+    EMAIL_IP_LOCK_MIN
+  )
 
-  await incrementScope('email_ip', `${emailNorm}|${ipHash}`, emailNorm, ipHash, EMAIL_IP_FAIL_LIMIT, EMAIL_IP_WINDOW_MIN, EMAIL_IP_LOCK_MIN)
-  await incrementScope('email', emailNorm, emailNorm, ipHash, EMAIL_FAIL_LIMIT, EMAIL_WINDOW_MIN, EMAIL_LOCK_MIN)
-  await incrementScope('ip', ipHash, emailNorm, ipHash, IP_FAIL_LIMIT, IP_WINDOW_MIN, IP_LOCK_MIN)
+  await incrementScope(
+    'email',
+    emailNorm,
+    emailNorm,
+    ipHash,
+    EMAIL_FAIL_LIMIT,
+    EMAIL_WINDOW_MIN,
+    EMAIL_LOCK_MIN
+  )
 
-  await logEvent(emailNorm, ipHash, userAgent, 'failure', 'invalid_credentials')
+  await incrementScope(
+    'ip',
+    ipHash,
+    emailNorm,
+    ipHash,
+    IP_FAIL_LIMIT,
+    IP_WINDOW_MIN,
+    IP_LOCK_MIN
+  )
+
+  await logEvent(emailNorm, ipHash, userAgent, 'failure', 'invalid_credentials', country, cfRay)
 }
 
 // =======================
@@ -148,13 +188,17 @@ async function handleFailure(emailNorm: string, ipHash: string, userAgent: strin
 // =======================
 
 async function handleSuccess(emailNorm: string, ipHash: string) {
+  const now = new Date().toISOString()
+
+  // reset email_ip + email scopes on success
   await supabaseAdmin
     .from('auth_login_attempts_v2')
     .update({
       fail_count: 0,
       locked_until: null,
-      last_success_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      lock_level: 0,
+      last_success_at: now,
+      updated_at: now,
     })
     .in('scope', ['email_ip', 'email'])
     .in('scope_key', [`${emailNorm}|${ipHash}`, emailNorm])
@@ -165,7 +209,7 @@ async function handleSuccess(emailNorm: string, ipHash: string) {
 // =======================
 
 async function incrementScope(
-  scope: string,
+  scope: 'email_ip' | 'email' | 'ip',
   scopeKey: string,
   emailNorm: string,
   ipHash: string,
@@ -173,7 +217,7 @@ async function incrementScope(
   windowMin: number,
   lockMin: number
 ) {
-  const windowStart = minutesAgo(windowMin)
+  const windowStartIso = minutesAgo(windowMin)
 
   const { data } = await supabaseAdmin
     .from('auth_login_attempts_v2')
@@ -182,6 +226,7 @@ async function incrementScope(
     .eq('scope_key', scopeKey)
     .maybeSingle()
 
+  // If no row exists, create one and stop
   if (!data) {
     await supabaseAdmin.from('auth_login_attempts_v2').insert({
       scope,
@@ -189,19 +234,22 @@ async function incrementScope(
       email_norm: emailNorm,
       ip_hash: ipHash,
       fail_count: 1,
+      lock_level: 0,
+      locked_until: null,
       first_fail_at: new Date().toISOString(),
       last_fail_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     })
     return
   }
 
-  let failCount = data.fail_count
+  const windowStart = new Date(windowStartIso)
+  const firstFailAt = data.first_fail_at ? new Date(data.first_fail_at) : null
 
-  if (data.first_fail_at && new Date(data.first_fail_at) < new Date(windowStart)) {
-    failCount = 1
-  } else {
-    failCount += 1
-  }
+  // rolling window reset
+  let failCount = data.fail_count ?? 0
+  const windowExpired = !!(firstFailAt && firstFailAt < windowStart)
+  failCount = windowExpired ? 1 : failCount + 1
 
   const updateData: any = {
     fail_count: failCount,
@@ -209,8 +257,22 @@ async function incrementScope(
     updated_at: new Date().toISOString(),
   }
 
+  if (windowExpired) {
+    updateData.first_fail_at = new Date().toISOString()
+    // optionally reset lock level when window resets
+    updateData.lock_level = data.lock_level ?? 0
+  }
+
   if (failCount >= failLimit) {
-    updateData.locked_until = minutesFromNow(lockMin)
+    const newLevel = (data.lock_level || 0) + 1
+
+    const adaptiveLockMinutes = Math.min(
+      lockMin * Math.pow(2, newLevel - 1),
+      1440 // cap at 24h
+    )
+
+    updateData.locked_until = minutesFromNow(adaptiveLockMinutes)
+    updateData.lock_level = newLevel
   }
 
   await supabaseAdmin
@@ -228,7 +290,9 @@ async function logEvent(
   ipHash: string,
   userAgent: string,
   result: 'success' | 'failure' | 'locked',
-  failureReason: string | null
+  failureReason: string | null,
+  country?: string | null,
+  cfRay?: string | null
 ) {
   await supabaseAdmin.from('auth_login_events').insert({
     email_norm: emailNorm,
@@ -236,5 +300,7 @@ async function logEvent(
     user_agent: userAgent,
     result,
     failure_reason: failureReason,
+    country: country ?? null,
+    cf_ray: cfRay ?? null,
   })
 }
