@@ -2,16 +2,22 @@
 
 import { cn } from '@/lib/utils';
 import { Star, ChevronDown } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import {
-  getPhase1Charts,
-  getChartsByImportance,
-  type DivisionalChartInfo
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  DIVISIONAL_CHARTS,
+  type DivisionalChartInfo,
+  type ChartImportance
 } from './DivisionalChartConfig';
 import { useState } from 'react';
 
@@ -28,19 +34,19 @@ export function ChartSelector({
   variant = 'horizontal',
   className
 }: ChartSelectorProps) {
-  const phase1Charts = getPhase1Charts();
-  const importantCharts = getChartsByImportance('important').filter(c => 
-    !phase1Charts.find(p => p.id === c.id)
-  );
-  const advancedCharts = getChartsByImportance('advanced');
+  // Properly categorize all charts by importance
+  const essentialCharts = DIVISIONAL_CHARTS.filter(c => c.importance === 'essential');
+  const importantCharts = DIVISIONAL_CHARTS.filter(c => c.importance === 'important');
+  const advancedCharts = DIVISIONAL_CHARTS.filter(c => c.importance === 'advanced');
   
   if (variant === 'horizontal') {
     return (
-      <HorizontalSelector
-        charts={phase1Charts}
+      <MobileDropdown
+        essentialCharts={essentialCharts}
+        importantCharts={importantCharts}
+        advancedCharts={advancedCharts}
         selectedChartId={selectedChartId}
         onSelectChart={onSelectChart}
-        advancedCount={importantCharts.length + advancedCharts.length}
         className={className}
       />
     );
@@ -48,7 +54,7 @@ export function ChartSelector({
   
   return (
     <SidebarSelector
-      phase1Charts={phase1Charts}
+      essentialCharts={essentialCharts}
       importantCharts={importantCharts}
       advancedCharts={advancedCharts}
       selectedChartId={selectedChartId}
@@ -58,75 +64,97 @@ export function ChartSelector({
   );
 }
 
-interface HorizontalSelectorProps {
-  charts: DivisionalChartInfo[];
+// ============================================================================
+// MOBILE DROPDOWN
+// ============================================================================
+
+interface MobileDropdownProps {
+  essentialCharts: DivisionalChartInfo[];
+  importantCharts: DivisionalChartInfo[];
+  advancedCharts: DivisionalChartInfo[];
   selectedChartId: string;
   onSelectChart: (chartId: string) => void;
-  advancedCount: number;
   className?: string;
 }
 
-function HorizontalSelector({
-  charts,
+function MobileDropdown({
+  essentialCharts,
+  importantCharts,
+  advancedCharts,
   selectedChartId,
   onSelectChart,
-  advancedCount,
   className
-}: HorizontalSelectorProps) {
+}: MobileDropdownProps) {
+  const selectedChart = DIVISIONAL_CHARTS.find(c => c.id === selectedChartId);
+  
   return (
-    <div className={cn('md:hidden', className)}>
-       <div className="w-full overflow-x-auto">
-        <div className="flex gap-2 p-2 pb-4 min-w-max">
-          {charts.map(chart => (
-            <ChartTabButton
-              key={chart.id}
-              chart={chart}
-              isSelected={selectedChartId === chart.id}
-              onClick={() => onSelectChart(chart.id)}
-            />
+    <div className={cn('lg:hidden', className)}>
+      <Select value={selectedChartId} onValueChange={onSelectChart}>
+        <SelectTrigger className="w-full">
+          <SelectValue>
+            {selectedChart ? (
+              <div className="flex items-center gap-2">
+                {selectedChart.isPopular && <Star className="h-3 w-3 fill-amber-400 text-amber-400" />}
+                <span className="font-medium">{selectedChart.label}</span>
+                <span className="text-muted-foreground">- {selectedChart.name}</span>
+              </div>
+            ) : (
+              'Select a chart'
+            )}
+          </SelectValue>
+        </SelectTrigger>
+        <SelectContent>
+          {/* Essential Charts Section */}
+          <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground border-b">
+            ⭐ Essential Charts ({essentialCharts.length})
+          </div>
+          {essentialCharts.map(chart => (
+            <SelectItem key={chart.id} value={chart.id}>
+              <div className="flex items-center gap-2">
+                {chart.isPopular && <Star className="h-3 w-3 fill-amber-400 text-amber-400" />}
+                <span className="font-medium">{chart.label}</span>
+                <span className="text-muted-foreground text-xs">- {chart.name}</span>
+              </div>
+            </SelectItem>
           ))}
           
-          {advancedCount > 0 && (
-            <Button variant="outline" size="sm" className="whitespace-nowrap border-dashed" disabled>
-              +{advancedCount} more
-            </Button>
-          )}
-        </div>
-      </div>
+          {/* Important Charts Section */}
+          <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground border-t border-b mt-2">
+            📊 Important Charts ({importantCharts.length})
+          </div>
+          {importantCharts.map(chart => (
+            <SelectItem key={chart.id} value={chart.id}>
+              <div className="flex items-center gap-2">
+                <span className="font-medium">{chart.label}</span>
+                <span className="text-muted-foreground text-xs">- {chart.name}</span>
+              </div>
+            </SelectItem>
+          ))}
+          
+          {/* Advanced Charts Section */}
+          <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground border-t border-b mt-2">
+            🔬 Advanced Charts ({advancedCharts.length})
+          </div>
+          {advancedCharts.map(chart => (
+            <SelectItem key={chart.id} value={chart.id}>
+              <div className="flex items-center gap-2">
+                <span className="font-medium">{chart.label}</span>
+                <span className="text-muted-foreground text-xs">- {chart.name}</span>
+              </div>
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   );
 }
 
-function ChartTabButton({
-  chart,
-  isSelected,
-  onClick
-}: {
-  chart: DivisionalChartInfo;
-  isSelected: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        'px-4 py-2 rounded-lg whitespace-nowrap border-2 transition-all',
-        'flex items-center gap-2 min-w-fit hover:shadow-md active:scale-95',
-        isSelected
-          ? 'border-primary bg-primary text-primary-foreground shadow-lg'
-          : 'border-border hover:border-primary/50 hover:bg-accent'
-      )}
-      aria-selected={isSelected}
-      role="tab"
-    >
-      {chart.isPopular && <Star className="h-3 w-3 fill-current shrink-0" />}
-      <span className="font-medium text-sm">{chart.label}</span>
-    </button>
-  );
-}
+// ============================================================================
+// DESKTOP SIDEBAR
+// ============================================================================
 
 interface SidebarSelectorProps {
-  phase1Charts: DivisionalChartInfo[];
+  essentialCharts: DivisionalChartInfo[];
   importantCharts: DivisionalChartInfo[];
   advancedCharts: DivisionalChartInfo[];
   selectedChartId: string;
@@ -135,106 +163,169 @@ interface SidebarSelectorProps {
 }
 
 function SidebarSelector({
-  phase1Charts,
+  essentialCharts,
   importantCharts,
   advancedCharts,
   selectedChartId,
   onSelectChart,
   className
 }: SidebarSelectorProps) {
+  // State for each collapsible section (all start expanded for now)
+  const [essentialOpen, setEssentialOpen] = useState(true);
+  const [importantOpen, setImportantOpen] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  const essentialCharts = phase1Charts.filter(c => c.importance === 'essential');
-  const otherPhase1 = phase1Charts.filter(c => c.importance !== 'essential');
   
   return (
-    <aside className={cn('hidden md:block w-52 border-r bg-card', className)}>
-      <div className="p-4 space-y-6 sticky top-4">
-        <ChartGroup
-          title="Essential Charts"
-          charts={essentialCharts}
-          selectedChartId={selectedChartId}
-          onSelectChart={onSelectChart}
-        />
+    <aside className={cn('hidden lg:block', className)}>
+      <div className="space-y-4">
         
-        {otherPhase1.length > 0 && (
-          <ChartGroup
-            title="Other Charts"
-            charts={otherPhase1}
+        {/* Essential Charts - Collapsible */}
+        <CollapsibleSection
+          title="Essential Charts"
+          icon="⭐"
+          count={essentialCharts.length}
+          isOpen={essentialOpen}
+          onOpenChange={setEssentialOpen}
+        >
+          <ChartList
+            charts={essentialCharts}
             selectedChartId={selectedChartId}
             onSelectChart={onSelectChart}
           />
-        )}
+        </CollapsibleSection>
         
-        {(importantCharts.length > 0 || advancedCharts.length > 0) && (
-          <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
-            <CollapsibleTrigger asChild>
-              <Button variant="ghost" size="sm" className="w-full justify-between px-0 hover:bg-transparent">
-                <span className="text-sm font-semibold text-muted-foreground">
-                  Advanced Charts ({importantCharts.length + advancedCharts.length})
-                </span>
-                <ChevronDown className={cn('h-4 w-4 transition-transform', advancedOpen && 'rotate-180')} />
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="space-y-1 mt-2">
-              {[...importantCharts, ...advancedCharts].map(chart => (
-                <button
-                  key={chart.id}
-                  onClick={() => onSelectChart(chart.id)}
-                  disabled
-                  className="w-full text-left px-3 py-2 rounded-lg opacity-50 cursor-not-allowed"
-                >
-                  <div className="font-medium text-sm">{chart.label}</div>
-                  <div className="text-xs text-muted-foreground truncate">Coming soon</div>
-                </button>
-              ))}
-            </CollapsibleContent>
-          </Collapsible>
-        )}
+        {/* Important Charts - Collapsible */}
+        <CollapsibleSection
+          title="Important Charts"
+          icon="📊"
+          count={importantCharts.length}
+          isOpen={importantOpen}
+          onOpenChange={setImportantOpen}
+        >
+          <ChartList
+            charts={importantCharts}
+            selectedChartId={selectedChartId}
+            onSelectChart={onSelectChart}
+          />
+        </CollapsibleSection>
+        
+        {/* Advanced Charts - Collapsible */}
+        <CollapsibleSection
+          title="Advanced Charts"
+          icon="🔬"
+          count={advancedCharts.length}
+          isOpen={advancedOpen}
+          onOpenChange={setAdvancedOpen}
+        >
+          <ChartList
+            charts={advancedCharts}
+            selectedChartId={selectedChartId}
+            onSelectChart={onSelectChart}
+          />
+        </CollapsibleSection>
+        
       </div>
     </aside>
   );
 }
 
-function ChartGroup({
-  title,
-  charts,
-  selectedChartId,
-  onSelectChart
-}: {
+// ============================================================================
+// COLLAPSIBLE SECTION COMPONENT
+// ============================================================================
+
+interface CollapsibleSectionProps {
   title: string;
+  icon: string;
+  count: number;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  children: React.ReactNode;
+}
+
+function CollapsibleSection({
+  title,
+  icon,
+  count,
+  isOpen,
+  onOpenChange,
+  children
+}: CollapsibleSectionProps) {
+  return (
+    <Collapsible open={isOpen} onOpenChange={onOpenChange} className="border rounded-lg">
+      <CollapsibleTrigger className="w-full">
+        <div className="flex items-center justify-between p-3 hover:bg-accent transition-colors">
+          <div className="flex items-center gap-2">
+            <span className="text-base">{icon}</span>
+            <span className="text-sm font-semibold">{title}</span>
+            <span className="text-xs text-muted-foreground">({count})</span>
+          </div>
+          <ChevronDown 
+            className={cn(
+              'h-4 w-4 transition-transform duration-200',
+              isOpen && 'rotate-180'
+            )} 
+          />
+        </div>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="border-t">
+          {children}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
+// ============================================================================
+// CHART LIST COMPONENT
+// ============================================================================
+
+interface ChartListProps {
   charts: DivisionalChartInfo[];
   selectedChartId: string;
   onSelectChart: (chartId: string) => void;
-}) {
+}
+
+function ChartList({ charts, selectedChartId, onSelectChart }: ChartListProps) {
   return (
-    <div>
-      <h3 className="text-sm font-semibold mb-2 text-muted-foreground px-3">{title}</h3>
-      <div className="space-y-1">
-        {charts.map(chart => (
-          <button
-            key={chart.id}
-            onClick={() => onSelectChart(chart.id)}
-            className={cn(
-              'w-full text-left px-3 py-2 rounded-lg transition-colors flex items-center gap-2 group',
-              selectedChartId === chart.id
-                ? 'bg-primary text-primary-foreground shadow-sm'
-                : 'hover:bg-accent hover:text-accent-foreground'
-            )}
-            aria-selected={selectedChartId === chart.id}
-            role="tab"
-          >
-            {chart.isPopular && (
-              <Star className={cn('h-3 w-3 shrink-0', selectedChartId === chart.id ? 'fill-current' : 'fill-amber-400 text-amber-400')} />
-            )}
-            <div className="flex-1 min-w-0">
-              <div className="font-medium text-sm truncate">{chart.label}</div>
-              <div className={cn('text-xs truncate', selectedChartId === chart.id ? 'opacity-90' : 'text-muted-foreground')}>
-                {chart.name}
-              </div>
+    <div className="p-2 space-y-1">
+      {charts.map(chart => (
+        <button
+          key={chart.id}
+          onClick={() => onSelectChart(chart.id)}
+          className={cn(
+            'w-full text-left px-3 py-2 rounded-md transition-colors',
+            'flex items-center gap-2 group',
+            selectedChartId === chart.id
+              ? 'bg-primary text-primary-foreground shadow-sm'
+              : 'hover:bg-accent hover:text-accent-foreground'
+          )}
+          aria-selected={selectedChartId === chart.id}
+          role="tab"
+        >
+          {chart.isPopular && (
+            <Star 
+              className={cn(
+                'h-3 w-3 shrink-0',
+                selectedChartId === chart.id 
+                  ? 'fill-current' 
+                  : 'fill-amber-400 text-amber-400'
+              )} 
+            />
+          )}
+          <div className="flex-1 min-w-0">
+            <div className="font-medium text-sm">{chart.label}</div>
+            <div className={cn(
+              'text-xs truncate',
+              selectedChartId === chart.id 
+                ? 'opacity-90' 
+                : 'text-muted-foreground'
+            )}>
+              {chart.name}
             </div>
-          </button>
-        ))}
-      </div>
+          </div>
+        </button>
+      ))}
     </div>
   );
 }
