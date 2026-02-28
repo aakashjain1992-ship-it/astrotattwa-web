@@ -11,7 +11,7 @@ import type { SadeSatiHistory, SadeSatiPeriod } from '@/types/sadesati';
 import { PHASE_EFFECTS, PHASE_REMEDIES, PHASE_POSITIVE_ASPECTS } from '@/lib/astrology/sadesati/constants';
 
 interface SadeSatiTimelineProps {
-  history: SadeSatiHistory;
+  history: SaturnTransitAnalysis;
   birthDate: Date;
 }
 
