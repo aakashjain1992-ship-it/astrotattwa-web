@@ -22,6 +22,9 @@ import { buildVimsamsaHouses } from './d20-vimshamsa';
 import { buildSiddhamsaHouses } from './d24-siddhamsa';          
 import { buildBhamsaHouses } from './d27-bhamsa';                
 import { buildTrimsamsaHouses } from './d30-trimsamsa';
+import { buildKhavedamsaHouses } from './d40-khavedamsa';        
+import { buildAkshavedamsaHouses } from './d45-akshavedamsa';    
+import { buildShashtiamsaHouses } from './d60-shashtiamsa';
 
 export type DivisionalChartId = 
   | 'd1' 
@@ -40,7 +43,10 @@ export type DivisionalChartId =
   | 'd20'  
   | 'd24'  
   | 'd27'  
-  | 'd30' 
+  | 'd30'
+  | 'd40'
+  | 'd45'
+  | 'd60'
   | 'moon';
 
 export function calculateDivisionalChart(
@@ -66,6 +72,9 @@ export function calculateDivisionalChart(
     case 'd24': return buildSiddhamsaHouses(planets, ascendant);     
     case 'd27': return buildBhamsaHouses(planets, ascendant);        
     case 'd30': return buildTrimsamsaHouses(planets, ascendant);
+    case 'd40': return buildKhavedamsaHouses(planets, ascendant);
+    case 'd45': return buildAkshavedamsaHouses(planets, ascendant);
+    case 'd60': return buildShashtiamsaHouses(planets, ascendant);
     case 'moon': return buildMoonHouses(planets, ascendant);
     default:
       const _exhaustive: never = chartId;
@@ -91,7 +100,10 @@ export function isChartImplemented(chartId: string): boolean {
     'd20',  
     'd24',  
     'd27',  
-    'd30', 
+    'd30',
+    'd40',
+    'd45',
+    'd60',
     'moon'
   ];
   return implementedCharts.includes(chartId);
@@ -114,3 +126,6 @@ export * from './d20-vimshamsa';
 export * from './d24-siddhamsa';       
 export * from './d27-bhamsa';          
 export * from './d30-trimsamsa';
+export * from './d40-khavedamsa';
+export * from './d45-akshavedamsa';
+export * from './d60-shashtiamsa';

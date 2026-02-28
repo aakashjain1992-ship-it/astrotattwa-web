@@ -424,6 +424,85 @@ export const TRIMSAMSA_CONFIG: DivisionConfig = {
   },
 };
 
+/**
+ * Khavedamsa (D40) Configuration
+ * Divides each sign into 40 parts (45' each)
+ * Shows auspicious and inauspicious effects, maternal lineage
+ * 
+ * Used for analyzing overall well-being, mother's family influences,
+ * and general auspiciousness in life events
+ */
+export const KHAVEDAMSA_CONFIG: DivisionConfig = {
+  type: 'D40',
+  name: 'Khavedamsa',
+  sanskritName: 'Khavēdāṁśa',
+  divisor: 40,
+  calculateSign: (longitude: number): number => {
+    const signIndex = Math.floor(longitude / 30);
+    const degreeInSign = longitude % 30;
+    const khavedamsaPart = Math.floor(degreeInSign / 0.75); // 0-39 (each part is 45' or 0.75°)
+    const isOddSign = signIndex % 2 === 0;
+    const startSign = isOddSign ? signIndex : (signIndex + 6) % 12;
+    const resultSignIndex = (startSign + khavedamsaPart) % 12;
+    return resultSignIndex + 1;
+  },
+};
+
+/**
+ * Akshavedamsa (D45) Configuration
+ * Divides each sign into 45 parts (~40' each)
+ * Shows general effects, character, moral values, and ethical conduct
+ * 
+ * Used for analyzing overall nature, behavioral patterns, and
+ * the moral and ethical disposition of the native
+ */
+export const AKSHAVEDAMSA_CONFIG: DivisionConfig = {
+  type: 'D45',
+  name: 'Akshavedamsa',
+  sanskritName: 'Akṣavēdāṁśa',
+  divisor: 45,
+  calculateSign: (longitude: number): number => {
+    const signIndex = Math.floor(longitude / 30);
+    const degreeInSign = longitude % 30;
+    const akshavedamsaPart = Math.floor(degreeInSign / (30 / 45)); // 0-44
+    
+    // Element-based starting signs (same as Navamsa)
+    const element = signIndex % 4; // Fire=0, Earth=1, Air=2, Water=3
+    const startSigns = [0, 9, 6, 3]; // Aries, Capricorn, Libra, Cancer
+    const startSign = startSigns[element];
+    
+    const resultSignIndex = (startSign + akshavedamsaPart) % 12;
+    return resultSignIndex + 1;
+  },
+};
+
+/**
+ * Shashtiamsa (D60) Configuration
+ * Divides each sign into 60 parts (30' each)
+ * Shows past life karma, subtle karmic influences, and hidden destiny
+ * 
+ * The most detailed divisional chart, revealing deep karmic patterns
+ * and the most refined effects of planetary positions
+ */
+export const SHASHTIAMSA_CONFIG: DivisionConfig = {
+  type: 'D60',
+  name: 'Shashtiamsa',
+  sanskritName: 'Ṣaṣṭyāṁśa',
+  divisor: 60,
+  calculateSign: (longitude: number): number => {
+    const signIndex = Math.floor(longitude / 30);
+    const degreeInSign = longitude % 30;
+    const shashtiamsaPart = Math.floor(degreeInSign / 0.5); // 0-59 (each part is 30' or 0.5°)
+    
+    // Element-based starting signs (same as Navamsa and D45)
+    const element = signIndex % 4; // Fire=0, Earth=1, Air=2, Water=3
+    const startSigns = [0, 9, 6, 3]; // Aries, Capricorn, Libra, Cancer
+    const startSign = startSigns[element];
+    
+    const resultSignIndex = (startSign + shashtiamsaPart) % 12;
+    return resultSignIndex + 1;
+  },
+};
 
 
 // ===== DIVISIONAL CHART BUILDER =====
@@ -570,6 +649,9 @@ export const DIVISION_CONFIGS = {
   D24: SIDDHAMSA_CONFIG,        
   D27: BHAMSA_CONFIG,           
   D30: TRIMSAMSA_CONFIG,
+  D40: KHAVEDAMSA_CONFIG,       
+  D45: AKSHAVEDAMSA_CONFIG,    
+  D60: SHASHTIAMSA_CONFIG,    
 } as const;
 
 /**
