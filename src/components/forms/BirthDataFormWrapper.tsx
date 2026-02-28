@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useState  } from 'react'
 import { BirthDataForm } from './BirthDataForm'
 import { ChartLoader } from '@/components/ui/ChartLoader'
 import { useRouter } from 'next/navigation'
@@ -8,9 +8,9 @@ import { useRouter } from 'next/navigation'
 export interface ChartFormValues {
   name: string
   gender?: string
-  birthDate: string     // "YYYY-MM-DD"
-  birthTime: string     // "HH:MM"
-  timePeriod: string    // "AM/PM"
+  birthDate: string     
+  birthTime: string    
+  timePeriod: string 
   birthPlace: string
   latitude: number
   longitude: number
@@ -21,6 +21,26 @@ export default function BirthDataFormWrapper() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+ const [isAdmin, setIsAdmin] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch('/api/auth/me', { credentials: 'include' })
+        if (!res.ok) return
+        const data = await res.json()
+        if (!cancelled) setIsAdmin(!!data?.user?.isAdmin)
+      } catch {
+        // ignore
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  
   const router = useRouter()
 
   async function handleSubmit(values: ChartFormValues) {
@@ -55,7 +75,7 @@ export default function BirthDataFormWrapper() {
   return (
     <>
       <ChartLoader visible={loading} />
-      <BirthDataForm onSubmit={handleSubmit} cardError={error ?? undefined} />
+      <BirthDataForm onSubmit={handleSubmit} cardError={error ?? undefined} isAdmin={isAdmin} />
     </>
   )
 }
