@@ -449,28 +449,28 @@ export const DIVISIONAL_CHARTS: DivisionalChartInfo[] = [
     ]
   },
   {
-    id: 'moon',
-    label: 'Moon',
-    name: 'Chandra Lagna',
-    division: 1,
-    primarySignifies: 'Mind, emotions, and mental state',
+    id: 'd40',
+    label: 'D40',
+    name: 'Khavedamsa',
+    division: 40,
+    primarySignifies: 'Auspicious and inauspicious effects, maternal lineage',
     alsoSignifies: [
-      'Emotional nature and responses',
-      'Mental peace and happiness',
-      'Relationship with mother',
-      'Public perception and popularity'
+      'Overall well-being and fortune',
+      'Maternal family influences',
+      'General auspiciousness in life events',
+      'Hidden blessings and curses'
     ],
-    interpretation: `Moon Chart (Chandra Lagna) uses Moon's position as the ascendant instead of the actual rising sign. It shows your mental and emotional nature, how you process feelings, and your inner world. This chart is read alongside the D1 chart for complete analysis.`,
-    importance: 'essential',
-    isPopular: true,
+    interpretation: `Khavedamsa divides each sign into 40 equal parts of 45' each. This chart shows the general auspicious and inauspicious effects in life. It reveals influences from the maternal lineage and overall fortune. Strong benefics here indicate general well-being and positive outcomes.`,
+    importance: 'advanced',
+    isPopular: false,
     examples: [
-      'Jupiter in 1st from Moon: Optimistic mind, philosophical thinking',
-      'Saturn in 1st from Moon: Serious mind, tendency towards melancholy'
+      'Jupiter in 1st of D40: Overall auspiciousness, blessed life',
+      'Malefics in 12th of D40: Hidden obstacles, inauspicious patterns'
     ],
     keyHouses: [
-      { house: 1, meaning: 'Mind, mental state, emotional foundation' },
-      { house: 4, meaning: 'Inner peace, emotional security' },
-      { house: 7, meaning: 'Emotional relationships, how you connect with others' }
+      { house: 1, meaning: 'Overall fortune, general well-being' },
+      { house: 4, meaning: 'Maternal influences, domestic auspiciousness' },
+      { house: 9, meaning: 'Fortune, blessings, dharma' }
     ]
   },
   {
@@ -522,6 +522,31 @@ export const DIVISIONAL_CHARTS: DivisionalChartInfo[] = [
       { house: 9, meaning: 'Fortune from past lives, dharma' },
       { house: 8, meaning: 'Hidden karmic transformations, mysteries' }
     ]
+  },
+   {
+    id: 'moon',
+    label: 'Moon',
+    name: 'Chandra Lagna',
+    division: 1,
+    primarySignifies: 'Mind, emotions, and mental state',
+    alsoSignifies: [
+      'Emotional nature and responses',
+      'Mental peace and happiness',
+      'Relationship with mother',
+      'Public perception and popularity'
+    ],
+    interpretation: `Moon Chart (Chandra Lagna) uses Moon's position as the ascendant instead of the actual rising sign. It shows your mental and emotional nature, how you process feelings, and your inner world. This chart is read alongside the D1 chart for complete analysis.`,
+    importance: 'essential',
+    isPopular: true,
+    examples: [
+      'Jupiter in 1st from Moon: Optimistic mind, philosophical thinking',
+      'Saturn in 1st from Moon: Serious mind, tendency towards melancholy'
+    ],
+    keyHouses: [
+      { house: 1, meaning: 'Mind, mental state, emotional foundation' },
+      { house: 4, meaning: 'Inner peace, emotional security' },
+      { house: 7, meaning: 'Emotional relationships, how you connect with others' }
+    ]
   }
 ];
 
@@ -546,7 +571,7 @@ export const getPhase1Charts = (): DivisionalChartInfo[] => {
   const phase1Ids = [
     'd1', 'd2', 'd3', 'd4', 'd5', 'd6', 'd7', 'd8',
     'd9', 'd10', 'd11', 'd12', 'd16', 'd20', 'd24', 'd27',
-    'd30', 'moon', 'd45', 'd60'
+    'd30', 'moon', 'd40', 'd45', 'd60'
   ];
   return DIVISIONAL_CHARTS.filter(chart => phase1Ids.includes(chart.id));
 };
