@@ -29,7 +29,6 @@ import { cn } from '@/lib/utils'
 
 const editFormSchema = baseBirthSchema
 
-
 type EditFormData = z.infer<typeof editFormSchema>
 
 // ============================================
@@ -63,6 +62,52 @@ interface EditBirthDetailsFormProps {
   }) => Promise<void>
   /** Callback to close the form */
   onCancel: () => void
+
+  // ✅ Saved chart actions (optional)
+  isLoggedIn?: boolean
+  savedChartId?: string | null
+  savedChartLabel?: string | null
+  onSaveChart?: (data: {
+    name: string
+    gender: 'Male' | 'Female'
+    birthDate: string
+    birthTime: string
+    timePeriod: 'AM' | 'PM'
+    latitude: number
+    longitude: number
+    timezone: string
+    cityName?: string
+  }) => Promise<void>
+  onUpdateChart?: (
+    chartId: string,
+    data: {
+      name: string
+      gender: 'Male' | 'Female'
+      birthDate: string
+      birthTime: string
+      timePeriod: 'AM' | 'PM'
+      latitude: number
+      longitude: number
+      timezone: string
+      cityName?: string
+    },
+  ) => Promise<void>
+  onDeleteChart?: (chartId: string) => Promise<void>
+  onEditLabel?: (
+    chartId: string,
+    data: {
+      name: string
+      gender: 'Male' | 'Female'
+      birthDate: string
+      birthTime: string
+      timePeriod: 'AM' | 'PM'
+      latitude: number
+      longitude: number
+      timezone: string
+      cityName?: string
+    },
+  ) => Promise<void>
+
   /** Additional className */
   className?: string
 }
@@ -73,8 +118,23 @@ export function EditBirthDetailsForm({
   onSubmit,
   onCancel,
   className,
+
+  // saved chart optional props
+  isLoggedIn = false,
+  savedChartId = null,
+  savedChartLabel = null,
+  onSaveChart,
+  onUpdateChart,
+  onDeleteChart,
+  onEditLabel,
 }: EditBirthDetailsFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // action loading flags (keep separate from isSubmitting)
+  const [isSaving, setIsSaving] = useState(false)
+  const [isUpdating, setIsUpdating] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [isLabelUpdating, setIsLabelUpdating] = useState(false)
 
   // Parse incoming datetime into DateTimeValue for DateTimeField
   const parsed = parseDateTime(currentData.localDateTime)
@@ -116,7 +176,7 @@ export function EditBirthDetailsForm({
 
   const handleFormSubmit = async (data: EditFormData) => {
     if (!dateTime.date || !dateTime.hour || !dateTime.minute) {
-      return // DateTimeField validation will surface errors
+      return
     }
     setIsSubmitting(true)
     try {
@@ -136,7 +196,69 @@ export function EditBirthDetailsForm({
     }
   }
 
+  // Build payload for save/update/label using current form state
+  const buildActionPayload = () => {
+    const data = watch()
+    return {
+      name: data.name,
+      gender: data.gender,
+      birthDate: data.birthDate,
+      birthTime: data.birthTime,
+      timePeriod: data.timePeriod,
+      latitude: data.latitude,
+      longitude: data.longitude,
+      timezone: data.timezone,
+      cityName: data.cityName,
+    } as const
+  }
+
+  const handleSaveClick = async () => {
+    if (!onSaveChart) return
+    if (!dateTime.date || !dateTime.hour || !dateTime.minute) return
+    setIsSaving(true)
+    try {
+      await onSaveChart(buildActionPayload())
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleUpdateClick = async () => {
+    if (!savedChartId || !onUpdateChart) return
+    if (!dateTime.date || !dateTime.hour || !dateTime.minute) return
+    setIsUpdating(true)
+    try {
+      await onUpdateChart(savedChartId, buildActionPayload())
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
+  const handleDeleteClick = async () => {
+    if (!savedChartId || !onDeleteChart) return
+    setIsDeleting(true)
+    try {
+      await onDeleteChart(savedChartId)
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  const handleLabelClick = async () => {
+    if (!savedChartId || !onEditLabel) return
+    if (!dateTime.date || !dateTime.hour || !dateTime.minute) return
+    setIsLabelUpdating(true)
+    try {
+      await onEditLabel(savedChartId, buildActionPayload())
+    } finally {
+      setIsLabelUpdating(false)
+    }
+  }
+
   if (!isOpen) return null
+
+  const disableAll =
+    isSubmitting || isSaving || isUpdating || isDeleting || isLabelUpdating
 
   return (
     <div
@@ -219,11 +341,85 @@ export function EditBirthDetailsForm({
         <input type="hidden" {...register('timezone')} />
 
         {/* Actions */}
-        <div className="flex justify-end gap-3 pt-2">
-          <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
+        <div className="flex justify-end gap-3 pt-2 flex-wrap">
+          <Button type="button" variant="outline" onClick={onCancel} disabled={disableAll}>
             Cancel
           </Button>
-          <Button type="submit" disabled={isSubmitting} className="gap-2">
+
+          {/* Save / Update / Delete / Label (only when logged in) */}
+          {isLoggedIn && !savedChartId && onSaveChart && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleSaveClick}
+              disabled={disableAll}
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Saving...
+                </>
+              ) : (
+                'Save'
+              )}
+            </Button>
+          )}
+
+          {isLoggedIn && savedChartId && (
+            <>
+              {onEditLabel && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleLabelClick}
+                  disabled={disableAll}
+                  title={savedChartLabel ? `Label: ${savedChartLabel}` : 'Add/Update label'}
+                >
+                  {isLabelUpdating ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    'Label'
+                  )}
+                </Button>
+              )}
+
+              {onUpdateChart && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleUpdateClick}
+                  disabled={disableAll}
+                >
+                  {isUpdating ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      Updating...
+                    </>
+                  ) : (
+                    'Update'
+                  )}
+                </Button>
+              )}
+
+              {onDeleteChart && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleDeleteClick}
+                  disabled={disableAll}
+                >
+                  {isDeleting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    'Delete'
+                  )}
+                </Button>
+              )}
+            </>
+          )}
+
+          {/* Existing primary action remains unchanged */}
+          <Button type="submit" disabled={disableAll} className="gap-2">
             {isSubmitting ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
