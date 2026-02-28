@@ -20,6 +20,9 @@ import { AvakhadaTable } from '@/components/chart/AvakhadaTable';
 import { ChartLegend } from '@/components/chart/ChartLegend';
 import { DashaNavigator } from '@/components/chart/DashaNavigator';
 import { buildLagnaHouses, buildMoonHouses, buildNavamsaHouses } from '@/lib/utils/chartHelpers';
+import { SadeSatiCard } from '@/components/chart/sadesati/SadeSatiCard';
+import { SadeSatiTimeline } from '@/components/chart/sadesati/SadeSatiTimeline';
+
 
 // Import proper types from astrology module
 import type { PlanetData, AscendantData as AstroAscendantData } from '@/types/astrology';
@@ -91,7 +94,7 @@ interface ChartData {
   ayanamsha?: string;
 }
 
-type TabType = 'overview' | 'dasha'| 'divisional';
+type TabType = 'overview' | 'dasha'| 'divisional' | 'sadesati';
 type MobileSubTab = 'planets' | 'avakahada';
 
 // ============================================
@@ -446,6 +449,14 @@ export default function ChartClient() {
           >
             Divisional Charts
           </TabButton>
+           <TabButton
+            active={activeTab === 'sadesati'}
+            onClick={() => setTab('sadesati')}
+          >
+            Sade Sati
+          {chartData.sadeSati?.current.isActive && ( <span className="ml-2 inline-flex h-2 w-2 rounded-full bg-orange-500 animate-pulse" />
+          )}
+          </TabButton>
         </div>
 
         {/* Tab Content */}
@@ -490,6 +501,27 @@ export default function ChartClient() {
             />
           </div>
         )}
+
+        {activeTab === 'sadesati' && (
+  <div className="animate-fade-in">
+    {chartData.sadeSati ? (
+      <div className="space-y-6">
+        <SadeSatiCard analysis={chartData.sadeSati} />
+        <SadeSatiTimeline 
+          history={chartData.sadeSati.history}
+          birthDate={new Date(chartData.input.localDateTime)}
+        />
+      </div>
+    ) : (
+      <div className="text-center py-12">
+        <p className="text-muted-foreground">
+          Loading Sade Sati analysis...
+        </p>
+      </div>
+    )}
+  </div>
+)}
+        
       </main>
 
       {/* Footer */}
