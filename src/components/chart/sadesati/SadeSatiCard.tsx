@@ -30,8 +30,31 @@ interface SadeSatiCardProps {
 }
 
 export function SadeSatiCard({ analysis, onViewTimeline }: SadeSatiCardProps) {
-  const { current, insights } = analysis;
+
+   const normalizedAnalysis = {
+    ...analysis,
+    history: {
+      ...analysis.history,
+      next: analysis.history.next ? {
+        ...analysis.history.next,
+        startDate: typeof analysis.history.next.startDate === 'string' 
+          ? new Date(analysis.history.next.startDate) 
+          : analysis.history.next.startDate,
+      } : analysis.history.next,
+    },
+    current: {
+      ...analysis.current,
+      startDate: analysis.current.startDate && typeof analysis.current.startDate === 'string'
+        ? new Date(analysis.current.startDate)
+        : analysis.current.startDate,
+      endDate: analysis.current.endDate && typeof analysis.current.endDate === 'string'
+        ? new Date(analysis.current.endDate)
+        : analysis.current.endDate,
+    },
+  };
   
+  const { current, insights } = normalizedAnalysis;
+    
   // Not active - show next Sade Sati info
   if (!current.isActive) {
     return (
