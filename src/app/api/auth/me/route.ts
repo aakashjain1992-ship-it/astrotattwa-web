@@ -57,11 +57,11 @@ export async function GET(req: NextRequest) {
   const signInMethod = provider === 'google' ? 'Google' : 'Email & Password'
 
   // Pull profile row (RLS should allow select where id = auth.uid())
-  let profile: { full_name: string | null; avatar_url: string | null } | null = null
+  let profile: { full_name: string | null; avatar_url: string | null ; isadmin: boolean | null} | null = null
   try {
     const { data: p } = await supabase
       .from('profiles')
-      .select('full_name,avatar_url')
+      .select('full_name,avatar_url,isadmin')
       .eq('id', authUser.id)
       .maybeSingle()
 
@@ -89,7 +89,8 @@ export async function GET(req: NextRequest) {
       avatarUrl,
       createdAt: authUser.created_at, // ✅ Member since source
       provider, // ✅ raw provider
-      signInMethod, // ✅ display value
+      signInMethod,// ✅ display value
+      isAdmin: !!profile?.isadmin,
     },
   })
 }
