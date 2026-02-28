@@ -4,6 +4,9 @@ import { AYANAMSHA_LABEL, norm360 } from "./constants";
 import { buildPlanet } from "./planets";
 import { vimshottariDasha } from "./dasa";
 import { calculateAvakahada } from "./avakahada";
+import { calculateSaturnTransits } from '@/lib/astrology/sadesati/calculator';
+
+
 
 export async function calculateKpChart(input: {
   name?: string;
@@ -101,6 +104,15 @@ export async function calculateKpChart(input: {
     planets.Moon.kp.nakshatraLord
   );
 
+
+  const saturnTransits = calculateSaturnTransits(
+   planets.Moon,
+   planets.Saturn,
+   birthUtc,
+   new Date()
+);
+  
+  
   return {
     input: {
       timezone: input.timezone,
@@ -118,5 +130,6 @@ export async function calculateKpChart(input: {
     dasa,
     avakahada,
     rahuKetuModes, 
+    saturnTransits, 
   };
 }

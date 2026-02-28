@@ -13,6 +13,11 @@
 /**
  * Available planet keys in Vedic astrology
  */
+
+
+import type { SaturnTransitAnalysis } from './sadesati';
+
+
 export type PlanetKey = 
   | 'Sun' 
   | 'Moon' 
@@ -381,6 +386,10 @@ export interface ChartData {
   
   /** City ID from database */
   cityId: string;
+
+  /** Sade Sati analysis */ 
+  saturnTransits?: SaturnTransitAnalysis;
+
 }
 
 // ===== CONSTANTS =====

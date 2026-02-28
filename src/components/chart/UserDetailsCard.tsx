@@ -1,12 +1,13 @@
 'use client';
 
+import type React from 'react';
 import { format } from 'date-fns';
 import { Calendar, Clock, MapPin, Globe, Pencil, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 interface BirthInput {
-  localDateTime: string;  // ISO string or "YYYY-MM-DD HH:mm"
+  localDateTime: string; // ISO string or "YYYY-MM-DD HH:mm"
   latitude: number;
   longitude: number;
   timezone: string;
@@ -25,6 +26,8 @@ interface UserDetailsCardProps {
   isEditing?: boolean;
   /** Toggle edit mode */
   onEditToggle?: () => void;
+  /** Optional content to render to the left of the Edit button (e.g., saved charts dropdown) */
+  rightContent?: React.ReactNode;
   /** Additional className */
   className?: string;
 }
@@ -60,10 +63,10 @@ function parseBirthDateTime(localDateTime: string): { date: string; time: string
   if (parts.length >= 2) {
     const datePart = parts[0];
     const timePart = parts[1];
-    
+
     const [year, month, day] = datePart.split('-').map(Number);
     const [hour, minute] = timePart.split(':').map(Number);
-    
+
     const dateObj = new Date(year, month - 1, day, hour, minute);
     return {
       date: format(dateObj, 'dd MMM yyyy'),
@@ -76,7 +79,7 @@ function parseBirthDateTime(localDateTime: string): { date: string; time: string
 
 /**
  * UserDetailsCard - Displays birth details with edit functionality
- * 
+ *
  * Shows:
  * - Name
  * - Birth Date
@@ -92,6 +95,7 @@ export function UserDetailsCard({
   birthPlace,
   isEditing = false,
   onEditToggle,
+  rightContent,
   className,
 }: UserDetailsCardProps) {
   const { date, time } = parseBirthDateTime(input.localDateTime);
@@ -99,11 +103,13 @@ export function UserDetailsCard({
   const locationDisplay = birthPlace || formatCoordinates(input.latitude, input.longitude);
 
   return (
-    <div className={cn(
-      'rounded-lg border border-border bg-card p-4 md:p-6',
-      'transition-all duration-200',
-      className
-    )}>
+    <div
+      className={cn(
+        'rounded-lg border border-border bg-card p-4 md:p-6',
+        'transition-all duration-200',
+        className
+      )}
+    >
       {/* Header Row */}
       <div className="flex items-start justify-between gap-4">
         {/* Name and Details */}
@@ -111,7 +117,7 @@ export function UserDetailsCard({
           <h2 className="text-xl md:text-2xl font-semibold text-foreground truncate">
             Birth Chart for {name}
           </h2>
-          
+
           {/* Details Grid */}
           <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
             {/* Date */}
@@ -119,7 +125,7 @@ export function UserDetailsCard({
               <Calendar className="h-4 w-4 flex-shrink-0" />
               <span>{date}</span>
             </div>
-            
+
             {/* Time */}
             {time && (
               <div className="flex items-center gap-1.5">
@@ -127,13 +133,13 @@ export function UserDetailsCard({
                 <span>{time}</span>
               </div>
             )}
-            
+
             {/* Location */}
             <div className="flex items-center gap-1.5">
               <MapPin className="h-4 w-4 flex-shrink-0" />
               <span>{locationDisplay}</span>
             </div>
-            
+
             {/* Timezone */}
             <div className="flex items-center gap-1.5">
               <Globe className="h-4 w-4 flex-shrink-0" />
@@ -142,23 +148,27 @@ export function UserDetailsCard({
           </div>
         </div>
 
-        {/* Edit Button */}
-        {onEditToggle && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onEditToggle}
-            className="flex-shrink-0 gap-1.5"
-          >
-            <Pencil className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Edit</span>
-            {isEditing ? (
-              <ChevronUp className="h-3.5 w-3.5" />
-            ) : (
-              <ChevronDown className="h-3.5 w-3.5" />
-            )}
-          </Button>
-        )}
+        {/* Right Actions: dropdown (optional) + Edit button */}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {rightContent}
+
+          {onEditToggle && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onEditToggle}
+              className="flex-shrink-0 gap-1.5"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Edit</span>
+              {isEditing ? (
+                <ChevronUp className="h-3.5 w-3.5" />
+              ) : (
+                <ChevronDown className="h-3.5 w-3.5" />
+              )}
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );
