@@ -113,6 +113,37 @@ type MobileSubTab = 'planets' | 'avakahada';
 
 const STORAGE_KEY = 'lastChart';
 
+function reviveSaturnTransitDates(obj: any): any {
+  if (!obj) return obj;
+  
+  // Handle arrays
+  if (Array.isArray(obj)) {
+    return obj.map(item => reviveSaturnTransitDates(item));
+  }
+  
+  // Handle objects
+  if (typeof obj === 'object') {
+    const result: any = {};
+    
+    for (const key in obj) {
+      const value = obj[key];
+      
+      // Convert date strings to Date objects
+      if (key === 'startDate' || key === 'endDate' || key === 'calculatedAt') {
+        result[key] = typeof value === 'string' ? new Date(value) : value;
+      } else if (typeof value === 'object') {
+        result[key] = reviveSaturnTransitDates(value);
+      } else {
+        result[key] = value;
+      }
+    }
+    
+    return result;
+  }
+  
+  return obj;
+}
+
 function getChartFromStorage(): ChartData | null {
   if (typeof window === 'undefined') return null;
   
@@ -120,6 +151,11 @@ function getChartFromStorage(): ChartData | null {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (!stored) return null;
     return JSON.parse(stored);
+
+     if (data.saturnTransits) {
+      data.saturnTransits = reviveSaturnTransitDates(data.saturnTransits);
+    }
+    
   } catch {
     return null;
   }
