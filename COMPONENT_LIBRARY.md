@@ -1,8 +1,8 @@
 # Component Library
 
-**Version:** 1.0  
-**Last Updated:** February 14, 2026  
-**Total Components:** 45+
+**Version:** 1.1  
+**Last Updated:** February 28, 2026  
+**Total Components:** 60+
 
 ---
 
@@ -23,21 +23,24 @@
 This document catalogs all reusable components in the Astrotattwa codebase. Each component includes props documentation, usage examples, and best practices.
 
 ### Component Categories
-- **UI Components** - shadcn/ui primitives (24 components)
-- **Chart Components** - Astrology visualization (12 components)
-- **Form Components** - Input and validation (4 components)
-- **Layout Components** - Page structure (3 components)
-- **Utility Components** - Helpers and wrappers (2 components)
+- **UI Components** - shadcn/ui primitives + custom (28 components)
+- **Chart Components** - Astrology visualization (20 components)
+- **Form Components** - Input and validation (5 components)
+- **Layout Components** - Page structure (4 components)
+- **Landing Components** - Landing page features (4 components)
+- **Auth Components** - Authentication utilities (1 component)
 
 ### File Structure
 ```
 src/components/
-├── ui/              # shadcn/ui base components
+├── ui/              # shadcn/ui base components + custom UI
 ├── chart/           # Chart visualization
 │   ├── diamond/     # North Indian diamond chart
 │   └── divisional/  # Divisional chart components
 ├── forms/           # Form components
-└── layout/          # Header, Footer, Navigation
+├── layout/          # Header, Footer, Navigation
+├── landing/         # Landing page components
+└── auth/            # Authentication components
 ```
 
 ---
@@ -210,6 +213,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 ---
 
 ### Other shadcn/ui Components Available
+- `Accordion` - Collapsible sections with headers
 - `Alert` - Alert messages
 - `Badge` - Status badges
 - `Checkbox` - Checkbox input
@@ -217,15 +221,71 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 - `DropdownMenu` - Dropdown menu
 - `Label` - Form labels
 - `Popover` - Popover content
+- `Progress` - Progress bar indicator
 - `RadioGroup` - Radio button group
-- `ScrollArea` - Scrollable area
+- `ScrollArea` - Scrollable area with custom scrollbar
 - `Separator` - Horizontal/vertical divider
 - `Sheet` - Slide-out panel
 - `Skeleton` - Loading skeleton
 - `Switch` - Toggle switch
 - `Textarea` - Multi-line text input
 - `Toast` - Toast notifications
+- `Toaster` - Toast notification container
 - `Tooltip` - Tooltip on hover
+
+---
+
+### Custom UI Components
+
+#### ChartLoader
+**File:** `src/components/ui/ChartLoader.tsx`  
+**Purpose:** Full-screen loading overlay for chart calculations
+
+```typescript
+interface ChartLoaderProps {
+  visible: boolean;
+}
+```
+
+**Usage:**
+```tsx
+import { ChartLoader } from '@/components/ui/ChartLoader';
+
+<ChartLoader visible={isCalculating} />
+```
+
+**Features:**
+- Full-screen frosted glass backdrop
+- Animated spinning orbital rings
+- Logo breathing and spinning animation
+- Cycling text messages ("Consulting ephemeris...", "Calculating dashas...")
+- Bouncing dots animation
+- Portal-based rendering (mounted to document body)
+
+---
+
+#### Logo
+**File:** `src/components/ui/Logo.tsx`  
+**Purpose:** App logo SVG component
+
+```typescript
+interface LogoProps {
+  className?: string;
+  size?: number;
+}
+```
+
+**Usage:**
+```tsx
+import { Logo } from '@/components/ui/Logo';
+
+<Logo size={40} className="text-blue-600" />
+```
+
+**Features:**
+- SVG-based scalable logo
+- Respects currentColor
+- Customizable size
 
 ---
 
@@ -401,6 +461,161 @@ import { PlanetaryTable } from '@/components/chart/PlanetaryTable';
 
 ---
 
+### UserDetailsCard
+**File:** `src/components/chart/UserDetailsCard.tsx`  
+**Purpose:** Display user's birth details with edit toggle
+
+```typescript
+interface UserDetailsCardProps {
+  name: string;
+  gender?: 'male' | 'female' | string;
+  input: {
+    localDateTime: string;
+    latitude: number;
+    longitude: number;
+    timezone: string;
+  };
+  birthPlace?: string;
+  isEditing?: boolean;
+  onEditToggle?: () => void;
+  className?: string;
+}
+```
+
+**Usage:**
+```tsx
+import { UserDetailsCard } from '@/components/chart/UserDetailsCard';
+
+<UserDetailsCard 
+  name="John Doe"
+  gender="male"
+  input={birthInput}
+  birthPlace="New Delhi, India"
+  isEditing={isEditing}
+  onEditToggle={() => setIsEditing(!isEditing)}
+/>
+```
+
+**Features:**
+- Formatted date and time display
+- Coordinates display with N/S/E/W indicators
+- Timezone display
+- Edit toggle button
+- Collapsible/expandable interface
+- Mobile-responsive
+
+---
+
+### StatusBadges
+**File:** `src/components/chart/StatusBadges.tsx`  
+**Purpose:** Display planet status flags as badges
+
+```typescript
+interface StatusBadgesProps {
+  retrograde?: boolean;
+  combust?: boolean;
+  exalted?: boolean;
+  debilitated?: boolean;
+  exhausted?: boolean;
+}
+```
+
+**Usage:**
+```tsx
+import { StatusBadges } from '@/components/chart/StatusBadges';
+
+<StatusBadges 
+  retrograde={true}
+  combust={false}
+  exalted={true}
+/>
+```
+
+**Output:** Badges for R (retrograde), C (combust), E+ (exalted), D- (debilitated), Ex (exhausted)
+
+**Features:**
+- Color-coded badges (destructive for R, default for E+, etc.)
+- Compact size
+- Shows "—" when no statuses present
+
+---
+
+### ChartLegend
+**File:** `src/components/chart/ChartLegend.tsx`  
+**Purpose:** Display chart symbol legend and status flags explanation
+
+```typescript
+interface ChartLegendProps {
+  variant?: 'sidebar' | 'accordion';
+  className?: string;
+}
+```
+
+**Usage:**
+```tsx
+import { ChartLegend } from '@/components/chart/ChartLegend';
+
+<ChartLegend variant="sidebar" />
+<ChartLegend variant="accordion" />  {/* Collapsible version */}
+```
+
+**Features:**
+- Planet symbols and names (☉ Surya, ☽ Chandra, etc.)
+- Status flags explanation (R, C, D, S)
+- Dignity indicators (Exalted, Debilitated, etc.)
+- Two variants: sidebar (always visible) and accordion (collapsible)
+- Dark mode support
+
+---
+
+### AvakhadaTable
+**File:** `src/components/chart/AvakhadaTable.tsx`  
+**Purpose:** Display Panchang details and matching information
+
+```typescript
+interface AvakhadaTableProps {
+  data: AvakhadaData;
+  variant?: 'full' | 'compact';
+  className?: string;
+}
+
+interface AvakhadaData {
+  rasiSign?: string;
+  rasiLord?: string;
+  nakshatraCharan?: string;
+  nakshatraLord?: string;
+  yoga?: string;
+  karan?: string;
+  gana?: string;
+  yoni?: string;
+  nadi?: string;
+  varan?: string;
+  vashya?: string;
+  nameAlphabet?: string;
+  sunSignWestern?: string;
+  // ... additional fields
+}
+```
+
+**Usage:**
+```tsx
+import { AvakhadaTable } from '@/components/chart/AvakhadaTable';
+
+<AvakhadaTable 
+  data={avakhadaData}
+  variant="full"
+/>
+```
+
+**Features:**
+- Organized sections: Core Info, Matching Info, Additional
+- Full and compact layout variants
+- Responsive grid layout
+- Dark mode support
+- Label-value pairs with proper spacing
+
+---
+
 ### DashaNavigator
 **File:** `src/components/chart/DashaNavigator.tsx`  
 **Purpose:** Interactive Vimshottari Dasha timeline
@@ -429,30 +644,6 @@ import { DashaNavigator } from '@/components/chart/DashaNavigator';
 - Current dasha highlighting
 - Expandable/collapsible
 - Date ranges
-
----
-
-### AvakhadaTable
-**File:** `src/components/chart/AvakhadaTable.tsx`  
-**Purpose:** Avakahada Chakra (21 attributes)
-
-```typescript
-interface AvakhadaTableProps {
-  avakhadaData: AvakhadaData;
-}
-```
-
-**Usage:**
-```tsx
-import { AvakhadaTable } from '@/components/chart/AvakhadaTable';
-
-<AvakhadaTable avakhadaData={chartData.avakahada} />
-```
-
-**Features:**
-- 21 birth attributes
-- Categorized display
-- Tooltips with meanings
 
 ---
 
@@ -499,14 +690,26 @@ interface ChartSelectorProps {
 ```
 
 **Available Charts:**
-- D1 (Lagna/Rashi)
-- D2 (Hora)
-- D3 (Drekkana)
-- D7 (Saptamsa)
-- D9 (Navamsa)
-- D10 (Dasamsa)
-- D12 (Dwadasamsa)
-- Moon Chart
+- D1 (Lagna/Rashi) - Birth chart
+- D2 (Hora) - Wealth
+- D3 (Drekkana) - Siblings
+- D4 (Chaturthamsa) - Property
+- D5 (Panchamamsa) - Fame
+- D6 (Shashtamsa) - Health
+- D7 (Saptamsa) - Children
+- D8 (Ashtamsa) - Longevity
+- D9 (Navamsa) - Marriage
+- D10 (Dasamsa) - Career
+- D11 (Ekadasamsa) - Gains
+- D12 (Dwadasamsa) - Parents
+- D16 (Shodasamsa) - Vehicles
+- D20 (Vimshamsa) - Spirituality
+- D24 (Siddhamsa) - Education
+- D27 (Bhamsa) - Strength
+- D30 (Trimsamsa) - Evils
+- D40 (Khavedamsa) - Auspiciousness
+- D60 (Shashtiamsa) - All matters
+- Moon Chart - Chandra Lagna
 
 ---
 
@@ -565,23 +768,6 @@ interface ChartFocusModeProps {
 
 ---
 
-### UserDetailsCard
-**File:** `src/components/chart/UserDetailsCard.tsx`  
-**Purpose:** Display birth details
-
-```typescript
-interface UserDetailsCardProps {
-  name: string;
-  birthDate: Date;
-  birthTime: string;
-  birthPlace: string;
-  editable?: boolean;
-  onEdit?: () => void;
-}
-```
-
----
-
 ### AscendantCard
 **File:** `src/components/chart/AscendantCard.tsx`  
 **Purpose:** Display ascendant information
@@ -594,19 +780,14 @@ interface AscendantCardProps {
 
 ---
 
-### StatusBadges
-**File:** `src/components/chart/StatusBadges.tsx`  
-**Purpose:** Display planet status (R, C, D, S)
+### BirthDetails
+**File:** `src/components/chart/BirthDetails.tsx`  
+**Purpose:** Compact birth details display component
 
-```typescript
-interface StatusBadgesProps {
-  retrograde?: boolean;
-  combust?: boolean;
-  debilitated?: boolean;
-  exalted?: boolean;
-  subLord?: string;
-}
-```
+**Features:**
+- Displays name, date, time, place
+- Compact format for chart pages
+- Mobile-responsive
 
 ---
 
@@ -640,6 +821,41 @@ import { BirthDataForm } from '@/components/forms/BirthDataForm';
 - CitySearch (location)
 - Validation (Zod)
 - Error messages
+
+---
+
+### BirthDataFormWrapper
+**File:** `src/components/forms/BirthDataFormWrapper.tsx`  
+**Purpose:** Wrapper component that handles form submission with loading state
+
+```typescript
+interface ChartFormValues {
+  name: string;
+  gender?: string;
+  birthDate: string;     // "YYYY-MM-DD"
+  birthTime: string;     // "HH:MM"
+  timePeriod: string;    // "AM/PM"
+  birthPlace: string;
+  latitude: number;
+  longitude: number;
+  timezone: string;
+}
+```
+
+**Usage:**
+```tsx
+import BirthDataFormWrapper from '@/components/forms/BirthDataFormWrapper';
+
+<BirthDataFormWrapper />
+```
+
+**Features:**
+- Wraps BirthDataForm
+- Handles /api/calculate submission
+- Shows ChartLoader during calculation
+- Redirects to /chart on success
+- Error handling and display
+- Stores result in localStorage (temporary)
 
 ---
 
@@ -837,21 +1053,127 @@ import { ThemeToggle } from '@/components/layout/ThemeToggle';
 
 ---
 
+### ThemeProvider
+**File:** `src/components/theme-provider.tsx`  
+**Purpose:** Context provider for dark/light mode theme
+
+```typescript
+interface ThemeProviderProps {
+  children: React.ReactNode;
+  defaultTheme?: 'light' | 'dark' | 'system';
+  storageKey?: string;
+}
+```
+
+**Usage:**
+```tsx
+import { ThemeProvider } from '@/components/theme-provider';
+
+<ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
+  {children}
+</ThemeProvider>
+```
+
+**Features:**
+- Uses next-themes
+- System preference detection
+- Persistent theme storage
+- Context for theme state
+
+---
+
+## 🔐 Auth Components
+
+### SessionWatcher
+**File:** `src/components/auth/SessionWatcher.tsx`  
+**Purpose:** Monitor authentication state and handle session changes
+
+```typescript
+interface SessionWatcherProps {
+  // No props - automatically handles auth state
+}
+```
+
+**Usage:**
+```tsx
+import { SessionWatcher } from '@/components/auth/SessionWatcher';
+
+// In protected pages or layouts
+<SessionWatcher />
+```
+
+**Features:**
+- Listens to Supabase auth state changes
+- Redirects to login when session expires
+- Handles SIGNED_OUT events
+- Tab synchronization (signs out across tabs)
+- Automatic cleanup on unmount
+
+---
+
+## 🎨 Landing Components
+
+### NavagrahaSection
+**File:** `src/components/landing/NavagrahaSection.tsx`  
+**Purpose:** Interactive section displaying 9 planetary deities
+
+**Features:**
+- Animated planet cards with Unicode symbols (☉, ☽, ♂, ☿, ♃, ♀, ♄, ☊, ☋)
+- Detailed descriptions for each planet
+- Key points and tags for each planet
+- Smooth hover animations
+- Dark mode support
+- Mobile-responsive layout
+
+---
+
+### Yantra
+**File:** `src/components/landing/Yantra.tsx`  
+**Purpose:** Animated sacred geometry visualization
+
+**Features:**
+- SVG-based yantra illustration
+- Rotation and glow animations
+- Geometric patterns
+- Uses framer-motion for animations
+
+---
+
+### Particles
+**File:** `src/components/landing/Particles.tsx`  
+**Purpose:** Animated particle background effect
+
+**Features:**
+- Canvas-based particle animation
+- Floating particles with connections
+- Performance optimized
+- Responsive to viewport size
+
+---
+
+### Glyphs
+**File:** `src/components/landing/Glyphs.tsx`  
+**Purpose:** Decorative astrological glyphs
+
+**Features:**
+- Zodiac and planetary symbols
+- Animated appearance
+- Decorative background elements
+
+---
+
 ## 🛠️ Utility Components
 
-### LoadingSpinner
-**File:** `src/components/ui/loading-spinner.tsx` (to create)  
-**Purpose:** Loading indicator
+### ChartLoader
+See [Custom UI Components](#chartloader) section above.
 
-```tsx
-<LoadingSpinner size="sm" | "md" | "lg" />
-```
+### LoadingSpinner
+**Status:** Can be created using shadcn/ui Skeleton or custom spinner
 
 ---
 
 ### ErrorMessage
-**File:** `src/components/ui/error-message.tsx` (to create)  
-**Purpose:** Error display
+**Status:** Can be created using shadcn/ui Alert component
 
 ```tsx
 <ErrorMessage message="Something went wrong" />
@@ -989,41 +1311,60 @@ src/components/
 ## 📊 Component Stats
 
 ### By Category
-- **UI Components:** 24
-- **Chart Components:** 12
-- **Form Components:** 4
-- **Layout Components:** 3
-- **Utility Components:** 2
+- **UI Components:** 28 (19 shadcn/ui + 9 custom including ChartLoader, Logo, etc.)
+- **Chart Components:** 20 (DiamondChart, PlanetaryTable, DashaNavigator, UserDetailsCard, StatusBadges, ChartLegend, AvakhadaTable, AscendantCard, BirthDetails, ChartFocusMode, NorthIndianChart, PlanetDisplay, HouseBlock, DiamondGrid + 6 divisional components)
+- **Form Components:** 5 (BirthDataForm, BirthDataFormWrapper, EditBirthDetailsForm, DateTimeField, CitySearch)
+- **Layout Components:** 4 (Header, Footer, ThemeToggle, ThemeProvider)
+- **Landing Components:** 4 (NavagrahaSection, Yantra, Particles, Glyphs)
+- **Auth Components:** 1 (SessionWatcher)
+
+**Total:** 62 components
 
 ### By Type
-- **Server Components:** ~30
-- **Client Components:** ~15
-- **Hybrid:** ~5
+- **Server Components:** ~35
+- **Client Components:** ~25
+- **Hybrid:** ~2
 
-### Bundle Size Contribution
-- shadcn/ui: ~80 KB
-- Chart components: ~60 KB
-- Form components: ~30 KB
-- Other: ~40 KB
+### Bundle Size Contribution (Estimated)
+- shadcn/ui: ~90 KB
+- Chart components: ~80 KB
+- Form components: ~35 KB
+- Landing components: ~25 KB
+- Other: ~20 KB
+- **Total:** ~250 KB
 
 ---
 
 ## 🚀 Next Steps
 
+### Recently Completed ✅
+- [x] ChartLoader component (Feb 2026)
+- [x] Logo component (Feb 2026)
+- [x] Landing page components (Feb 2026)
+- [x] SessionWatcher auth component (Feb 2026)
+- [x] StatusBadges component (Feb 2026)
+- [x] ChartLegend component (Feb 2026)
+- [x] UserDetailsCard component (Feb 2026)
+- [x] AvakhadaTable component (Feb 2026)
+- [x] Full divisional chart set (D1-D60) (Feb 2026)
+- [x] Toast notification system (Feb 2026)
+- [x] BirthDataFormWrapper (Feb 2026)
+
 ### To Add
-- [ ] LoadingSpinner component
-- [ ] ErrorMessage component
-- [ ] SkeletonLoader component
-- [ ] Toast notification system
-- [ ] Modal/Dialog wrappers
+- [ ] ErrorBoundary wrapper for charts
+- [ ] SkeletonLoader variations for different components
+- [ ] Modal/Dialog wrappers for common patterns
+- [ ] Chart export (PNG/PDF) functionality
+- [ ] Print-friendly chart layouts
 
 ### To Refactor
-- [ ] Extract common HOC for loading/error
-- [ ] Consolidate chart components
-- [ ] Create shared hooks
+- [ ] Extract common HOC for loading/error states
+- [ ] Consolidate duplicate chart styling logic
+- [ ] Create shared hooks for chart interactions
+- [ ] Optimize bundle size (lazy loading improvements)
 
 ---
 
-**Last Updated:** February 14, 2026  
-**Next Review:** February 21, 2026  
+**Last Updated:** February 28, 2026  
+**Next Review:** March 7, 2026  
 **Maintainer:** Aakash + AI Assistants
