@@ -37,7 +37,7 @@ interface Props {
   isAdmin?: boolean
 }
 
-export function BirthDataForm({ onSubmit, cardError }: Props) {
+export function BirthDataForm({ onSubmit, cardError, isAdmin = false }: Props) {
   const [isTestData, setIsTestData]   = useState(false)
   const [coordsError, setCoordsError] = useState(false)
 
