@@ -7,31 +7,31 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ChevronDown, ChevronUp } from 'lucide-react';
-import type { SadeSatiHistory, SadeSatiPeriod } from '@/types/sadesati';
-import { PHASE_EFFECTS, PHASE_REMEDIES, PHASE_POSITIVE_ASPECTS } from '@/lib/astrology/sadesati/constants';
+import type { SaturnTransitAnalysis, SadeSatiPeriod } from '@/types/sadesati';
+import { PHASE_EFFECTS, PHASE_REMEDIES } from '@/lib/astrology/sadesati/constants';
 
 interface SadeSatiTimelineProps {
-  history: SaturnTransitAnalysis;
+  analysis: SaturnTransitAnalysis;
   birthDate: Date;
 }
 
-export function SadeSatiTimeline({ history, birthDate }: SadeSatiTimelineProps) {
+export function SadeSatiTimeline({ analysis, birthDate }: SadeSatiTimelineProps) {
   const currentDate = new Date();
   const [expandedPeriod, setExpandedPeriod] = useState<string | null>(null);
   
-  // Helper to calculate age at a given date
+  const { sadeSati } = analysis;
+  const { history } = sadeSati;
+  
   const calculateAge = (date: Date): number => {
     return Math.floor(
       (date.getTime() - birthDate.getTime()) / (1000 * 60 * 60 * 24 * 365.25)
     );
   };
   
-  // Toggle period expansion
   const togglePeriod = (periodId: string) => {
     setExpandedPeriod(expandedPeriod === periodId ? null : periodId);
   };
   
-  // Render period details
   const renderPeriodDetails = (phases: SadeSatiPeriod[], showFullDetails: boolean) => {
     const periodId = `${phases[0].startDate.getTime()}`;
     const isExpanded = expandedPeriod === periodId;
@@ -40,7 +40,6 @@ export function SadeSatiTimeline({ history, birthDate }: SadeSatiTimelineProps) 
     
     return (
       <div key={periodId} className="relative pl-6 border-l-2 border-muted">
-        {/* Timeline dot */}
         <div className={`absolute -left-2 top-0 w-4 h-4 rounded-full border-2 border-background ${
           isCurrent 
             ? 'bg-orange-500' 
@@ -54,7 +53,6 @@ export function SadeSatiTimeline({ history, birthDate }: SadeSatiTimelineProps) 
         </div>
         
         <div className="pb-6">
-          {/* Period Header */}
           <div className="flex items-center gap-2 mb-2">
             <p className="text-sm font-medium">
               {phases[0].startDate.getFullYear()} - {phases[2].endDate.getFullYear()}
@@ -70,7 +68,6 @@ export function SadeSatiTimeline({ history, birthDate }: SadeSatiTimelineProps) 
             )}
           </div>
           
-          {/* Phases Summary */}
           <div className="space-y-1 mb-3">
             {phases.map((phase, phaseIndex) => {
               const isCurrentPhase = isCurrent && phase.endDate > currentDate && phase.startDate <= currentDate;
@@ -104,7 +101,6 @@ export function SadeSatiTimeline({ history, birthDate }: SadeSatiTimelineProps) 
             })}
           </div>
           
-          {/* Show details button for non-current periods */}
           {!isPast && !isCurrent && (
             <Button
               variant="outline"
@@ -126,15 +122,12 @@ export function SadeSatiTimeline({ history, birthDate }: SadeSatiTimelineProps) 
             </Button>
           )}
           
-          {/* Expanded Details (for upcoming/future periods) */}
           {isExpanded && !isPast && (
             <div className="mt-4 space-y-4 p-4 bg-muted/30 rounded-lg border">
-              {/* Find which phase will be active when it starts */}
               {phases.map((phase, idx) => (
                 <div key={idx} className="space-y-3">
                   <h4 className="font-semibold text-sm">{phase.phase} Phase</h4>
                   
-                  {/* Effects */}
                   <div>
                     <p className="text-xs font-medium mb-2">Key Effects:</p>
                     <ul className="space-y-1 text-xs text-muted-foreground">
@@ -147,7 +140,6 @@ export function SadeSatiTimeline({ history, birthDate }: SadeSatiTimelineProps) 
                     </ul>
                   </div>
                   
-                  {/* Remedies */}
                   <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded border border-blue-200 dark:border-blue-900">
                     <p className="text-xs font-medium text-blue-900 dark:text-blue-100 mb-2">
                       Recommended Remedies:
@@ -168,7 +160,6 @@ export function SadeSatiTimeline({ history, birthDate }: SadeSatiTimelineProps) 
             </div>
           )}
           
-          {/* Past period note */}
           {isPast && (
             <p className="text-xs text-muted-foreground italic mt-2">
               Completed period
@@ -190,7 +181,6 @@ export function SadeSatiTimeline({ history, birthDate }: SadeSatiTimelineProps) 
       
       <CardContent>
         <div className="space-y-8">
-          {/* Past Periods */}
           {history.past.length > 0 && (
             <div>
               <h3 className="text-sm font-semibold text-muted-foreground mb-4">
@@ -202,7 +192,6 @@ export function SadeSatiTimeline({ history, birthDate }: SadeSatiTimelineProps) 
             </div>
           )}
           
-          {/* Current Period */}
           {history.current && (
             <>
               {history.past.length > 0 && <hr className="border-muted" />}
@@ -215,7 +204,6 @@ export function SadeSatiTimeline({ history, birthDate }: SadeSatiTimelineProps) 
             </>
           )}
           
-          {/* Upcoming Period */}
           {history.upcoming && (
             <>
               <hr className="border-muted" />
@@ -228,7 +216,6 @@ export function SadeSatiTimeline({ history, birthDate }: SadeSatiTimelineProps) 
             </>
           )}
           
-          {/* Future Periods */}
           {history.future.length > 0 && (
             <>
               <hr className="border-muted" />
@@ -243,7 +230,6 @@ export function SadeSatiTimeline({ history, birthDate }: SadeSatiTimelineProps) 
             </>
           )}
           
-          {/* Info Box */}
           <div className="p-4 bg-muted/50 rounded-lg border">
             <p className="text-xs text-muted-foreground">
               <strong>About This Timeline:</strong> Shows all Sade Sati periods from your birth to age 100. 
