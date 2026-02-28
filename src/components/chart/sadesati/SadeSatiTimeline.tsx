@@ -1,18 +1,14 @@
 /**
- * Sade Sati Timeline Component
- * 
- * Displays historical, current, and future Sade Sati periods
- * in a vertical timeline format
- * 
- * @version 1.0.0
- * @created February 28, 2026
+ * Sade Sati Timeline Component - Interactive & Complete
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import type { SadeSatiHistory } from '@/types/sadesati';
+import { Button } from '@/components/ui/button';
+import { ChevronDown, ChevronUp } from 'lucide-react';
+import type { SadeSatiHistory, SadeSatiPeriod } from '@/types/sadesati';
+import { PHASE_EFFECTS, PHASE_REMEDIES, PHASE_POSITIVE_ASPECTS } from '@/lib/astrology/sadesati/constants';
 
 interface SadeSatiTimelineProps {
   history: SadeSatiHistory;
@@ -21,6 +17,7 @@ interface SadeSatiTimelineProps {
 
 export function SadeSatiTimeline({ history, birthDate }: SadeSatiTimelineProps) {
   const currentDate = new Date();
+  const [expandedPeriod, setExpandedPeriod] = useState<string | null>(null);
   
   // Helper to calculate age at a given date
   const calculateAge = (date: Date): number => {
@@ -29,195 +26,228 @@ export function SadeSatiTimeline({ history, birthDate }: SadeSatiTimelineProps) 
     );
   };
   
+  // Toggle period expansion
+  const togglePeriod = (periodId: string) => {
+    setExpandedPeriod(expandedPeriod === periodId ? null : periodId);
+  };
+  
+  // Render period details
+  const renderPeriodDetails = (phases: SadeSatiPeriod[], showFullDetails: boolean) => {
+    const periodId = `${phases[0].startDate.getTime()}`;
+    const isExpanded = expandedPeriod === periodId;
+    const isPast = phases[2].endDate < currentDate;
+    const isCurrent = phases[0].startDate <= currentDate && phases[2].endDate >= currentDate;
+    
+    return (
+      <div key={periodId} className="relative pl-6 border-l-2 border-muted">
+        {/* Timeline dot */}
+        <div className={`absolute -left-2 top-0 w-4 h-4 rounded-full border-2 border-background ${
+          isCurrent 
+            ? 'bg-orange-500' 
+            : isPast 
+            ? 'bg-muted' 
+            : 'bg-blue-500'
+        }`}>
+          {isCurrent && (
+            <div className="absolute inset-0 rounded-full bg-orange-500 animate-pulse opacity-75" />
+          )}
+        </div>
+        
+        <div className="pb-6">
+          {/* Period Header */}
+          <div className="flex items-center gap-2 mb-2">
+            <p className="text-sm font-medium">
+              {phases[0].startDate.getFullYear()} - {phases[2].endDate.getFullYear()}
+            </p>
+            <Badge variant="outline" className="text-xs">
+              Age {calculateAge(phases[0].startDate)}
+            </Badge>
+            {isCurrent && (
+              <Badge className="text-xs bg-orange-500">Active Now</Badge>
+            )}
+            {!isPast && !isCurrent && (
+              <Badge variant="outline" className="text-xs bg-blue-50">Upcoming</Badge>
+            )}
+          </div>
+          
+          {/* Phases Summary */}
+          <div className="space-y-1 mb-3">
+            {phases.map((phase, phaseIndex) => {
+              const isCurrentPhase = isCurrent && phase.endDate > currentDate && phase.startDate <= currentDate;
+              
+              return (
+                <p 
+                  key={phaseIndex}
+                  className={`text-xs ${
+                    isCurrentPhase 
+                      ? 'text-orange-700 dark:text-orange-300 font-medium' 
+                      : 'text-muted-foreground'
+                  }`}
+                >
+                  <span className="font-semibold">{phase.phase}:</span>{' '}
+                  {phase.saturnSign} ({' '}
+                  {phase.startDate.toLocaleDateString('en-US', { 
+                    month: 'short', 
+                    year: 'numeric' 
+                  })} - {' '}
+                  {phase.endDate.toLocaleDateString('en-US', { 
+                    month: 'short', 
+                    year: 'numeric' 
+                  })})
+                  {isCurrentPhase && (
+                    <span className="ml-2 text-orange-600 dark:text-orange-400">
+                      ← You are here
+                    </span>
+                  )}
+                </p>
+              );
+            })}
+          </div>
+          
+          {/* Show details button for non-current periods */}
+          {!isPast && !isCurrent && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => togglePeriod(periodId)}
+              className="mt-2"
+            >
+              {isExpanded ? (
+                <>
+                  <ChevronUp className="mr-2 h-3 w-3" />
+                  Hide Details
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="mr-2 h-3 w-3" />
+                  View Effects & Remedies
+                </>
+              )}
+            </Button>
+          )}
+          
+          {/* Expanded Details (for upcoming/future periods) */}
+          {isExpanded && !isPast && (
+            <div className="mt-4 space-y-4 p-4 bg-muted/30 rounded-lg border">
+              {/* Find which phase will be active when it starts */}
+              {phases.map((phase, idx) => (
+                <div key={idx} className="space-y-3">
+                  <h4 className="font-semibold text-sm">{phase.phase} Phase</h4>
+                  
+                  {/* Effects */}
+                  <div>
+                    <p className="text-xs font-medium mb-2">Key Effects:</p>
+                    <ul className="space-y-1 text-xs text-muted-foreground">
+                      {PHASE_EFFECTS[phase.phase].slice(0, 3).map((effect, i) => (
+                        <li key={i} className="flex items-start gap-2">
+                          <span className="text-orange-500 mt-0.5">•</span>
+                          <span>{effect}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  
+                  {/* Remedies */}
+                  <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded border border-blue-200 dark:border-blue-900">
+                    <p className="text-xs font-medium text-blue-900 dark:text-blue-100 mb-2">
+                      Recommended Remedies:
+                    </p>
+                    <ul className="space-y-1 text-xs text-blue-800 dark:text-blue-200">
+                      {PHASE_REMEDIES[phase.phase].slice(0, 3).map((remedy, i) => (
+                        <li key={i} className="flex items-start gap-2">
+                          <span>✓</span>
+                          <span>{remedy}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  
+                  {idx < phases.length - 1 && <hr className="border-muted" />}
+                </div>
+              ))}
+            </div>
+          )}
+          
+          {/* Past period note */}
+          {isPast && (
+            <p className="text-xs text-muted-foreground italic mt-2">
+              Completed period
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  };
+  
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Sade Sati Timeline</CardTitle>
+        <CardTitle>Complete Sade Sati Timeline</CardTitle>
         <p className="text-sm text-muted-foreground mt-1">
-          Saturn's 7.5-year challenging periods throughout your life
+          Saturn's 7.5-year periods throughout your life (from birth to age 100)
         </p>
       </CardHeader>
       
       <CardContent>
         <div className="space-y-8">
-          {/* Past Sade Sati Periods */}
+          {/* Past Periods */}
           {history.past.length > 0 && (
             <div>
-              <h3 className="text-sm font-semibold mb-4 text-muted-foreground">
-                Past Periods
+              <h3 className="text-sm font-semibold text-muted-foreground mb-4">
+                Past Periods ({history.past.length})
               </h3>
               <div className="space-y-6">
-                {history.past.map((phases, index) => {
-                  const startYear = phases[0].startDate.getFullYear();
-                  const endYear = phases[2].endDate.getFullYear();
-                  const startAge = calculateAge(phases[0].startDate);
-                  
-                  return (
-                    <div key={index} className="relative pl-6 border-l-2 border-muted">
-                      {/* Timeline dot */}
-                      <div className="absolute -left-2 top-0 w-4 h-4 rounded-full bg-muted border-2 border-background" />
-                      
-                      <div className="pb-4">
-                        <div className="flex items-center gap-2 mb-2">
-                          <p className="text-sm font-medium">
-                            {startYear} - {endYear}
-                          </p>
-                          <Badge variant="outline" className="text-xs">
-                            Age {startAge}
-                          </Badge>
-                        </div>
-                        
-                        <div className="space-y-1">
-                          {phases.map((phase, phaseIndex) => (
-                            <p key={phaseIndex} className="text-xs text-muted-foreground">
-                              <span className="font-medium">{phase.phase}:</span>{' '}
-                              {phase.saturnSign} ({' '}
-                              {phase.startDate.toLocaleDateString('en-US', { 
-                                month: 'short', 
-                                year: 'numeric' 
-                              })} - {' '}
-                              {phase.endDate.toLocaleDateString('en-US', { 
-                                month: 'short', 
-                                year: 'numeric' 
-                              })})
-                            </p>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+                {history.past.map((phases, index) => renderPeriodDetails(phases, false))}
               </div>
             </div>
           )}
           
-          {/* Current Sade Sati */}
+          {/* Current Period */}
           {history.current && (
             <>
-              {history.past.length > 0 && <Separator />}
+              {history.past.length > 0 && <hr className="border-muted" />}
               <div>
-                <h3 className="text-sm font-semibold mb-4 text-orange-600 dark:text-orange-400">
+                <h3 className="text-sm font-semibold text-orange-600 dark:text-orange-400 mb-4">
                   Current Period (Active)
                 </h3>
-                <div className="relative pl-6 border-l-2 border-orange-500">
-                  {/* Timeline dot - larger and animated */}
-                  <div className="absolute -left-2 top-0 w-4 h-4 rounded-full bg-orange-500 border-2 border-background">
-                    <div className="absolute inset-0 rounded-full bg-orange-500 animate-ping opacity-75" />
-                  </div>
-                  
-                  <div className="pb-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <p className="text-sm font-medium">
-                        {history.current[0].startDate.getFullYear()} - {' '}
-                        {history.current[2].endDate.getFullYear()}
-                      </p>
-                      <Badge className="text-xs bg-orange-500 hover:bg-orange-600">
-                        Active Now
-                      </Badge>
-                    </div>
-                    
-                    <div className="space-y-1 mb-3">
-                      {history.current.map((phase, phaseIndex) => {
-                        const isCurrentPhase = phase.endDate > currentDate && phase.startDate <= currentDate;
-                        
-                        return (
-                          <div 
-                            key={phaseIndex}
-                            className={`text-xs ${
-                              isCurrentPhase 
-                                ? 'text-orange-700 dark:text-orange-300 font-medium' 
-                                : 'text-muted-foreground'
-                            }`}
-                          >
-                            <span className="font-semibold">{phase.phase}:</span>{' '}
-                            {phase.saturnSign} ({' '}
-                            {phase.startDate.toLocaleDateString('en-US', { 
-                              month: 'short', 
-                              year: 'numeric' 
-                            })} - {' '}
-                            {phase.endDate.toLocaleDateString('en-US', { 
-                              month: 'short', 
-                              year: 'numeric' 
-                            })})
-                            {isCurrentPhase && (
-                              <span className="ml-2 text-orange-600 dark:text-orange-400">
-                                ← You are here
-                              </span>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                    
-                    {/* Progress indicator */}
-                    <div className="mt-3 p-3 bg-orange-50 dark:bg-orange-950/30 rounded border border-orange-200 dark:border-orange-900">
-                      <p className="text-xs text-orange-800 dark:text-orange-200">
-                        <strong>Note:</strong> You are currently experiencing Sade Sati. 
-                        This period brings challenges but also opportunities for growth and karmic lessons.
-                      </p>
-                    </div>
-                  </div>
+                {renderPeriodDetails(history.current, true)}
+              </div>
+            </>
+          )}
+          
+          {/* Upcoming Period */}
+          {history.upcoming && (
+            <>
+              <hr className="border-muted" />
+              <div>
+                <h3 className="text-sm font-semibold text-blue-600 dark:text-blue-400 mb-4">
+                  Next Sade Sati (Upcoming)
+                </h3>
+                {renderPeriodDetails(history.upcoming, true)}
+              </div>
+            </>
+          )}
+          
+          {/* Future Periods */}
+          {history.future.length > 0 && (
+            <>
+              <hr className="border-muted" />
+              <div>
+                <h3 className="text-sm font-semibold text-muted-foreground mb-4">
+                  Future Periods ({history.future.length})
+                </h3>
+                <div className="space-y-6">
+                  {history.future.map((phases, index) => renderPeriodDetails(phases, true))}
                 </div>
               </div>
             </>
           )}
           
-          {/* Next Sade Sati */}
-          <Separator />
-          <div>
-            <h3 className="text-sm font-semibold mb-4 text-muted-foreground">
-              Next Period
-            </h3>
-            <div className="relative pl-6 border-l-2 border-muted border-dashed">
-              {/* Timeline dot */}
-              <div className="absolute -left-2 top-0 w-4 h-4 rounded-full bg-muted/50 border-2 border-background" />
-              
-              <div>
-                <p className="text-sm font-medium mb-2">
-                  Starts: {history.next.startDate.toLocaleDateString('en-US', {
-                    month: 'long',
-                    year: 'numeric',
-                  })}
-                </p>
-                
-                <div className="flex items-center gap-2 mb-3">
-                  <Badge variant="outline" className="text-xs">
-                    {history.next.yearsFromNow.toFixed(1)} years from now
-                  </Badge>
-                  {calculateAge(history.next.startDate) > 0 && (
-                    <Badge variant="outline" className="text-xs">
-                      Age {calculateAge(history.next.startDate)}
-                    </Badge>
-                  )}
-                </div>
-                
-                <div className="space-y-1">
-                  {history.next.phases.map((phase, phaseIndex) => (
-                    <p key={phaseIndex} className="text-xs text-muted-foreground">
-                      <span className="font-medium">{phase.phase}:</span>{' '}
-                      {phase.saturnSign} ({' '}
-                      {phase.startDate.toLocaleDateString('en-US', { 
-                        month: 'short', 
-                        year: 'numeric' 
-                      })} - {' '}
-                      {phase.endDate.toLocaleDateString('en-US', { 
-                        month: 'short', 
-                        year: 'numeric' 
-                      })})
-                    </p>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-          
           {/* Info Box */}
           <div className="p-4 bg-muted/50 rounded-lg border">
             <p className="text-xs text-muted-foreground">
-              <strong>About Sade Sati:</strong> Saturn takes approximately 29.5 years 
-              to orbit through all 12 zodiac signs. Sade Sati occurs when Saturn 
-              transits through the 12th, 1st, and 2nd houses from your natal Moon, 
-              lasting approximately 7.5 years.
+              <strong>About This Timeline:</strong> Shows all Sade Sati periods from your birth to age 100. 
+              Click "View Effects & Remedies" on upcoming periods to see detailed analysis for that specific time.
             </p>
           </div>
         </div>
