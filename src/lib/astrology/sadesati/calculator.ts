@@ -259,72 +259,74 @@ function calculateAllThreePhases(
 /**
  * Calculate historical Sade Sati periods
  */
+/**
+ * Calculate ALL Sade Sati periods from birth to 100 years
+ */
 function calculateSadeSatiHistory(
   moonSign: number,
   birthDate: Date,
   currentDate: Date,
   currentSadeSati: CurrentSadeSati
 ): SadeSatiHistory {
-  const past: SadeSatiPeriod[][] = [];
+  const all: SadeSatiPeriod[][] = [];
   
-  // Saturn completes one cycle in ~29.5 years
-  // Sade Sati occurs approximately every 29.5 years
-  
+  // Calculate from birth to 100 years
   const ageInYears = 
     (currentDate.getTime() - birthDate.getTime()) / (1000 * 60 * 60 * 24 * 365.25);
   
-  // Approximate number of complete Saturn cycles since birth
-  const approximateCycles = Math.floor(ageInYears / 29.5);
+  // Saturn completes one cycle in ~29.5 years
+  // So there are approximately 3-4 Sade Sati periods in 100 years
+  const numberOfCycles = Math.ceil(100 / 29.5); // ~4 cycles
   
-  // Generate past Sade Sati periods (going backwards from current)
-  // Each cycle is ~29.5 years apart
-  for (let i = 1; i <= approximateCycles && i <= 3; i++) {
-    // Go back i cycles (each ~29.5 years)
-    const cycleYearsBack = i * 29.5;
-    const cycleStartDate = new Date(currentDate);
+  // Generate all periods
+  for (let i = 0; i < numberOfCycles; i++) {
+    const cycleYearsFromBirth = i * 29.5;
+    const cycleStartDate = new Date(birthDate);
     cycleStartDate.setFullYear(
-      cycleStartDate.getFullYear() - Math.floor(cycleYearsBack)
+      cycleStartDate.getFullYear() + Math.floor(cycleYearsFromBirth)
     );
     
-    // Only include if after birth date
-    if (cycleStartDate >= birthDate) {
+    // Only include if it's within 100 years from birth
+    const ageAtCycle = 
+      (cycleStartDate.getTime() - birthDate.getTime()) / (1000 * 60 * 60 * 24 * 365.25);
+    
+    if (ageAtCycle <= 100) {
       const phases = calculateAllThreePhases(moonSign, 'Rising', cycleStartDate);
-      
-      // Only add if it's complete (ended before current date)
-      if (phases[2].endDate < currentDate) {
-        past.unshift(phases); // Add to beginning (chronological order)
+      all.push(phases);
+    }
+  }
+  
+  // Categorize into past, current, upcoming, future
+  const past: SadeSatiPeriod[][] = [];
+  let current: SadeSatiPeriod[] | undefined = undefined;
+  let upcoming: SadeSatiPeriod[] | undefined = undefined;
+  const future: SadeSatiPeriod[][] = [];
+  
+  for (const phases of all) {
+    const endDate = phases[2].endDate;
+    const startDate = phases[0].startDate;
+    
+    if (endDate < currentDate) {
+      // Past period
+      past.push(phases);
+    } else if (startDate <= currentDate && endDate >= currentDate) {
+      // Current period (active)
+      current = phases;
+    } else {
+      // Future periods
+      if (!upcoming) {
+        upcoming = phases; // First future period is "upcoming"
+      } else {
+        future.push(phases);
       }
     }
   }
   
-  // Calculate next Sade Sati
-  let nextStartDate: Date;
-  
-  if (currentSadeSati.isActive && currentSadeSati.endDate) {
-    // If currently in Sade Sati, next one starts ~29.5 years from now
-    nextStartDate = new Date(currentDate);
-    nextStartDate.setFullYear(nextStartDate.getFullYear() + 29);
-    nextStartDate.setMonth(nextStartDate.getMonth() + 6); // ~29.5 years
-  } else {
-    // Not currently in Sade Sati, calculate when next one starts
-    // This would require knowing Saturn's current position and speed
-    // For simplicity, estimate based on Saturn's cycle
-    nextStartDate = new Date(currentDate);
-    nextStartDate.setFullYear(nextStartDate.getFullYear() + 15); // Approximate
-  }
-  
-  const nextPhases = calculateAllThreePhases(moonSign, 'Rising', nextStartDate);
-  const yearsFromNow = 
-    (nextStartDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24 * 365.25);
-  
   return {
     past,
-    current: currentSadeSati.isActive ? currentSadeSati.allPhases : undefined,
-    next: {
-      startDate: nextStartDate,
-      phases: nextPhases,
-      yearsFromNow: Math.floor(yearsFromNow * 10) / 10, // Round to 1 decimal
-    },
+    current,
+    upcoming,
+    future,
   };
 }
 
