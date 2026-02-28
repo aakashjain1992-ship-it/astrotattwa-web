@@ -34,6 +34,7 @@ type BirthDataFormValues = z.infer<typeof birthDataSchema>
 interface Props {
   cardError?: string,  
   onSubmit: (values: ChartFormValues) => void
+  isAdmin?: boolean
 }
 
 export function BirthDataForm({ onSubmit, cardError }: Props) {
@@ -145,11 +146,11 @@ export function BirthDataForm({ onSubmit, cardError }: Props) {
             Enter your birth details to see your chart
           </p>
         </div>
-        <Button type="button" variant="outline" size="sm" onClick={fillTestData} style={{ flexShrink: 0, marginTop: '4px' }}>
+       {isAdmin ? (
+         <Button type="button" variant="outline" size="sm" onClick={fillTestData} style={{ flexShrink: 0, marginTop: '4px' }}>
           {isTestData ? '✓ Test Data Loaded' : 'Load Test Data'}
-        </Button>
-      </div>
-
+        </Button> ) : null}
+      </div> 
       {/* Name */}
       <div className="space-y-2">
         <Label htmlFor="name" className="flex items-center gap-2">
