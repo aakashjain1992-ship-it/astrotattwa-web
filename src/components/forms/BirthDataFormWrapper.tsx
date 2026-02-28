@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useState  } from 'react'
+import { useEffect, useState  } from 'react'
 import { BirthDataForm } from './BirthDataForm'
 import { ChartLoader } from '@/components/ui/ChartLoader'
 import { useRouter } from 'next/navigation'
