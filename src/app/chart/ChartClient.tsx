@@ -454,7 +454,7 @@ export default function ChartClient() {
             onClick={() => setTab('sadesati')}
           >
             Sade Sati
-          {chartData.sadeSati?.current.isActive && ( <span className="ml-2 inline-flex h-2 w-2 rounded-full bg-orange-500 animate-pulse" />
+          {chartData.saturnTransits?.sadeSati.current.isActive && ( <span className="ml-2 inline-flex h-2 w-2 rounded-full bg-orange-500 animate-pulse" />
           )}
           </TabButton>
         </div>
@@ -504,11 +504,11 @@ export default function ChartClient() {
 
         {activeTab === 'sadesati' && (
   <div className="animate-fade-in">
-    {chartData.sadeSati ? (
+    {chartData.saturnTransits ? (
       <div className="space-y-6">
-        <SadeSatiCard analysis={chartData.sadeSati} />
+        <SadeSatiCard analysis={chartData.saturnTransits.sadeSati} />
         <SadeSatiTimeline 
-          history={chartData.sadeSati.history}
+          analysis={chartData.saturnTransits}
           birthDate={new Date(chartData.input.localDateTime)}
         />
       </div>
