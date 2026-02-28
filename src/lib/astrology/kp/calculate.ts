@@ -4,6 +4,8 @@ import { AYANAMSHA_LABEL, norm360 } from "./constants";
 import { buildPlanet } from "./planets";
 import { vimshottariDasha } from "./dasa";
 import { calculateAvakahada } from "./avakahada";
+import { calculateSadeSati } from '@/lib/astrology/sadesati/calculator';
+
 
 export async function calculateKpChart(input: {
   name?: string;
@@ -101,6 +103,15 @@ export async function calculateKpChart(input: {
     planets.Moon.kp.nakshatraLord
   );
 
+  // Calculate Sade Sati
+
+  const sadeSati = calculateSadeSati(
+   planets.Moon,
+   planets.Saturn,
+   birthUtc,
+   new Date()
+  );
+  
   return {
     input: {
       timezone: input.timezone,
@@ -118,5 +129,6 @@ export async function calculateKpChart(input: {
     dasa,
     avakahada,
     rahuKetuModes, 
+    sadeSati, 
   };
 }
