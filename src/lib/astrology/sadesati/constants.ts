@@ -238,3 +238,72 @@ export function getHouseFromMoon(planetSign: number, moonSign: number): number {
   
   return house;
 }
+/**
+ * Dhaiya descriptions
+ */
+export const DHAIYA_DESCRIPTIONS = {
+  '4th': 'Saturn transiting 4th house from Moon - Affects home, mother, peace of mind',
+  '8th': 'Saturn transiting 8th house from Moon - Affects obstacles, sudden changes, transformations',
+} as const;
+
+/**
+ * Dhaiya effects
+ */
+export const DHAIYA_EFFECTS = {
+  '4th': [
+    'Disturbances in home environment',
+    'Concerns related to mother or mother figure',
+    'Property or real estate challenges',
+    'Mental peace disrupted',
+    'Vehicle-related issues',
+    'Educational obstacles',
+  ],
+  '8th': [
+    'Sudden unexpected obstacles',
+    'Financial ups and downs',
+    'Health concerns requiring attention',
+    'Hidden enemies or secrets revealed',
+    'Inheritance or insurance matters',
+    'Transformation and deep changes',
+  ],
+} as const;
+
+/**
+ * Dhaiya remedies
+ */
+export const DHAIYA_REMEDIES = {
+  '4th': [
+    'Chant "Om Sham Shanicharaya Namah" daily',
+    'Respect and serve your mother',
+    'Donate to charitable causes on Saturdays',
+    'Keep home environment clean and organized',
+    'Light a lamp at home regularly',
+    'Practice patience in family matters',
+  ],
+  '8th': [
+    'Perform Shani puja on Saturdays',
+    'Donate black sesame seeds and iron',
+    'Recite Hanuman Chalisa',
+    'Avoid risky investments',
+    'Maintain good health practices',
+    'Practice detachment and acceptance',
+  ],
+} as const;
+
+/**
+ * Dhaiya positive aspects
+ */
+export const DHAIYA_POSITIVE_ASPECTS = {
+  '4th': [
+    'Opportunity to strengthen family bonds',
+    'Learning patience and emotional maturity',
+    'Developing inner peace through challenges',
+    'Building resilience in domestic life',
+  ],
+  '8th': [
+    'Spiritual growth through transformation',
+    'Learning to handle unexpected situations',
+    'Developing research and investigative skills',
+    'Clearing karmic debts',
+  ],
+} as const;
