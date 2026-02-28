@@ -10,40 +10,40 @@
  */
 
 export type SadeSatiPhase = 'Rising' | 'Peak' | 'Setting';
+export type DhaiyaType = '4th' | '8th';
+
 
 /**
  * Single phase period of Sade Sati
  */
 export interface SadeSatiPeriod {
-  /** Phase name */
-  phase: SadeSatiPhase;
-  
-  /** Phase description */
-  description: string;
-  
-  /** Start date */
-  startDate: Date;
-  
-  /** End date */
-  endDate: Date;
-  
-  /** Duration in days */
-  durationDays: number;
-  
-  /** Saturn's transit sign */
-  saturnSign: string;
-  
-  /** Saturn's transit sign number (1-12) */
-  saturnSignNumber: number;
-  
-  /** Moon's natal sign */
-  moonSign: string;
-  
-  /** Moon's natal sign number (1-12) */
-  moonSignNumber: number;
-  
-  /** House relationship (12th, 1st, or 2nd from Moon) */
-  houseFromMoon: 12 | 1 | 2;
+ 
+  phase: SadeSatiPhase;  // Phase name 
+  description: string; // Phase description 
+  startDate: Date;   // Start date 
+  endDate: Date;  // End date 
+  durationDays: number;  // Duration in days 
+  saturnSign: string;  // Saturn's transit sign 
+  saturnSignNumber: number;   // Saturn's transit sign number (1-12) 
+  moonSign: string;    // Moon's natal sign 
+  moonSignNumber: number; // Moon's natal sign number (1-12)
+  houseFromMoon: 12 | 1 | 2;    // House relationship (12th, 1st, or 2nd from Moon)
+}
+/**
+ * Dhaiya period (2.5 years)
+ */
+export interface DhaiyaPeriod {
+ 
+  type: DhaiyaType;  // Type of Dhaiya
+  description: string;    // Description
+  startDate: Date; //Start date
+  endDate: Date;   // End date
+  durationDays: number; // Duration in days
+  saturnSign: string; // Saturn's transit sign
+  saturnSignNumber: number; // Saturn's transit sign number (1-12)
+  moonSign: string; // Moon's natal sign
+  moonSignNumber: number; // Moon's natal sign number (1-12)
+  houseFromMoon: 4 | 8; // House relationship (4th or 8th from Moon)
 }
 
 /**
@@ -82,11 +82,17 @@ export interface CurrentSadeSati {
  * Historical and future Sade Sati periods
  */
 export interface SadeSatiHistory {
+  /** All Sade Sati periods from birth to 100 years */
+  all: SadeSatiPeriod[][];
+  
   /** Past Sade Sati cycles */
   past: SadeSatiPeriod[][];
   
   /** Current Sade Sati (if active) */
   current?: SadeSatiPeriod[];
+  
+  /** Next immediate Sade Sati period (upcoming) */
+  upcoming?: SadeSatiPeriod[];
   
   /** Next Sade Sati period */
   next: {
@@ -94,6 +100,10 @@ export interface SadeSatiHistory {
     phases: SadeSatiPeriod[];
     yearsFromNow: number;
   };
+  
+  /** Future Sade Sati periods (beyond upcoming) */
+  future: SadeSatiPeriod[][];
+
 }
 
 /**
@@ -134,5 +144,24 @@ export interface SadeSatiAnalysis {
     moonNakshatra: string;
     currentSaturnSign: string;
     currentSaturnSignNumber: number;
+  };
+}
+/**
+ * Complete Saturn transit analysis including Sade Sati and Dhaiya
+ */
+export interface SaturnTransitAnalysis {
+  /** Sade Sati analysis */
+  sadeSati: SadeSatiAnalysis;
+  
+  /** Dhaiya periods */
+  dhaiya: {
+    /** All 4th house Dhaiya periods */
+    fourthHouse: DhaiyaPeriod[];
+    
+    /** All 8th house Dhaiya periods */
+    eighthHouse: DhaiyaPeriod[];
+    
+    /** Currently active Dhaiya (if any) */
+    current?: DhaiyaPeriod;
   };
 }
