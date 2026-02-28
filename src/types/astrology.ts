@@ -15,7 +15,7 @@
  */
 
 
-import type { SadeSatiAnalysis } from './sadesati';
+import type { SaturnTransitAnalysis } from './sadesati';
 
 
 export type PlanetKey = 
@@ -387,9 +387,9 @@ export interface ChartData {
   /** City ID from database */
   cityId: string;
 
-  /** Sade Sati analysis */
-  sadeSati?: SadeSatiAnalysis;
-  
+  /** Sade Sati analysis */ 
+  saturnTransits?: SaturnTransitAnalysis;
+
 }
 
 // ===== CONSTANTS =====
