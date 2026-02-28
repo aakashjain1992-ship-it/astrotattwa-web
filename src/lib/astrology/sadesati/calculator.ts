@@ -16,6 +16,9 @@ import type {
   SadeSatiHistory,
   PhaseInsights,
   SadeSatiPhase,
+  DhaiyaPeriod,
+  DhaiyaType,
+  SaturnTransitAnalysis
 } from '@/types/sadesati';
 import {
   SATURN_PERIOD_PER_SIGN_DAYS,
@@ -29,7 +32,9 @@ import {
   PHASE_REMEDIES,
   PHASE_AFFECTED_AREAS,
   PHASE_POSITIVE_ASPECTS,
+  DHAIYA_DESCRIPTIONS
 } from './constants';
+
 
 /**
  * Main function to calculate complete Sade Sati analysis
@@ -40,6 +45,108 @@ import {
  * @param currentDate - Current date (default: now)
  * @returns Complete Sade Sati analysis
  */
+
+export function calculateAllDhaiyaPeriods(
+  moonSign: number,
+  birthDate: Date
+): { fourthHouse: DhaiyaPeriod[]; eighthHouse: DhaiyaPeriod[] } {
+  const fourthHouse: DhaiyaPeriod[] = [];
+  const eighthHouse: DhaiyaPeriod[] = [];
+  
+  const numberOfCycles = Math.ceil(100 / 29.5);
+  
+  for (let i = 0; i < numberOfCycles; i++) {
+    const cycleStartDate = new Date(birthDate);
+    cycleStartDate.setFullYear(
+      cycleStartDate.getFullYear() + Math.floor(i * 29.5)
+    );
+    
+    // 4th house Dhaiya
+    const fourthHouseSign = moonSign === 1 ? 4 : moonSign === 2 ? 5 : moonSign === 3 ? 6 : (moonSign + 3);
+    const fourthDhaiya = createDhaiyaPeriod(
+      '4th',
+      fourthHouseSign <= 12 ? fourthHouseSign : fourthHouseSign - 12,
+      moonSign,
+      cycleStartDate
+    );
+    
+    const ageAt4th = (fourthDhaiya.startDate.getTime() - birthDate.getTime()) / (1000 * 60 * 60 * 24 * 365.25);
+    if (ageAt4th >= 0 && ageAt4th <= 100) {
+      fourthHouse.push(fourthDhaiya);
+    }
+    
+    // 8th house Dhaiya
+    const eighthHouseSign = moonSign <= 5 ? moonSign + 7 : moonSign + 7 - 12;
+    const eighthStartDate = new Date(cycleStartDate);
+    eighthStartDate.setFullYear(
+      eighthStartDate.getFullYear() + Math.floor(12.5)
+    );
+    
+    const eighthDhaiya = createDhaiyaPeriod(
+      '8th',
+      eighthHouseSign <= 12 ? eighthHouseSign : eighthHouseSign - 12,
+      moonSign,
+      eighthStartDate
+    );
+    
+    const ageAt8th = (eighthDhaiya.startDate.getTime() - birthDate.getTime()) / (1000 * 60 * 60 * 24 * 365.25);
+    if (ageAt8th >= 0 && ageAt8th <= 100) {
+      eighthHouse.push(eighthDhaiya);
+    }
+  }
+  
+  return { fourthHouse, eighthHouse };
+}
+
+/**
+ * Create a Dhaiya period
+ */
+function createDhaiyaPeriod(
+  type: DhaiyaType,
+  saturnSign: number,
+  moonSign: number,
+  startDate: Date
+): DhaiyaPeriod {
+  const endDate = new Date(startDate);
+  endDate.setDate(endDate.getDate() + Math.floor(SATURN_PERIOD_PER_SIGN_DAYS));
+  
+  return {
+    type,
+    description: DHAIYA_DESCRIPTIONS[type],
+    startDate,
+    endDate,
+    durationDays: Math.floor(SATURN_PERIOD_PER_SIGN_DAYS),
+    saturnSign: getSignName(saturnSign),
+    saturnSignNumber: saturnSign,
+    moonSign: getSignName(moonSign),
+    moonSignNumber: moonSign,
+    houseFromMoon: type === '4th' ? 4 : 8,
+  };
+}
+
+/**
+ * Check if Dhaiya is currently active
+ */
+export function checkCurrentDhaiya(
+  moonSign: number,
+  saturnSign: number,
+  currentDate: Date
+): DhaiyaPeriod | undefined {
+  const houseFromMoon = getHouseFromMoon(saturnSign, moonSign);
+  
+  if (houseFromMoon === 4 || houseFromMoon === 8) {
+    const type: DhaiyaType = houseFromMoon === 4 ? '4th' : '8th';
+    
+    const startDate = new Date(currentDate);
+    startDate.setFullYear(startDate.getFullYear() - 1);
+    
+    return createDhaiyaPeriod(type, saturnSign, moonSign, startDate);
+  }
+  
+  return undefined;
+}
+
+
 export function calculateSadeSati(
   moonPlanet: PlanetData,
   saturnPlanet: PlanetData,
@@ -361,4 +468,34 @@ export function formatDuration(days: number): string {
     }
     return `${years}y ${months}m`;
   }
+}
+
+
+/**
+ * Calculate complete Saturn transit analysis (Sade Sati + Dhaiya)
+ */
+export function calculateSaturnTransits(
+  moonPlanet: PlanetData,
+  saturnPlanet: PlanetData,
+  birthDate: Date,
+  currentDate: Date = new Date()
+): SaturnTransitAnalysis {
+  const sadeSati = calculateSadeSati(moonPlanet, saturnPlanet, birthDate, currentDate);
+  
+  const allDhaiya = calculateAllDhaiyaPeriods(moonPlanet.signNumber, birthDate);
+  
+  const currentDhaiya = checkCurrentDhaiya(
+    moonPlanet.signNumber,
+    saturnPlanet.signNumber,
+    currentDate
+  );
+  
+  return {
+    sadeSati,
+    dhaiya: {
+      fourthHouse: allDhaiya.fourthHouse,
+      eighthHouse: allDhaiya.eighthHouse,
+      current: currentDhaiya,
+    },
+  };
 }
