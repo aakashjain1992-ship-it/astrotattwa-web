@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { Loader2, Stars } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -26,7 +26,17 @@ import { SadeSatiTimeline } from '@/components/chart/sadesati/SadeSatiTimeline';
 
 // Import proper types from astrology module
 import type { PlanetData, AscendantData as AstroAscendantData } from '@/types/astrology';
-import { useIdleLogout } from '@/hooks/useIdleLogout'
+import { useIdleLogout } from '@/hooks/useIdleLogout';
+
+import { useSavedCharts } from '@/hooks/useSavedCharts';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+
 
 
 // ============================================
@@ -235,11 +245,14 @@ export default function ChartClient() {
   const [isEditing, setIsEditing] = useState(false);
   const [, setIsRecalculating] = useState(false);
 
+  const saved = useSavedCharts();
+  const [selectedSavedChartId, setSelectedSavedChartId] = useState<string | null>(null);
+
   // ✅ TAB URL SYNC
   const tabParam = searchParams.get('tab') as TabType | null;
 
   useEffect(() => {
-    if (tabParam === 'overview' || tabParam === 'dasha' || tabParam === 'divisional') {
+    if (tabParam === 'overview' || tabParam === 'dasha' || tabParam === 'divisional' || tabParam === 'sadesati') {
       setActiveTab(tabParam);
     } else {
       setActiveTab('overview');
@@ -341,6 +354,114 @@ export default function ChartClient() {
     }
   }, [chartData]);
 
+  const selectedSavedChart = useMemo(() => {
+    if (!selectedSavedChartId) return null;
+    return saved.charts.find((c) => c.id === selectedSavedChartId) ?? null;
+  }, [saved.charts, selectedSavedChartId]);
+
+  function convert24To12(time24: string): { time12: string; period: 'AM' | 'PM' } {
+    const [hhStr, mmStr] = String(time24).split(':');
+    const hh = Number(hhStr);
+    const mm = Number(mmStr);
+    const period: 'AM' | 'PM' = hh >= 12 ? 'PM' : 'AM';
+    let h12 = hh % 12;
+    if (h12 === 0) h12 = 12;
+    return {
+      time12: `${String(h12).padStart(2, '0')}:${String(mm).padStart(2, '0')}`,
+      period,
+    };
+  }
+
+  const handleSelectSavedChart = useCallback(
+    async (chartId: string) => {
+      const c = saved.charts.find((x) => x.id === chartId);
+      if (!c) return;
+
+      const genderUi: 'Male' | 'Female' =
+        String(c.gender).toLowerCase() === 'female' ? 'Female' : 'Male';
+
+      const { time12, period } = convert24To12(c.birth_time);
+
+      setSelectedSavedChartId(c.id);
+
+      // Fill + Trigger recalculation (as you requested)
+      await handleEditSubmit({
+        name: c.name,
+        gender: genderUi,
+        birthDate: c.birth_date,
+        birthTime: time12,
+        timePeriod: period,
+        latitude: Number(c.latitude),
+        longitude: Number(c.longitude),
+        timezone: c.timezone,
+        cityName: c.birth_place,
+      });
+    },
+    [handleEditSubmit, saved.charts]
+  );
+
+  const buildSavePayloadFromEditForm = useCallback(
+    (formData: any, label: string | null) => ({
+      name: formData.name,
+      label,
+      gender: formData.gender,
+      birthDate: formData.birthDate,
+      birthTime: formData.birthTime,
+      timePeriod: formData.timePeriod,
+      birthPlace: formData.cityName ?? chartData?.birthPlace ?? '',
+      latitude: formData.latitude,
+      longitude: formData.longitude,
+      timezone: formData.timezone,
+    }),
+    [chartData?.birthPlace]
+  );
+
+  const handleSaveChart = useCallback(
+    async (formData: any) => {
+      const label = window.prompt('Add a label (Friend, Family, Wife, Client, etc.)', '');
+      const payload = buildSavePayloadFromEditForm(formData, label ? label.trim() : null);
+      const created = await saved.saveChart(payload);
+      await saved.refresh();
+      setSelectedSavedChartId(created.id);
+    },
+    [buildSavePayloadFromEditForm, saved]
+  );
+
+  const handleUpdateChart = useCallback(
+    async (chartId: string, formData: any) => {
+      const payload = buildSavePayloadFromEditForm(formData, selectedSavedChart?.label ?? null);
+      await saved.updateChart(chartId, payload);
+      await saved.refresh();
+      setSelectedSavedChartId(chartId);
+    },
+    [buildSavePayloadFromEditForm, saved, selectedSavedChart?.label]
+  );
+
+  const handleDeleteChart = useCallback(
+    async (chartId: string) => {
+      const ok = window.confirm('Delete this saved chart?');
+      if (!ok) return;
+      await saved.deleteChart(chartId);
+      await saved.refresh();
+      setSelectedSavedChartId(null);
+    },
+    [saved]
+  );
+
+  const handleEditLabel = useCallback(
+    async (chartId: string, formData: any) => {
+      const next = window.prompt('Update label', selectedSavedChart?.label ?? '');
+      if (next == null) return;
+      const payload = buildSavePayloadFromEditForm(formData, next.trim() ? next.trim() : null);
+      await saved.updateChart(chartId, payload);
+      await saved.refresh();
+      setSelectedSavedChartId(chartId);
+    },
+    [buildSavePayloadFromEditForm, saved, selectedSavedChart?.label]
+  );
+  
+
+  
   // Show loading screen
   if (isLoading || !chartData) {
     return <LoadingScreen />;
@@ -411,6 +532,22 @@ export default function ChartClient() {
           birthPlace={chartData.birthPlace}
           isEditing={isEditing}
           onEditToggle={() => setIsEditing(!isEditing)}
+          rightContent={
+              saved.isLoggedIn && saved.hasSavedCharts ? (
+                <Select value={selectedSavedChartId ?? ''} onValueChange={handleSelectSavedChart}>
+                  <SelectTrigger className="w-[220px] h-9">
+                    <SelectValue placeholder="Select saved chart" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[60vh] overflow-y-auto">
+                    {saved.charts.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.label ? `${c.name} (${c.label})` : c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : null
+            }
         />
 
         {/* Edit Form */}
@@ -427,6 +564,13 @@ export default function ChartClient() {
           }}
           onSubmit={handleEditSubmit}
           onCancel={() => setIsEditing(false)}
+          isLoggedIn={saved.isLoggedIn}
+            savedChartId={selectedSavedChartId}
+            savedChartLabel={selectedSavedChart?.label ?? null}
+            onSaveChart={handleSaveChart}
+            onUpdateChart={handleUpdateChart}
+            onDeleteChart={handleDeleteChart}
+            onEditLabel={handleEditLabel}
         />
 
         {/* Main Tabs */}
