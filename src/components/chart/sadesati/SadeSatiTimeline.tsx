@@ -15,6 +15,9 @@ interface SadeSatiTimelineProps {
   birthDate: Date;
 }
 
+// ✅ Helper to ensure Date objects
+const toDate = (d: any): Date => d instanceof Date ? d : new Date(d);
+
 export function SadeSatiTimeline({ analysis, birthDate }: SadeSatiTimelineProps) {
   const currentDate = new Date();
   const [expandedPeriod, setExpandedPeriod] = useState<string | null>(null);
@@ -23,8 +26,9 @@ export function SadeSatiTimeline({ analysis, birthDate }: SadeSatiTimelineProps)
   const { history } = sadeSati;
   
   const calculateAge = (date: Date): number => {
+    const dateObj = toDate(date);
     return Math.floor(
-      (date.getTime() - birthDate.getTime()) / (1000 * 60 * 60 * 24 * 365.25)
+      (dateObj.getTime() - toDate(birthDate).getTime()) / (1000 * 60 * 60 * 24 * 365.25)
     );
   };
   
@@ -32,11 +36,23 @@ export function SadeSatiTimeline({ analysis, birthDate }: SadeSatiTimelineProps)
     setExpandedPeriod(expandedPeriod === periodId ? null : periodId);
   };
   
+  // ✅ Normalize phases to ensure Date objects
+  const normalizePhases = (phases: SadeSatiPeriod[]): SadeSatiPeriod[] => {
+    return phases.map(phase => ({
+      ...phase,
+      startDate: toDate(phase.startDate),
+      endDate: toDate(phase.endDate),
+    }));
+  };
+  
   const renderPeriodDetails = (phases: SadeSatiPeriod[], showFullDetails: boolean) => {
-    const periodId = `${phases[0].startDate.getTime()}`;
+    // ✅ Normalize dates before using them
+    const safePhases = normalizePhases(phases);
+    
+    const periodId = `${safePhases[0].startDate.getTime()}`;
     const isExpanded = expandedPeriod === periodId;
-    const isPast = phases[2].endDate < currentDate;
-    const isCurrent = phases[0].startDate <= currentDate && phases[2].endDate >= currentDate;
+    const isPast = safePhases[2].endDate < currentDate;
+    const isCurrent = safePhases[0].startDate <= currentDate && safePhases[2].endDate >= currentDate;
     
     return (
       <div key={periodId} className="relative pl-6 border-l-2 border-muted">
@@ -55,10 +71,10 @@ export function SadeSatiTimeline({ analysis, birthDate }: SadeSatiTimelineProps)
         <div className="pb-6">
           <div className="flex items-center gap-2 mb-2">
             <p className="text-sm font-medium">
-              {phases[0].startDate.getFullYear()} - {phases[2].endDate.getFullYear()}
+              {safePhases[0].startDate.getFullYear()} - {safePhases[2].endDate.getFullYear()}
             </p>
             <Badge variant="outline" className="text-xs">
-              Age {calculateAge(phases[0].startDate)}
+              Age {calculateAge(safePhases[0].startDate)}
             </Badge>
             {isCurrent && (
               <Badge className="text-xs bg-orange-500">Active Now</Badge>
@@ -69,7 +85,7 @@ export function SadeSatiTimeline({ analysis, birthDate }: SadeSatiTimelineProps)
           </div>
           
           <div className="space-y-1 mb-3">
-            {phases.map((phase, phaseIndex) => {
+            {safePhases.map((phase, phaseIndex) => {
               const isCurrentPhase = isCurrent && phase.endDate > currentDate && phase.startDate <= currentDate;
               
               return (
@@ -124,7 +140,7 @@ export function SadeSatiTimeline({ analysis, birthDate }: SadeSatiTimelineProps)
           
           {isExpanded && !isPast && (
             <div className="mt-4 space-y-4 p-4 bg-muted/30 rounded-lg border">
-              {phases.map((phase, idx) => (
+              {safePhases.map((phase, idx) => (
                 <div key={idx} className="space-y-3">
                   <h4 className="font-semibold text-sm">{phase.phase} Phase</h4>
                   
@@ -154,7 +170,7 @@ export function SadeSatiTimeline({ analysis, birthDate }: SadeSatiTimelineProps)
                     </ul>
                   </div>
                   
-                  {idx < phases.length - 1 && <hr className="border-muted" />}
+                  {idx < safePhases.length - 1 && <hr className="border-muted" />}
                 </div>
               ))}
             </div>
