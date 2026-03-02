@@ -1,527 +1,917 @@
+'use client';
+
 /**
- * Sade Sati & Dhaiya - Table-Based View
- * 
- * Minimal, portal-consistent design matching Planetary Positions table
- * Mobile-responsive with collapsible sections
- * 
- * @file SadeSatiTableView.tsx
- * @version 2.0.0
+ * Enhanced Sade Sati View
+ *
+ * Displays all 15 Sade Sati + 11 Dhaiya factors from the professional calculator.
+ * Consumes EnhancedSaturnTransitAnalysis from calculator-PROFESSIONAL.ts
+ *
+ * Sections:
+ *  1. Status Banner         — currentStatus + activationLevel
+ *  2. Analysis Summary      — overallImpact + topRecommendations
+ *  3. Strength Factors      — Moon strength, Saturn strength, Yogakaraka
+ *  4. Activation Factors    — Dasha activation, Jupiter protection
+ *  5. Saturn Positioning    — house from lagna, aspected areas
+ *  6. Sade Sati Phases      — three phases with internal entry/peak/exit
+ *  7. Peak Windows          — degree-based peak activation
+ *  8. Dhaiya               — 4th/8th house periods with their own analysis
+ *  9. Timeline             — lifetime view
+ *
+ * @file EnhancedSadeSatiView.tsx
+ * @version 1.0.0
  */
 
-import React, { useState } from 'react';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { ChevronDown, ChevronRight } from 'lucide-react';
-import type { SaturnTransitAnalysis, SadeSatiPeriod } from '@/types/sadesati';
+import { useState } from 'react';
+import { Circle, ChevronDown, ChevronRight, Shield, AlertTriangle, TrendingUp, Zap, Star } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
+import type { EnhancedSaturnTransitAnalysis, EnhancedSadeSatiPeriod, DashaActivation } from '@/lib/astrology/sadesati/types-enhanced';
+import type { StrengthAssessment } from '@/lib/astrology/sadesati/strengthAnalyzer';
 import { PHASE_EFFECTS, PHASE_REMEDIES } from '@/lib/astrology/sadesati/constants';
 
-interface SadeSatiTableViewProps {
-  analysis: SaturnTransitAnalysis;
+// ─── Props ────────────────────────────────────────────────────────────────────
+
+interface EnhancedSadeSatiViewProps {
+  analysis: EnhancedSaturnTransitAnalysis;
   birthDate: Date;
 }
 
-// Helper to ensure Date objects
-const toDate = (d: any): Date => d instanceof Date ? d : new Date(d);
+type ActiveTab = 'analysis' | 'phases' | 'dhaiya' | 'timeline';
 
-export function SadeSatiTableView({ analysis, birthDate }: SadeSatiTableViewProps) {
-  const currentDate = new Date();
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(
-    new Set(['status', 'current'])
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const toDate = (d: any): Date => (d instanceof Date ? d : new Date(d));
+const fmt = (d: any) => toDate(d).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+const fmtFull = (d: any) => toDate(d).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+const age = (d: any, birth: Date) =>
+  Math.floor((toDate(d).getTime() - birth.getTime()) / (1000 * 60 * 60 * 24 * 365.25));
+
+const INTENSITY_COLORS: Record<string, string> = {
+  very_intense: 'text-red-600 bg-red-50 border-red-200',
+  intense:      'text-orange-600 bg-orange-50 border-orange-200',
+  moderate:     'text-amber-600 bg-amber-50 border-amber-200',
+  mild:         'text-emerald-600 bg-emerald-50 border-emerald-200',
+  very_mild:    'text-emerald-600 bg-emerald-50 border-emerald-200',
+};
+
+const ACTIVATION_COLORS: Record<string, string> = {
+  very_high: 'text-red-600 bg-red-50 border-red-200',
+  high:      'text-orange-600 bg-orange-50 border-orange-200',
+  moderate:  'text-amber-600 bg-amber-50 border-amber-200',
+  low:       'text-emerald-600 bg-emerald-50 border-emerald-200',
+  minimal:   'text-emerald-600 bg-emerald-50 border-emerald-200',
+};
+
+const STRENGTH_COLORS: Record<string, string> = {
+  strong:   'text-emerald-700',
+  moderate: 'text-amber-600',
+  weak:     'text-red-600',
+};
+
+const DIGNITY_LABEL: Record<string, string> = {
+  exalted:     'Exalted ↑',
+  own_sign:    'Own Sign',
+  friendly:    'Friendly',
+  neutral:     'Neutral',
+  enemy:       'Enemy',
+  debilitated: 'Debilitated ↓',
+};
+
+const OUTCOME_LABELS: Record<string, { label: string; icon: string }> = {
+  transformative_growth:  { label: 'Transformative Growth',  icon: '🌱' },
+  challenging_lessons:    { label: 'Challenging Lessons',     icon: '⚡' },
+  mixed:                  { label: 'Mixed Results',           icon: '⚖️' },
+  relatively_smooth:      { label: 'Relatively Smooth',       icon: '✨' },
+};
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+/** Collapsible section with chevron */
+function Section({
+  title,
+  badge,
+  defaultOpen = false,
+  children,
+  icon,
+}: {
+  title: string;
+  badge?: string;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+  icon?: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="border-b border-border last:border-0">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between py-3 text-left"
+      >
+        <div className="flex items-center gap-2">
+          {icon && <span className="text-muted-foreground">{icon}</span>}
+          <span className="text-sm font-semibold">{title}</span>
+          {badge && <Badge variant="secondary" className="text-xs">{badge}</Badge>}
+        </div>
+        {open
+          ? <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+      </button>
+      {open && <div className="pb-4 space-y-3">{children}</div>}
+    </div>
   );
-  const [expandedPeriods, setExpandedPeriods] = useState<Set<string>>(new Set());
-  
-  const { sadeSati, dhaiya } = analysis;
-  const { current, history } = sadeSati;
-  
-  const toggleSection = (section: string) => {
-    setExpandedSections(prev => {
-      const next = new Set(prev);
-      if (next.has(section)) {
-        next.delete(section);
-      } else {
-        next.add(section);
-      }
-      return next;
-    });
+}
+
+/** Row like AvakhadaTable's AttributeRow */
+function InfoRow({
+  label,
+  value,
+  valueClass,
+}: {
+  label: string;
+  value: React.ReactNode;
+  valueClass?: string;
+}) {
+  return (
+    <div className="flex justify-between items-start py-2.5 border-b border-border last:border-0 gap-4">
+      <span className="text-sm text-muted-foreground flex-shrink-0">{label}</span>
+      <span className={cn('text-sm font-medium text-right', valueClass)}>{value}</span>
+    </div>
+  );
+}
+
+/** Pill badge for intensity / activation */
+function IntensityPill({ level, label }: { level: string; label: string }) {
+  return (
+    <span className={cn(
+      'inline-flex items-center px-2.5 py-1 rounded-full border text-xs font-semibold capitalize',
+      INTENSITY_COLORS[level] ?? 'text-muted-foreground bg-muted border-border',
+    )}>
+      {label}
+    </span>
+  );
+}
+
+/** Strength card for Moon / Saturn */
+function StrengthCard({ data }: { data: StrengthAssessment }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="rounded-lg border border-border bg-card">
+      <div className="flex items-center justify-between p-3">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+            <span className="text-xs font-bold text-muted-foreground">
+              {data.planet === 'Moon' ? '☽' : '♄'}
+            </span>
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold">{data.planet}</span>
+              <span className={cn('text-xs font-semibold capitalize', STRENGTH_COLORS[data.overallStrength])}>
+                {data.overallStrength}
+              </span>
+              {data.isYogakaraka && (
+                <Badge variant="default" className="text-xs px-1.5 py-0 h-4 bg-amber-500">
+                  Yogakaraka
+                </Badge>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {DIGNITY_LABEL[data.dignity] ?? data.dignity}
+              {' · '}House {data.housePosition}
+              {data.planet === 'Moon' && ` · ${data.isPakshaBala ? 'Waxing' : 'Waning'}`}
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={() => setOpen(o => !o)}
+          className="text-xs text-primary hover:underline flex-shrink-0"
+        >
+          {open ? 'Less' : 'Details'}
+        </button>
+      </div>
+      {open && data.recommendations.length > 0 && (
+        <div className="px-3 pb-3 border-t border-border pt-3">
+          <ul className="space-y-1.5">
+            {data.recommendations.map((r, i) => (
+              <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
+                <span className="text-primary mt-0.5 flex-shrink-0">›</span>
+                {r}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Dasha activation card */
+function DashaCard({ data }: { data: DashaActivation }) {
+  return (
+    <div className={cn(
+      'rounded-lg border p-3',
+      data.isActivating ? 'border-orange-200 bg-orange-50' : 'border-border bg-card',
+    )}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-2.5">
+          <Zap className={cn(
+            'h-4 w-4 mt-0.5 flex-shrink-0',
+            data.isActivating ? 'text-orange-500' : 'text-muted-foreground',
+          )} />
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-sm font-semibold">{data.currentDasha} Mahadasha</span>
+              {data.currentAntardasha && (
+                <span className="text-xs text-muted-foreground">/ {data.currentAntardasha} Antardasha</span>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">{data.reason}</p>
+          </div>
+        </div>
+        <IntensityPill
+          level={data.activationLevel}
+          label={data.activationLevel.replace('_', ' ')}
+        />
+      </div>
+    </div>
+  );
+}
+
+/** Jupiter protection card */
+function JupiterCard({ data }: {
+  data: { isProtecting: boolean; protectionStrength: string; protectionType?: string };
+}) {
+  const colors: Record<string, string> = {
+    strong:   'border-emerald-200 bg-emerald-50',
+    moderate: 'border-blue-200 bg-blue-50',
+    weak:     'border-border bg-card',
+    none:     'border-border bg-card opacity-60',
   };
-  
-  const togglePeriod = (periodId: string) => {
-    setExpandedPeriods(prev => {
-      const next = new Set(prev);
-      if (next.has(periodId)) {
-        next.delete(periodId);
-      } else {
-        next.add(periodId);
-      }
-      return next;
-    });
+  return (
+    <div className={cn('rounded-lg border p-3', colors[data.protectionStrength] ?? 'border-border bg-card')}>
+      <div className="flex items-center gap-2.5">
+        <Shield className={cn(
+          'h-4 w-4 flex-shrink-0',
+          data.isProtecting ? 'text-emerald-600' : 'text-muted-foreground',
+        )} />
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold">Jupiter Protection</span>
+            <span className={cn(
+              'text-xs font-semibold capitalize',
+              data.isProtecting ? 'text-emerald-700' : 'text-muted-foreground',
+            )}>
+              {data.protectionStrength}
+            </span>
+          </div>
+          {data.protectionType && (
+            <p className="text-xs text-muted-foreground mt-0.5 capitalize">
+              {data.protectionType.replace(/_/g, ' ')}
+            </p>
+          )}
+          {!data.isProtecting && (
+            <p className="text-xs text-muted-foreground mt-0.5">No active Jupiter aspect on Moon or Saturn</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Phase block (Rising / Peak / Setting) with internal Entry-Peak-Exit breakdown */
+function PhaseBlock({
+  phase,
+  isCurrent,
+  isPast,
+  birthDate,
+}: {
+  phase: EnhancedSadeSatiPeriod;
+  isCurrent: boolean;
+  isPast: boolean;
+  birthDate: Date;
+}) {
+  const [open, setOpen] = useState(isCurrent);
+
+  const phaseColor: Record<string, string> = {
+    Rising:  'text-amber-600',
+    Peak:    'text-red-600',
+    Setting: 'text-emerald-600',
   };
-  
-  const calculateAge = (date: Date): number => {
-    const dateObj = toDate(date);
-    return Math.floor(
-      (dateObj.getTime() - toDate(birthDate).getTime()) / (1000 * 60 * 60 * 24 * 365.25)
-    );
-  };
-  
-  const formatDuration = (days: number): string => {
-    if (days < 30) return `${days} days`;
-    if (days < 365) {
-      const months = Math.floor(days / 30);
-      return `${months} ${months === 1 ? 'month' : 'months'}`;
-    }
-    const years = Math.floor(days / 365.25);
-    const months = Math.floor((days - years * 365.25) / 30);
-    if (months === 0) return `${years} ${years === 1 ? 'year' : 'years'}`;
-    return `${years}y ${months}m`;
-  };
-  
-  // Normalize phases
-  const normalizePhases = (phases: SadeSatiPeriod[]): SadeSatiPeriod[] => {
-    return phases.map(phase => ({
-      ...phase,
-      startDate: toDate(phase.startDate),
-      endDate: toDate(phase.endDate),
-    }));
-  };
-  
+
+  return (
+    <div className={cn(
+      'rounded-lg border bg-card',
+      isCurrent ? 'border-primary' : 'border-border',
+      isPast && 'opacity-50',
+    )}>
+      <div className="flex items-center justify-between p-3">
+        <div className="flex items-center gap-3">
+          {isCurrent && <Circle className="h-2.5 w-2.5 fill-primary text-primary flex-shrink-0" />}
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className={cn(
+                'text-sm font-semibold',
+                isCurrent ? 'text-primary' : phaseColor[phase.phase ?? ''] ?? 'text-foreground',
+              )}>
+                {phase.phase} Phase
+              </span>
+              {isCurrent && <Badge variant="default" className="text-xs px-1.5 py-0 h-4">Now</Badge>}
+              {isPast && <Badge variant="secondary" className="text-xs px-1.5 py-0 h-4">Past</Badge>}
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {fmt(phase.startDate)} – {fmt(phase.endDate)} · Saturn in {phase.saturnSign}
+            </p>
+            {phase.retrogradePassCount && phase.retrogradePassCount > 1 && (
+              <p className="text-xs text-orange-600 mt-0.5">
+                ↩ Saturn crosses this sign {phase.retrogradePassCount}× (retrograde)
+              </p>
+            )}
+          </div>
+        </div>
+        <button
+          onClick={() => setOpen(o => !o)}
+          className="text-xs text-primary hover:underline flex-shrink-0"
+        >
+          {open ? 'Hide' : 'Details'}
+        </button>
+      </div>
+
+      {open && (
+        <div className="border-t border-border">
+          {/* Internal phases */}
+          {phase.internalPhases && (
+            <div className="p-3 space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                Internal Phases
+              </p>
+              {(['entry', 'peak', 'exit'] as const).map(key => {
+                const ip = phase.internalPhases[key];
+                const colors = {
+                  entry: 'bg-blue-50 border-blue-200 text-blue-700',
+                  peak:  'bg-red-50 border-red-200 text-red-700',
+                  exit:  'bg-emerald-50 border-emerald-200 text-emerald-700',
+                };
+                return (
+                  <div key={key} className={cn('rounded-md border px-3 py-2', colors[key])}>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold capitalize">{key}</span>
+                      <span className="text-xs">{fmt(ip.start)} – {fmt(ip.end)}</span>
+                    </div>
+                    <p className="text-xs mt-0.5 opacity-80">{ip.description}</p>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Peak windows */}
+          {phase.peakWindows && phase.peakWindows.length > 0 && (
+            <div className="px-3 pb-3 border-t border-border pt-3">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                Peak Activation Windows
+              </p>
+              {phase.peakWindows.map((w, i) => (
+                <div key={i} className="flex items-start gap-2 text-sm">
+                  <Star className="h-3 w-3 text-amber-500 mt-0.5 flex-shrink-0" />
+                  <span className="text-muted-foreground">
+                    {fmtFull(w.startDate)} – {fmtFull(w.endDate)}
+                    <span className="text-xs ml-1 opacity-70">({w.description})</span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Effects & Remedies */}
+          <div className="px-3 pb-3 border-t border-border pt-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                Effects
+              </p>
+              <ul className="space-y-1.5">
+                {(PHASE_EFFECTS[phase.phase ?? ''] ?? []).map((e, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
+                    <span className="text-destructive mt-0.5 flex-shrink-0">▸</span>
+                    {e}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                Remedies
+              </p>
+              <ul className="space-y-1.5">
+                {(PHASE_REMEDIES[phase.phase ?? ''] ?? []).map((r, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
+                    <span className="text-emerald-600 mt-0.5 flex-shrink-0">◈</span>
+                    {r}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Timeline entry */
+function TimelineEntry({
+  label, sub, extra, status,
+}: {
+  label: string; sub: string; extra?: string;
+  status: 'past' | 'current' | 'upcoming' | 'future';
+}) {
+  const dot =
+    status === 'current'  ? 'bg-primary shadow-[0_0_0_3px_hsl(var(--primary)/0.15)]'
+    : status === 'upcoming' ? 'bg-blue-400'
+    : 'bg-border';
+
+  return (
+    <div className="relative pl-6 pb-5 last:pb-0">
+      <div className="absolute left-[7px] top-2 bottom-0 w-px bg-border" />
+      <div className={cn('absolute left-0 top-1.5 w-3.5 h-3.5 rounded-full border-2 border-background', dot)} />
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className={cn(
+            'text-sm font-semibold',
+            status === 'current'  && 'text-primary',
+            status === 'upcoming' && 'text-foreground',
+            (status === 'past' || status === 'future') && 'text-muted-foreground',
+          )}>
+            {label}
+          </p>
+          <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>
+          {extra && <p className={cn('text-xs mt-0.5 italic', status === 'current' ? 'text-primary' : 'text-muted-foreground')}>{extra}</p>}
+        </div>
+        {status === 'current'  && <Badge variant="default"    className="text-xs flex-shrink-0 mt-0.5">Active</Badge>}
+        {status === 'upcoming' && <Badge variant="secondary"  className="text-xs flex-shrink-0 mt-0.5">Next</Badge>}
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+
+export function EnhancedSadeSatiView({ analysis, birthDate }: EnhancedSadeSatiViewProps) {
+  const [activeTab, setActiveTab] = useState<ActiveTab>('analysis');
+  const { sadeSati, dhaiya, summary, currentSaturn } = analysis;
+  const { current } = sadeSati;
+
+  // Is the current period an active EnhancedSadeSatiPeriod?
+  const activePeriod: EnhancedSadeSatiPeriod | null =
+    'isActive' in current && current.isActive === false ? null : current as EnhancedSadeSatiPeriod;
+
+  const currentPhaseIdx = activePeriod?.allPhases?.findIndex(
+    p => p.phase === activePeriod.currentPhase?.phase
+  ) ?? -1;
+
+  const tabs: { id: ActiveTab; label: string }[] = [
+    { id: 'analysis',  label: 'Analysis' },
+    { id: 'phases',    label: 'Phases' },
+    { id: 'dhaiya',    label: 'Dhaiya' },
+    { id: 'timeline',  label: 'Timeline' },
+  ];
+
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Saturn Transit Analysis</CardTitle>
-        <p className="text-sm text-muted-foreground mt-1">
-          Sade Sati (7.5 years) and Dhaiya (2.5 years) periods
-        </p>
+      <CardHeader className="pb-3">
+        {/* Title + status pill */}
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <CardTitle>Saturn Transit Analysis</CardTitle>
+            <p className="text-sm text-muted-foreground mt-1">
+              Professional 15-factor Sade Sati &amp; Dhaiya analysis
+            </p>
+          </div>
+
+          <div className={cn(
+            'inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-medium',
+            summary.currentStatus !== 'clear'
+              ? INTENSITY_COLORS[activePeriod?.overallImpact?.intensity ?? 'moderate']
+              : 'border-border bg-muted/50 text-muted-foreground',
+          )}>
+            <Circle className={cn(
+              'h-2 w-2',
+              summary.currentStatus !== 'clear' ? 'fill-current' : 'fill-muted-foreground text-muted-foreground',
+            )} />
+            {{
+              in_sadesati: 'In Sade Sati',
+              in_dhaiya:   'In Dhaiya',
+              in_both:     'Sade Sati + Dhaiya',
+              clear:       'Not Active',
+            }[summary.currentStatus]}
+          </div>
+        </div>
+
+        {/* Tab bar */}
+        <div className="flex gap-1 mt-4 flex-wrap">
+          {tabs.map(t => (
+            <button
+              key={t.id}
+              onClick={() => setActiveTab(t.id)}
+              className={cn(
+                'px-4 py-2 text-sm font-medium rounded-md transition-colors',
+                activeTab === t.id
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
       </CardHeader>
-      
-      <CardContent className="space-y-6">
-        
-        {/* ═══════════════════════════════════════════════════ */}
-        {/* SADE SATI STATUS                                    */}
-        {/* ═══════════════════════════════════════════════════ */}
-        
-        <div className="space-y-3">
-          <button
-            onClick={() => toggleSection('status')}
-            className="flex items-center gap-2 text-sm font-semibold hover:text-primary transition-colors w-full"
-          >
-            {expandedSections.has('status') ? (
-              <ChevronDown className="h-4 w-4" />
-            ) : (
-              <ChevronRight className="h-4 w-4" />
-            )}
-            Sade Sati Status
-          </button>
-          
-          {expandedSections.has('status') && (
-            <div className="pl-6 space-y-3">
-              {current.isActive ? (
-                <>
-                  {/* Active Sade Sati */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                    <div className="flex justify-between md:block">
-                      <span className="text-muted-foreground">Status</span>
-                      <span className="font-medium md:block">
-                        Currently Active - {current.currentPhase?.phase} Phase
-                      </span>
+
+      <CardContent className="pt-2">
+
+        {/* ══════════════════════════════════════════════════════
+            TAB 1: ANALYSIS
+            Shows: overall impact, strength factors, dasha activation,
+            Jupiter protection, saturn positioning, recommendations
+        ══════════════════════════════════════════════════════ */}
+        {activeTab === 'analysis' && (
+          <div>
+
+            {/* Overall Impact Banner (only when active) */}
+            {activePeriod && (
+              <div className={cn(
+                'rounded-lg border p-4 mb-1',
+                INTENSITY_COLORS[activePeriod.overallImpact.intensity],
+              )}>
+                <div className="flex items-start justify-between gap-3 flex-wrap">
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-bold">Overall Impact</span>
+                      <IntensityPill
+                        level={activePeriod.overallImpact.intensity}
+                        label={activePeriod.overallImpact.intensity.replace('_', ' ')}
+                      />
                     </div>
-                    
-                    <div className="flex justify-between md:block">
-                      <span className="text-muted-foreground">Period</span>
-                      <span className="font-medium md:block">
-                        {current.startDate && toDate(current.startDate).toLocaleDateString('en-US', { 
-                          month: 'short', 
-                          year: 'numeric' 
-                        })} - {current.endDate && toDate(current.endDate).toLocaleDateString('en-US', { 
-                          month: 'short', 
-                          year: 'numeric' 
-                        })}
-                        {current.startDate && (
-                          <span className="text-muted-foreground ml-2">
-                            (Age {calculateAge(current.startDate)}-{calculateAge(current.endDate!)})
-                          </span>
-                        )}
-                      </span>
-                    </div>
-                    
-                    <div className="flex justify-between md:block">
-                      <span className="text-muted-foreground">Current Phase</span>
-                      <span className="font-medium md:block">
-                        {current.currentPhase?.phase} (Saturn in {current.currentPhase?.saturnSign})
-                      </span>
-                    </div>
-                    
-                    <div className="flex justify-between md:block">
-                      <span className="text-muted-foreground">Progress</span>
-                      <span className="font-medium md:block">
-                        {current.elapsedPercentage?.toFixed(1)}% complete
-                      </span>
-                    </div>
-                    
-                    <div className="flex justify-between md:block">
-                      <span className="text-muted-foreground">Time Remaining</span>
-                      <span className="font-medium md:block">
-                        {current.daysRemainingInPhase && formatDuration(current.daysRemainingInPhase)} in {current.currentPhase?.phase} phase
-                      </span>
-                    </div>
+                    <p className="text-sm mt-1 font-medium">
+                      {OUTCOME_LABELS[activePeriod.overallImpact.likelyOutcome]?.icon}{' '}
+                      {OUTCOME_LABELS[activePeriod.overallImpact.likelyOutcome]?.label}
+                    </p>
+                    <p className="text-xs mt-1 opacity-80">{activePeriod.overallImpact.recommendation}</p>
                   </div>
-                  
-                  {/* Three Phases Table */}
-                  <div className="mt-4">
-                    <p className="text-xs font-medium text-muted-foreground mb-2">Three Phases:</p>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b">
-                            <th className="text-left py-2 px-3 font-medium">Phase</th>
-                            <th className="text-left py-2 px-3 font-medium">Sign</th>
-                            <th className="text-left py-2 px-3 font-medium">Period</th>
-                            <th className="text-left py-2 px-3 font-medium">Status</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {current.allPhases?.map((phase, index) => {
-                            const isCurrent = phase.phase === current.currentPhase?.phase;
-                            const isPast = index < (current.allPhases?.findIndex(p => p.phase === current.currentPhase?.phase) ?? 0);
-                            
-                            return (
-                              <tr 
-                                key={index}
-                                className={`border-b ${isCurrent ? 'bg-orange-50 dark:bg-orange-950/20' : ''}`}
-                              >
-                                <td className="py-2 px-3 font-medium">{phase.phase}</td>
-                                <td className="py-2 px-3 text-muted-foreground">{phase.saturnSign}</td>
-                                <td className="py-2 px-3 text-muted-foreground">
-                                  {phase.startDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })} - {' '}
-                                  {phase.endDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
-                                </td>
-                                <td className="py-2 px-3">
-                                  {isCurrent ? (
-                                    <span className="text-orange-600 dark:text-orange-400 font-medium">← Current</span>
-                                  ) : isPast ? (
-                                    <span className="text-muted-foreground">Past</span>
-                                  ) : (
-                                    <span className="text-muted-foreground">Upcoming</span>
-                                  )}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
+                  <div className="text-right text-xs opacity-70">
+                    <p>Cycle {activePeriod.cycleNumber} · {activePeriod.ageGroup.replace('_', ' ')}</p>
                   </div>
-                </>
-              ) : (
-                // Not Active
-                <div className="text-sm space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Status</span>
-                    <span className="font-medium">No Active Sade Sati</span>
-                  </div>
-                  {history.next && (
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Next Sade Sati</span>
-                      <span className="font-medium">
-                        {toDate(history.next.startDate).toLocaleDateString('en-US', { 
-                          month: 'short', 
-                          year: 'numeric' 
-                        })}
-                        <span className="text-muted-foreground ml-2">
-                          ({history.next.yearsFromNow.toFixed(1)} years from now)
-                        </span>
-                      </span>
-                    </div>
-                  )}
                 </div>
-              )}
-            </div>
-          )}
-        </div>
-        
-        <div className="border-t" />
-        
-        {/* ═══════════════════════════════════════════════════ */}
-        {/* DHAIYA STATUS                                       */}
-        {/* ═══════════════════════════════════════════════════ */}
-        
-        <div className="space-y-3">
-          <button
-            onClick={() => toggleSection('dhaiya')}
-            className="flex items-center gap-2 text-sm font-semibold hover:text-primary transition-colors w-full"
-          >
-            {expandedSections.has('dhaiya') ? (
-              <ChevronDown className="h-4 w-4" />
-            ) : (
-              <ChevronRight className="h-4 w-4" />
-            )}
-            Dhaiya Periods (ढैय्या)
-          </button>
-          
-          {expandedSections.has('dhaiya') && (
-            <div className="pl-6 space-y-3 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Current Dhaiya</span>
-                <span className="font-medium">
-                  {dhaiya.current ? (
-                    <>
-                      {dhaiya.current.type} House Transit (Saturn in {dhaiya.current.saturnSign})
-                    </>
-                  ) : (
-                    'None Active'
-                  )}
-                </span>
               </div>
-              
-              {/* Next 4th House */}
-              {dhaiya.fourthHouse.length > 0 && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Next 4th House</span>
-                  <span className="font-medium">
-                    {toDate(dhaiya.fourthHouse[0].startDate).toLocaleDateString('en-US', { 
-                      month: 'short', 
-                      year: 'numeric' 
-                    })} - {toDate(dhaiya.fourthHouse[0].endDate).toLocaleDateString('en-US', { 
-                      month: 'short', 
-                      year: 'numeric' 
-                    })}
-                    <span className="text-muted-foreground ml-2">
-                      (Saturn in {dhaiya.fourthHouse[0].saturnSign})
-                    </span>
-                  </span>
-                </div>
-              )}
-              
-              {/* Next 8th House */}
-              {dhaiya.eighthHouse.length > 0 && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Next 8th House</span>
-                  <span className="font-medium">
-                    {toDate(dhaiya.eighthHouse[0].startDate).toLocaleDateString('en-US', { 
-                      month: 'short', 
-                      year: 'numeric' 
-                    })} - {toDate(dhaiya.eighthHouse[0].endDate).toLocaleDateString('en-US', { 
-                      month: 'short', 
-                      year: 'numeric' 
-                    })}
-                    <span className="text-muted-foreground ml-2">
-                      (Saturn in {dhaiya.eighthHouse[0].saturnSign})
-                    </span>
-                  </span>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-        
-        <div className="border-t" />
-        
-        {/* ═══════════════════════════════════════════════════ */}
-        {/* COMPLETE TIMELINE                                   */}
-        {/* ═══════════════════════════════════════════════════ */}
-        
-        <div className="space-y-3">
-          <button
-            onClick={() => toggleSection('timeline')}
-            className="flex items-center gap-2 text-sm font-semibold hover:text-primary transition-colors w-full"
-          >
-            {expandedSections.has('timeline') ? (
-              <ChevronDown className="h-4 w-4" />
-            ) : (
-              <ChevronRight className="h-4 w-4" />
             )}
-            Complete Timeline
-          </button>
-          
-          {expandedSections.has('timeline') && (
-            <div className="pl-6 space-y-4">
-              
-              {/* Past Periods */}
-              {history.past.length > 0 && (
-                <div className="space-y-2">
-                  <button
-                    onClick={() => toggleSection('past')}
-                    className="flex items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    {expandedSections.has('past') ? (
-                      <ChevronDown className="h-3 w-3" />
-                    ) : (
-                      <ChevronRight className="h-3 w-3" />
+
+            {/* Current Saturn position */}
+            <Section title="Current Saturn Position" defaultOpen>
+              <div className="rounded-lg border border-border bg-card px-3 py-1">
+                <InfoRow label="Sign" value={`${currentSaturn.sign ? ['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'][currentSaturn.sign - 1] : '—'} · ${currentSaturn.degreeInSign?.toFixed(2)}°`} />
+                <InfoRow label="Motion" value={currentSaturn.isRetrograde ? '↩ Retrograde' : '→ Direct'} valueClass={currentSaturn.isRetrograde ? 'text-orange-600' : 'text-emerald-600'} />
+                {activePeriod && (
+                  <>
+                    <InfoRow label="House from Lagna" value={`${activePeriod.saturnHouseFromLagna}th house`} />
+                    <InfoRow
+                      label="House Effect"
+                      value={activePeriod.saturnHouseEffect.charAt(0).toUpperCase() + activePeriod.saturnHouseEffect.slice(1)}
+                      valueClass={
+                        activePeriod.saturnHouseEffect === 'positive'   ? 'text-emerald-600' :
+                        activePeriod.saturnHouseEffect === 'challenging' ? 'text-orange-600'  : ''
+                      }
+                    />
+                    {activePeriod.aspectedHouses.length > 0 && (
+                      <InfoRow
+                        label="Saturn Aspects Houses"
+                        value={activePeriod.aspectedHouses.map(h => `${h}th`).join(', ')}
+                      />
                     )}
-                    Past Periods ({history.past.length})
-                  </button>
-                  
-                  {expandedSections.has('past') && (
-                    <div className="pl-4 space-y-3">
-                      {history.past.map((phases, index) => {
-                        const safePhases = normalizePhases(phases);
-                        const periodId = `past-${index}`;
-                        
-                        return (
-                          <div key={periodId} className="text-sm border-l-2 border-muted pl-3">
-                            <div className="flex justify-between items-start">
-                              <div>
-                                <p className="font-medium">
-                                  {safePhases[0].startDate.getFullYear()} - {safePhases[2].endDate.getFullYear()}
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                  Age {calculateAge(safePhases[0].startDate)}-{calculateAge(safePhases[2].endDate)}
-                                </p>
-                                <p className="text-xs text-muted-foreground mt-1">
-                                  {safePhases[0].saturnSign} → {safePhases[1].saturnSign} → {safePhases[2].saturnSign}
-                                </p>
-                              </div>
-                              <span className="text-xs text-muted-foreground">Completed</span>
-                            </div>
-                          </div>
-                        );
-                      })}
+                  </>
+                )}
+              </div>
+            </Section>
+
+            {/* Moon & Saturn Strength */}
+            <Section title="Planetary Strength" defaultOpen icon={<Star className="h-3.5 w-3.5" />}>
+              {activePeriod ? (
+                <div className="space-y-2">
+                  <StrengthCard data={activePeriod.moonStrength} />
+                  <StrengthCard data={activePeriod.saturnStrength} />
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No active Sade Sati to analyze.</p>
+              )}
+            </Section>
+
+            {/* Dasha Activation */}
+            <Section title="Dasha Activation" defaultOpen icon={<Zap className="h-3.5 w-3.5" />}>
+              {activePeriod
+                ? <DashaCard data={activePeriod.dashaActivation} />
+                : <p className="text-sm text-muted-foreground">No active period.</p>}
+            </Section>
+
+            {/* Jupiter Protection */}
+            <Section title="Jupiter Protection" defaultOpen icon={<Shield className="h-3.5 w-3.5" />}>
+              {activePeriod
+                ? <JupiterCard data={activePeriod.jupiterProtection} />
+                : <p className="text-sm text-muted-foreground">No active period.</p>}
+            </Section>
+
+            {/* Top Recommendations */}
+            {summary.topRecommendations.length > 0 && (
+              <Section title="Recommendations" defaultOpen icon={<TrendingUp className="h-3.5 w-3.5" />}>
+                <div className="rounded-lg border border-border bg-card p-3 space-y-2">
+                  {summary.topRecommendations.map((r, i) => (
+                    <div key={i} className="flex items-start gap-2.5">
+                      <span className="text-emerald-600 flex-shrink-0 mt-0.5">◈</span>
+                      <span className="text-sm text-muted-foreground">{r}</span>
                     </div>
+                  ))}
+                </div>
+              </Section>
+            )}
+
+            {/* Special crossings */}
+            {activePeriod?.specialCrossings && (
+              <Section title="Special Crossings">
+                <div className="rounded-lg border border-border bg-card px-3 py-1">
+                  <InfoRow
+                    label="Crosses Atmakaraka"
+                    value={activePeriod.specialCrossings.crossesAtmakaraka ? '⚠ Yes' : 'No'}
+                    valueClass={activePeriod.specialCrossings.crossesAtmakaraka ? 'text-orange-600' : 'text-muted-foreground'}
+                  />
+                  <InfoRow
+                    label="Crosses Lagna Degree"
+                    value={activePeriod.specialCrossings.crossesLagnaDegree ? '⚠ Yes' : 'No'}
+                    valueClass={activePeriod.specialCrossings.crossesLagnaDegree ? 'text-orange-600' : 'text-muted-foreground'}
+                  />
+                  <InfoRow
+                    label="Crosses 10th Lord"
+                    value={activePeriod.specialCrossings.crosses10thLord ? '⚠ Yes' : 'No'}
+                    valueClass={activePeriod.specialCrossings.crosses10thLord ? 'text-orange-600' : 'text-muted-foreground'}
+                  />
+                  <InfoRow
+                    label="Crosses Yogakaraka"
+                    value={activePeriod.specialCrossings.crossesYogakaraka ? '✓ Yes' : 'No'}
+                    valueClass={activePeriod.specialCrossings.crossesYogakaraka ? 'text-emerald-600' : 'text-muted-foreground'}
+                  />
+                </div>
+              </Section>
+            )}
+
+          </div>
+        )}
+
+        {/* ══════════════════════════════════════════════════════
+            TAB 2: PHASES
+            Shows: three phases with internal entry/peak/exit,
+            peak windows, effects & remedies
+        ══════════════════════════════════════════════════════ */}
+        {activeTab === 'phases' && (
+          <div>
+            {activePeriod ? (
+              <>
+                {/* Summary row */}
+                <div className="rounded-lg border border-border bg-card px-3 py-1 mb-1">
+                  <InfoRow label="Period" value={`${fmt(activePeriod.startDate)} – ${fmt(activePeriod.endDate)}`} />
+                  <InfoRow label="Age Range" value={`${age(activePeriod.startDate, birthDate)}–${age(activePeriod.endDate, birthDate)}`} />
+                  <InfoRow label="Current Phase" value={activePeriod.currentPhase?.phase ?? '—'} valueClass="text-primary font-semibold" />
+                  <InfoRow
+                    label="Progress"
+                    value={`${activePeriod.elapsedPercentage?.toFixed(1)}% · ${activePeriod.daysRemainingInPhase} days left in ${activePeriod.currentPhase?.phase}`}
+                  />
+                  {activePeriod.retrogradePassCount > 1 && (
+                    <InfoRow
+                      label="Retrograde Passes"
+                      value={`Saturn crosses ${activePeriod.retrogradePassCount}× due to retrograde`}
+                      valueClass="text-orange-600"
+                    />
                   )}
                 </div>
-              )}
-              
-              {/* Current Period */}
-              {history.current && (
-                <div className="space-y-2">
-                  <p className="text-xs font-medium text-orange-600 dark:text-orange-400">
-                    Current Period (Active Now)
-                  </p>
-                  <div className="text-sm border-l-2 border-orange-500 pl-3 bg-orange-50 dark:bg-orange-950/20 py-2">
-                    {(() => {
-                      const safePhases = normalizePhases(history.current);
+
+                <div className="space-y-2 mt-3">
+                  {activePeriod.allPhases?.map((p, i) => (
+                    <PhaseBlock
+                      key={p.phase}
+                      phase={p as EnhancedSadeSatiPeriod}
+                      isCurrent={i === currentPhaseIdx}
+                      isPast={i < currentPhaseIdx}
+                      birthDate={birthDate}
+                    />
+                  ))}
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Not active — show next period info */}
+                <div className="rounded-lg border border-border bg-card px-3 py-1 mb-3">
+                  <InfoRow label="Status" value="No active Sade Sati" valueClass="text-muted-foreground" />
+                  {sadeSati.next && (
+                    <>
+                      <InfoRow label="Next Sade Sati" value={fmt(sadeSati.next.startDate)} />
+                      <InfoRow label="Years Away" value={`${sadeSati.next.yearsFromNow.toFixed(1)} years`} />
+                      <InfoRow
+                        label="Expected Intensity"
+                        value={sadeSati.next.expectedIntensity}
+                        valueClass="capitalize"
+                      />
+                    </>
+                  )}
+                </div>
+                {sadeSati.upcoming && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                      Upcoming Period Phases
+                    </p>
+                    {sadeSati.upcoming.allPhases?.map((p, i) => (
+                      <PhaseBlock
+                        key={p.phase}
+                        phase={p as EnhancedSadeSatiPeriod}
+                        isCurrent={false}
+                        isPast={false}
+                        birthDate={birthDate}
+                      />
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        {/* ══════════════════════════════════════════════════════
+            TAB 3: DHAIYA
+        ══════════════════════════════════════════════════════ */}
+        {activeTab === 'dhaiya' && (
+          <div>
+            <Section title="Current Status" defaultOpen>
+              <div className="rounded-lg border border-border bg-card px-3 py-1">
+                <InfoRow
+                  label="Active Dhaiya"
+                  value={dhaiya.current
+                    ? `${dhaiya.current.type} House · Saturn in ${dhaiya.current.saturnSign}`
+                    : 'None active'}
+                  valueClass={dhaiya.current ? 'text-primary' : 'text-muted-foreground'}
+                />
+              </div>
+            </Section>
+
+            {dhaiya.current && (
+              <Section title={`${dhaiya.current.type} House Details`} defaultOpen>
+                <div className="rounded-lg border border-border bg-card px-3 py-1 mb-3">
+                  <InfoRow label="Period" value={`${fmt(dhaiya.current.startDate)} – ${fmt(dhaiya.current.endDate)}`} />
+                  <InfoRow label="Impact" value={
+                    <IntensityPill level={dhaiya.current.overallImpact.intensity} label={dhaiya.current.overallImpact.intensity} />
+                  } />
+                  <InfoRow label="Retrograde" value={
+                    dhaiya.current.retrogradePattern?.hasRetrograde
+                      ? `${dhaiya.current.retrogradePattern.touchCount}× passes (${dhaiya.current.retrogradePattern.pattern.replace(/_/g, ' ')})`
+                      : 'Single pass'
+                  } />
+                </div>
+
+                {/* Dhaiya internal phases */}
+                {dhaiya.current.internalPhases && (
+                  <div className="space-y-2">
+                    {(['entry', 'peak', 'exit'] as const).map(key => {
+                      const ip = dhaiya.current!.internalPhases[key];
+                      const colors = {
+                        entry: 'bg-blue-50 border-blue-200 text-blue-700',
+                        peak:  'bg-red-50 border-red-200 text-red-700',
+                        exit:  'bg-emerald-50 border-emerald-200 text-emerald-700',
+                      };
                       return (
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <p className="font-medium">
-                              {safePhases[0].startDate.getFullYear()} - {safePhases[2].endDate.getFullYear()}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              Age {calculateAge(safePhases[0].startDate)}-{calculateAge(safePhases[2].endDate)}
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {safePhases[0].saturnSign} → {safePhases[1].saturnSign} → {safePhases[2].saturnSign}
-                            </p>
+                        <div key={key} className={cn('rounded-md border px-3 py-2', colors[key])}>
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-semibold capitalize">{key}</span>
+                            <span className="text-xs">{fmt(ip.start)} – {fmt(ip.end)}</span>
                           </div>
-                          <div className="text-right">
-                            <p className="text-xs font-medium text-orange-600 dark:text-orange-400">
-                              {current.elapsedPercentage?.toFixed(1)}% done
-                            </p>
-                            <p className="text-xs text-muted-foreground">← You are here</p>
-                          </div>
+                          <p className="text-xs mt-0.5 opacity-80">{ip.description}</p>
                         </div>
                       );
-                    })()}
+                    })}
                   </div>
+                )}
+
+                {/* Dasha + Jupiter for Dhaiya */}
+                <div className="space-y-2 mt-3">
+                  <DashaCard data={dhaiya.current.dashaActivation} />
+                  <p className="text-xs text-muted-foreground mt-2">{dhaiya.current.overallImpact.recommendation}</p>
                 </div>
-              )}
-              
-              {/* Next Sade Sati */}
-              {history.upcoming && (
-                <div className="space-y-2">
-                  <p className="text-xs font-medium text-blue-600 dark:text-blue-400">
-                    Next Sade Sati
-                  </p>
-                  <div className="text-sm border-l-2 border-blue-500 pl-3">
-                    {(() => {
-                      const safePhases = normalizePhases(history.upcoming);
-                      const periodId = `upcoming`;
-                      const isExpanded = expandedPeriods.has(periodId);
-                      
-                      return (
-                        <>
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <p className="font-medium">
-                                {safePhases[0].startDate.getFullYear()} - {safePhases[2].endDate.getFullYear()}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                Age {calculateAge(safePhases[0].startDate)}-{calculateAge(safePhases[2].endDate)}
-                              </p>
-                              <p className="text-xs text-muted-foreground mt-1">
-                                {safePhases[0].saturnSign} → {safePhases[1].saturnSign} → {safePhases[2].saturnSign}
-                              </p>
-                            </div>
-                            <span className="text-xs text-blue-600 dark:text-blue-400">Upcoming</span>
-                          </div>
-                          
-                          <button
-                            onClick={() => togglePeriod(periodId)}
-                            className="text-xs text-blue-600 dark:text-blue-400 hover:underline mt-2"
-                          >
-                            {isExpanded ? 'Hide' : 'View'} effects & remedies
-                          </button>
-                          
-                          {isExpanded && (
-                            <div className="mt-3 space-y-3 p-3 bg-muted/50 rounded text-xs">
-                              {safePhases.map((phase, idx) => (
-                                <div key={idx}>
-                                  <p className="font-medium">{phase.phase} Phase</p>
-                                  <p className="text-muted-foreground mt-1">Key Effects:</p>
-                                  <ul className="list-disc list-inside text-muted-foreground mt-1 space-y-0.5">
-                                    {PHASE_EFFECTS[phase.phase].slice(0, 2).map((effect, i) => (
-                                      <li key={i}>{effect}</li>
-                                    ))}
-                                  </ul>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </>
-                      );
-                    })()}
-                  </div>
-                </div>
-              )}
-              
-              {/* Future Periods */}
-              {history.future.length > 0 && (
-                <div className="space-y-2">
-                  <button
-                    onClick={() => toggleSection('future')}
-                    className="flex items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    {expandedSections.has('future') ? (
-                      <ChevronDown className="h-3 w-3" />
-                    ) : (
-                      <ChevronRight className="h-3 w-3" />
-                    )}
-                    Future Periods ({history.future.length})
-                  </button>
-                  
-                  {expandedSections.has('future') && (
-                    <div className="pl-4 space-y-3">
-                      {history.future.map((phases, index) => {
-                        const safePhases = normalizePhases(phases);
-                        const periodId = `future-${index}`;
-                        
-                        return (
-                          <div key={periodId} className="text-sm border-l-2 border-muted pl-3">
-                            <div className="flex justify-between items-start">
-                              <div>
-                                <p className="font-medium">
-                                  {safePhases[0].startDate.getFullYear()} - {safePhases[2].endDate.getFullYear()}
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                  Age {calculateAge(safePhases[0].startDate)}-{calculateAge(safePhases[2].endDate)}
-                                </p>
-                                <p className="text-xs text-muted-foreground mt-1">
-                                  {safePhases[0].saturnSign} → {safePhases[1].saturnSign} → {safePhases[2].saturnSign}
-                                </p>
-                              </div>
-                              <span className="text-xs text-muted-foreground">Future</span>
-                            </div>
-                          </div>
-                        );
-                      })}
+              </Section>
+            )}
+
+            <Section title="4th House (Ardha Sade Sati)" badge={dhaiya.upcoming4th.length.toString()} defaultOpen>
+              <p className="text-xs text-muted-foreground mb-2">
+                Saturn transiting the 4th house from Moon. Domestic pressures, property concerns, emotional challenges.
+              </p>
+              {dhaiya.upcoming4th.length > 0
+                ? dhaiya.upcoming4th.map((d, i) => (
+                    <div key={i} className="rounded-lg border border-border bg-card p-3">
+                      <p className="text-sm font-medium">{fmt(d.startDate)} – {fmt(d.endDate)} · Saturn in {d.saturnSign}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5 capitalize">
+                        {d.overallImpact.intensity} impact · {d.retrogradePattern?.pattern?.replace(/_/g, ' ')}
+                      </p>
                     </div>
-                  )}
+                  ))
+                : <p className="text-sm text-muted-foreground">No upcoming 4th house periods calculated.</p>}
+            </Section>
+
+            <Section title="8th House (Ashtama Shani)" badge={dhaiya.upcoming8th.length.toString()} defaultOpen>
+              <p className="text-xs text-muted-foreground mb-2">
+                Saturn transiting the 8th house from Moon. Sudden obstacles, health concerns, transformation.
+              </p>
+              {dhaiya.upcoming8th.length > 0
+                ? dhaiya.upcoming8th.map((d, i) => (
+                    <div key={i} className="rounded-lg border border-border bg-card p-3">
+                      <p className="text-sm font-medium">{fmt(d.startDate)} – {fmt(d.endDate)} · Saturn in {d.saturnSign}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5 capitalize">
+                        {d.overallImpact.intensity} impact · {d.retrogradePattern?.pattern?.replace(/_/g, ' ')}
+                      </p>
+                    </div>
+                  ))
+                : <p className="text-sm text-muted-foreground">No upcoming 8th house periods calculated.</p>}
+            </Section>
+          </div>
+        )}
+
+        {/* ══════════════════════════════════════════════════════
+            TAB 4: TIMELINE
+        ══════════════════════════════════════════════════════ */}
+        {activeTab === 'timeline' && (
+          <div className="pt-2">
+            <Section title="Past Periods" badge={sadeSati.past.length.toString()}>
+              <div className="pt-2">
+                {sadeSati.past.length > 0
+                  ? sadeSati.past.map((p, i) => {
+                      const phases = p.allPhases;
+                      const first = phases?.[0];
+                      const last = phases?.[phases.length - 1];
+                      return (
+                        <TimelineEntry
+                          key={i}
+                          status="past"
+                          label={first && last
+                            ? `${new Date(first.startDate).getFullYear()} – ${new Date(last.endDate).getFullYear()}`
+                            : 'Past period'}
+                          sub={`${p.overallImpact?.intensity ?? ''} intensity · Cycle ${p.cycleNumber}`}
+                        />
+                      );
+                    })
+                  : <p className="text-sm text-muted-foreground">No past periods in lifetime.</p>}
+              </div>
+            </Section>
+
+            {activePeriod && (
+              <Section title="Current Period" defaultOpen>
+                <div className="pt-2">
+                  <TimelineEntry
+                    status="current"
+                    label={`${fmt(activePeriod.startDate)} – ${fmt(activePeriod.endDate)}`}
+                    sub={`${activePeriod.overallImpact.intensity.replace('_', ' ')} intensity · ${activePeriod.currentPhase?.phase} phase`}
+                    extra={`${activePeriod.elapsedPercentage?.toFixed(1)}% complete · ${activePeriod.daysRemainingInPhase} days remaining`}
+                  />
                 </div>
-              )}
-              
-            </div>
-          )}
-        </div>
-        
+              </Section>
+            )}
+
+            {sadeSati.upcoming && (
+              <Section title="Next Sade Sati" defaultOpen>
+                <div className="pt-2">
+                  <TimelineEntry
+                    status="upcoming"
+                    label={`${fmt(sadeSati.upcoming.startDate)} – ${fmt(sadeSati.upcoming.endDate)}`}
+                    sub={`Expected ${sadeSati.upcoming.overallImpact?.intensity?.replace('_', ' ') ?? ''} intensity`}
+                    extra={sadeSati.next ? `In ${sadeSati.next.yearsFromNow.toFixed(1)} years` : undefined}
+                  />
+                </div>
+              </Section>
+            )}
+
+            {sadeSati.future.length > 0 && (
+              <Section title="Future Periods" badge={sadeSati.future.length.toString()}>
+                <div className="pt-2">
+                  {sadeSati.future.map((p, i) => {
+                    const phases = p.allPhases;
+                    const first = phases?.[0];
+                    const last = phases?.[phases.length - 1];
+                    return (
+                      <TimelineEntry
+                        key={i}
+                        status="future"
+                        label={first && last
+                          ? `${new Date(first.startDate).getFullYear()} – ${new Date(last.endDate).getFullYear()}`
+                          : 'Future period'}
+                        sub={`Cycle ${p.cycleNumber} · ${p.ageGroup?.replace('_', ' ')}`}
+                      />
+                    );
+                  })}
+                </div>
+              </Section>
+            )}
+          </div>
+        )}
+
       </CardContent>
     </Card>
   );
