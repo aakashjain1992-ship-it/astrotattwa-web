@@ -201,10 +201,7 @@ function calculateCurrentSadeSati(
   saturnLongitude: number,
   currentDate: Date
 ): CurrentSadeSati {
-  // Calculate house position of Saturn from Moon
   const houseFromMoon = getHouseFromMoon(saturnSign, moonSign);
-  
-  // Sade Sati is active when Saturn is in 12th, 1st, or 2nd from Moon
   const isActive = houseFromMoon === 12 || houseFromMoon === 1 || houseFromMoon === 2;
   
   if (!isActive) {
@@ -217,35 +214,39 @@ function calculateCurrentSadeSati(
   else if (houseFromMoon === 1) phase = 'Peak';
   else phase = 'Setting';
   
-  // Calculate when Saturn entered this sign
+  // ✅ Calculate when Saturn ENTERED this sign (based on degree)
   const degreeInSign = saturnLongitude % 30;
   const daysIntoSign = (degreeInSign / 30) * SATURN_PERIOD_PER_SIGN_DAYS;
   
   const signEntryDate = new Date(currentDate);
   signEntryDate.setDate(signEntryDate.getDate() - Math.floor(daysIntoSign));
   
-  // Calculate when Saturn will leave this sign
   const signExitDate = new Date(signEntryDate);
   signExitDate.setDate(signExitDate.getDate() + Math.floor(SATURN_PERIOD_PER_SIGN_DAYS));
   
-  // Create current phase period
-  const currentPhase: SadeSatiPeriod = {
-    phase,
-    description: PHASE_DESCRIPTIONS[phase],
-    startDate: signEntryDate,
-    endDate: signExitDate,
-    durationDays: Math.floor(SATURN_PERIOD_PER_SIGN_DAYS),
-    saturnSign: getSignName(saturnSign),
-    saturnSignNumber: saturnSign,
-    moonSign: getSignName(moonSign),
-    moonSignNumber: moonSign,
-    houseFromMoon: houseFromMoon as 12 | 1 | 2,
-  };
+  // ✅ Calculate Sade Sati START by going backwards from current phase
+  let sadeSatiStart: Date;
   
-  // Calculate all three phases of this Sade Sati cycle
-  const allPhases = calculateAllThreePhases(moonSign, phase, signEntryDate);
+  if (phase === 'Rising') {
+    sadeSatiStart = signEntryDate; // Already at Rising start
+  } else if (phase === 'Peak') {
+    // Go back 1 phase (2.5 years)
+    sadeSatiStart = new Date(signEntryDate);
+    sadeSatiStart.setDate(
+      sadeSatiStart.getDate() - Math.floor(SATURN_PERIOD_PER_SIGN_DAYS)
+    );
+  } else { // Setting
+    // Go back 2 phases (5 years)
+    sadeSatiStart = new Date(signEntryDate);
+    sadeSatiStart.setDate(
+      sadeSatiStart.getDate() - Math.floor(SATURN_PERIOD_PER_SIGN_DAYS * 2)
+    );
+  }
   
-  // Calculate overall Sade Sati dates
+  // Now calculate all three phases from the Sade Sati start
+  const allPhases = calculateAllThreePhases(moonSign, 'Rising', sadeSatiStart);
+  
+  // Rest of the calculation stays the same...
   const startDate = allPhases[0].startDate;
   const endDate = allPhases[2].endDate;
   
@@ -255,26 +256,23 @@ function calculateCurrentSadeSati(
   const elapsedDays = Math.floor(
     (currentDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
   );
-  const daysRemainingInPhase = Math.floor(
-    (signExitDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24)
-  );
-  const daysRemainingTotal = Math.floor(
-    (endDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24)
-  );
   
   return {
     isActive: true,
-    currentPhase,
+    currentPhase: allPhases.find(p => p.phase === phase)!,
     allPhases,
     startDate,
     endDate,
     totalYears: totalDays / 365.25,
     elapsedPercentage: Math.min(100, (elapsedDays / totalDays) * 100),
-    daysRemainingInPhase: Math.max(0, daysRemainingInPhase),
-    daysRemainingTotal: Math.max(0, daysRemainingTotal),
+    daysRemainingInPhase: Math.max(0, Math.floor(
+      (signExitDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24)
+    )),
+    daysRemainingTotal: Math.max(0, Math.floor(
+      (endDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24)
+    )),
   };
 }
-
 /**
  * Calculate all three phases of a Sade Sati cycle
  */
