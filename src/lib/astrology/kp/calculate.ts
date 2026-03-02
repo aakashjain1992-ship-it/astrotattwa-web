@@ -104,12 +104,19 @@ export async function calculateKpChart(input: {
     planets.Moon.kp.nakshatraLord
   );
 
-
+  const currentDate = new Date();
+  
+  const currentSaturnPosition = await calculateCurrentSaturnPosition(
+  currentDate,
+  bodies.SATURN,
+  sunLon
+); 
+  
   const saturnTransits = calculateSaturnTransits(
-   planets.Moon,
-   planets.Saturn,
-   birthUtc,
-   new Date()
+  planets.Moon,           
+  currentSaturnPosition,  // ✅ Saturn TODAY
+  birthUtc,
+  currentDate
 );
   
   
@@ -132,4 +139,21 @@ export async function calculateKpChart(input: {
     rahuKetuModes, 
     saturnTransits, 
   };
+}
+
+async function calculateCurrentSaturnPosition(
+  date: Date,
+  saturnBodyId: number,
+  sunLon: number
+): Promise<PlanetData> {
+  // Calculate Julian day for current date
+  const jdUt = await sweJuldayUTC(date);
+  
+  // Get Saturn's position at this date
+  const saturnResult = await sweCalcSidereal(jdUt, saturnBodyId);
+  
+  // Build planet data (same format as birth planets)
+  const currentSaturn = buildPlanet("Saturn", saturnResult.lon, saturnResult.speed, sunLon);
+  
+  return currentSaturn;
 }

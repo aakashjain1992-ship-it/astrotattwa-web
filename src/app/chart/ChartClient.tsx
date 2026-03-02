@@ -20,8 +20,6 @@ import { AvakhadaTable } from '@/components/chart/AvakhadaTable';
 import { ChartLegend } from '@/components/chart/ChartLegend';
 import { DashaNavigator } from '@/components/chart/DashaNavigator';
 import { buildLagnaHouses, buildMoonHouses, buildNavamsaHouses } from '@/lib/utils/chartHelpers';
-import { SadeSatiCard } from '@/components/chart/sadesati/SadeSatiCard';
-import { SadeSatiTimeline } from '@/components/chart/sadesati/SadeSatiTimeline';
 import { SadeSatiTableView } from '@/components/chart/sadesati/SadeSatiTableView';
 
 
