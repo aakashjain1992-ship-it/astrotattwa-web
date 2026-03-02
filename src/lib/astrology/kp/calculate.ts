@@ -4,7 +4,7 @@ import { AYANAMSHA_LABEL, norm360 } from "./constants";
 import { buildPlanet } from "./planets";
 import { vimshottariDasha } from "./dasa";
 import { calculateAvakahada } from "./avakahada";
-import { calculateSaturnTransits } from '@/lib/astrology/sadesati/calculator';
+import { calculateProfessionalSaturnAnalysis } from '@/lib/astrology/sadesati/calculator-PROFESSIONAL';
 
 
 
@@ -112,11 +112,21 @@ export async function calculateKpChart(input: {
   sunLon
 ); 
   
-  const saturnTransits = calculateSaturnTransits(
-  planets.Moon,           
-  currentSaturnPosition,  // ✅ Saturn TODAY
+  const saturnTransits = await calculateProfessionalSaturnAnalysis(
+  planets.Moon,
+  currentSaturnPosition,
+  planets, // All planets
+  ascendant,
   birthUtc,
-  currentDate
+  dasa, // Dasha info for activation analysis
+  {
+    includeDashaAnalysis: true,
+    calculatePeakWindows: true,
+    detectRetrogradeCycles: false, // Set to true if you want full retrograde tracking (expensive)
+    findNakshatraCrossings: false, // Set to true for nakshatra crossings (expensive)
+    analyzeJupiterProtection: true,
+    includeDetailedPhases: true,
+  }
 );
   
   
