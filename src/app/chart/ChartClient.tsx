@@ -22,6 +22,8 @@ import { DashaNavigator } from '@/components/chart/DashaNavigator';
 import { buildLagnaHouses, buildMoonHouses, buildNavamsaHouses } from '@/lib/utils/chartHelpers';
 import { SadeSatiCard } from '@/components/chart/sadesati/SadeSatiCard';
 import { SadeSatiTimeline } from '@/components/chart/sadesati/SadeSatiTimeline';
+import { SadeSatiTableView } from '@/components/chart/sadesati/SadeSatiTableView';
+
 
 
 // Import proper types from astrology module
@@ -684,20 +686,17 @@ export default function ChartClient() {
           </div>
         )}
 
-        {activeTab === 'sadesati' && (
+      {activeTab === 'sadesati' && (
   <div className="animate-fade-in">
     {chartData.saturnTransits ? (
-      <div className="space-y-6">
-        <SadeSatiCard analysis={chartData.saturnTransits.sadeSati} />
-        <SadeSatiTimeline 
-          analysis={chartData.saturnTransits}
-          birthDate={new Date(chartData.input.localDateTime)}
-        />
-      </div>
+      <SadeSatiTableView 
+        analysis={chartData.saturnTransits}
+        birthDate={new Date(chartData.input.localDateTime)}
+      />
     ) : (
       <div className="text-center py-12">
         <p className="text-muted-foreground">
-          Loading Sade Sati analysis...
+          Loading Saturn transit analysis...
         </p>
       </div>
     )}
