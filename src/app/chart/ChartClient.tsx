@@ -150,12 +150,14 @@ function getChartFromStorage(): ChartData | null {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (!stored) return null;
-    return JSON.parse(stored);
+    const data = JSON.parse(stored);
 
      if (data.saturnTransits) {
       data.saturnTransits = reviveSaturnTransitDates(data.saturnTransits);
     }
-    
+     
+    return data;
+
   } catch {
     return null;
   }
