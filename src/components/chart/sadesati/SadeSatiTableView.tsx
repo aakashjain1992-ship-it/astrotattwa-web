@@ -456,7 +456,7 @@ function TimelineEntry({
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export function EnhancedSadeSatiView({ analysis, birthDate }: EnhancedSadeSatiViewProps) {
+export function SadeSatiTableView({ analysis, birthDate }: EnhancedSadeSatiViewProps) {
   const [activeTab, setActiveTab] = useState<ActiveTab>('analysis');
   const { sadeSati, dhaiya, summary, currentSaturn } = analysis;
   const { current } = sadeSati;
