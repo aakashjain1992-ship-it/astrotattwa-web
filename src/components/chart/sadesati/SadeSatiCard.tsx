@@ -30,31 +30,39 @@ interface SadeSatiCardProps {
 }
 
 export function SadeSatiCard({ analysis, onViewTimeline }: SadeSatiCardProps) {
-
-   const normalizedAnalysis = {
+  // ✅ Helper to ensure Date objects
+  const toDate = (d: any): Date => d instanceof Date ? d : new Date(d);
+  
+  // ✅ Comprehensive normalization
+  const normalizedAnalysis = {
     ...analysis,
     history: {
       ...analysis.history,
       next: analysis.history.next ? {
         ...analysis.history.next,
-        startDate: typeof analysis.history.next.startDate === 'string' 
-          ? new Date(analysis.history.next.startDate) 
-          : analysis.history.next.startDate,
+        startDate: toDate(analysis.history.next.startDate),
       } : analysis.history.next,
     },
     current: {
       ...analysis.current,
-      startDate: analysis.current.startDate && typeof analysis.current.startDate === 'string'
-        ? new Date(analysis.current.startDate)
-        : analysis.current.startDate,
-      endDate: analysis.current.endDate && typeof analysis.current.endDate === 'string'
-        ? new Date(analysis.current.endDate)
-        : analysis.current.endDate,
+      startDate: analysis.current.startDate ? toDate(analysis.current.startDate) : undefined,
+      endDate: analysis.current.endDate ? toDate(analysis.current.endDate) : undefined,
+      // ✅ Normalize allPhases
+      allPhases: analysis.current.allPhases?.map(phase => ({
+        ...phase,
+        startDate: toDate(phase.startDate),
+        endDate: toDate(phase.endDate),
+      })),
+      // ✅ Normalize currentPhase
+      currentPhase: analysis.current.currentPhase ? {
+        ...analysis.current.currentPhase,
+        startDate: toDate(analysis.current.currentPhase.startDate),
+        endDate: toDate(analysis.current.currentPhase.endDate),
+      } : undefined,
     },
   };
   
   const { current, insights } = normalizedAnalysis;
-    
   // Not active - show next Sade Sati info
   if (!current.isActive) {
     return (
@@ -86,7 +94,7 @@ export function SadeSatiCard({ analysis, onViewTimeline }: SadeSatiCardProps) {
                   Next Sade Sati begins
                 </p>
                 <p className="text-base font-medium">
-                  {analysis.history.next.startDate.toLocaleDateString('en-US', {
+                   {normalizedAnalysis.history.next.startDate.toLocaleDateString('en-US', {
                     month: 'long',
                     year: 'numeric',
                   })}

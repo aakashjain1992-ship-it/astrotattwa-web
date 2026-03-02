@@ -377,28 +377,53 @@ function calculateSadeSatiHistory(
 ): SadeSatiHistory {
   const all: SadeSatiPeriod[][] = [];
   
-  // Calculate from birth to 100 years
-  const ageInYears = 
-    (currentDate.getTime() - birthDate.getTime()) / (1000 * 60 * 60 * 24 * 365.25);
+  // Saturn takes ~29.5 years per zodiac cycle
+  // In 100 years, Saturn completes ~3.4 cycles
+  // This means 3-4 Sade Sati periods per person's lifetime
   
-  // Saturn completes one cycle in ~29.5 years
-  // So there are approximately 3-4 Sade Sati periods in 100 years
-  const numberOfCycles = Math.ceil(100 / 29.5); // ~4 cycles
+  // Generate Sade Sati periods for each Saturn cycle
+  const numberOfCycles = 4; // Cover 100+ years
   
-  // Generate all periods
-  for (let i = 0; i < numberOfCycles; i++) {
-    const cycleYearsFromBirth = i * 29.5;
+  for (let cycle = 0; cycle < numberOfCycles; cycle++) {
+    // Calculate when this Saturn cycle begins (from birth)
+    const cycleYearsFromBirth = cycle * 29.5;
+    
+    // Calculate Saturn's starting sign for this cycle
+    // Saturn moves backwards through signs relative to Moon's perspective
+    // For simplicity, we'll calculate the phase start for each cycle
+    
     const cycleStartDate = new Date(birthDate);
     cycleStartDate.setFullYear(
       cycleStartDate.getFullYear() + Math.floor(cycleYearsFromBirth)
     );
     
-    // Only include if it's within 100 years from birth
+    // Check if this cycle is within 100 years from birth
     const ageAtCycle = 
       (cycleStartDate.getTime() - birthDate.getTime()) / (1000 * 60 * 60 * 24 * 365.25);
     
-    if (ageAtCycle <= 100) {
-      const phases = calculateAllThreePhases(moonSign, 'Rising', cycleStartDate);
+    if (ageAtCycle > 100) break;
+    
+    // For each cycle, Saturn will transit all 12 signs
+    // We need to find when it enters the 12th house from Moon (Rising phase start)
+    
+    // Calculate which sign Saturn enters first in this cycle
+    // This is a simplification - in reality, we'd need ephemeris data
+    // But for historical/future projections, we use the cyclic pattern
+    
+    // Saturn's position at birth determines the offset
+    // For each cycle, it advances by 1 full zodiac rotation
+    
+    // Find when Saturn enters the 12th house from Moon
+    const risingPhaseStart = new Date(cycleStartDate);
+    
+    // ✅ Only generate if this period is valid (within lifespan)
+    const phases = calculateAllThreePhases(moonSign, 'Rising', risingPhaseStart);
+    
+    // Check if the end of this Sade Sati is within 100 years
+    const ageAtEnd = 
+      (phases[2].endDate.getTime() - birthDate.getTime()) / (1000 * 60 * 60 * 24 * 365.25);
+    
+    if (ageAtEnd <= 100) {
       all.push(phases);
     }
   }
@@ -414,10 +439,10 @@ function calculateSadeSatiHistory(
     const startDate = phases[0].startDate;
     
     if (endDate < currentDate) {
-      // Past period
+      // Past period (completely finished)
       past.push(phases);
     } else if (startDate <= currentDate && endDate >= currentDate) {
-      // Current period (active)
+      // Current period (active now)
       current = phases;
     } else {
       // Future periods
@@ -429,11 +454,24 @@ function calculateSadeSatiHistory(
     }
   }
   
+  // Calculate "next" for the status card
+  let next: { startDate: Date; yearsFromNow: number } | undefined;
+  if (upcoming) {
+    const yearsFromNow = 
+      (upcoming[0].startDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24 * 365.25);
+    next = {
+      startDate: upcoming[0].startDate,
+      yearsFromNow,
+    };
+  }
+  
   return {
     past,
     current,
     upcoming,
     future,
+    all,
+    next,
   };
 }
 
