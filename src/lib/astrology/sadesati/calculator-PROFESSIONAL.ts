@@ -377,7 +377,9 @@ function analyzeDashaActivation(
     };
   }
   
-  const currentMaha = dashaInfo.currentMahadasha;
+   const currentMaha = typeof dashaInfo.currentMahadasha === 'string'
+    ? dashaInfo.currentMahadasha
+    : (dashaInfo.currentMahadasha as any)?.lord ?? 'Unknown';
   
   // High activation: Saturn, Moon, Rahu dasha
   if (['Saturn', 'Moon', 'Rahu'].includes(currentMaha)) {
