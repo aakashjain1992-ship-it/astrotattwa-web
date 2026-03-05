@@ -7,78 +7,85 @@
  * Returns: ~30KB JSON with all 9 mahadasha periods
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { vimshottariDasha } from '@/lib/astrology/kp/dasha';
+import { NextRequest } from "next/server";
+import { vimshottariDasha } from "@/lib/astrology/kp/dasha";
+import { successResponse, withErrorHandling, validationError } from "@/lib/api/errorHandling";
+import { rateLimit, RateLimitPresets } from "@/lib/api/rateLimit";
+import { logError } from "@/lib/monitoring/errorLogger";
 
-export async function GET(request: NextRequest) {
+const VALID_LORDS = ["Ketu", "Venus", "Sun", "Moon", "Mars", "Rahu", "Jupiter", "Saturn", "Mercury"];
+
+export const GET = withErrorHandling(async (req: NextRequest) => {
+  await rateLimit(req, RateLimitPresets.standard);
+
+  const { searchParams } = new URL(req.url);
+
+  // Extract query parameters
+  const moonLongitude = searchParams.get('moonLongitude');
+  const birthDateUtc = searchParams.get('birthDateUtc');
+  const elapsedFraction = searchParams.get('elapsedFraction');
+  const nakLord = searchParams.get('nakLord');
+
+  // Validate required parameters
+  if (!moonLongitude || !birthDateUtc || !elapsedFraction || !nakLord) {
+    throw validationError(
+      "Required parameters: moonLongitude, birthDateUtc, elapsedFraction, nakLord",
+      { 
+        example: "/api/dasha/mahadashas?moonLongitude=211.95&birthDateUtc=1992-03-25T06:25:00.000Z&elapsedFraction=0.123&nakLord=Ketu" 
+      }
+    );
+  }
+
+  // Validate nakLord
+  if (!VALID_LORDS.includes(nakLord)) {
+    throw validationError(`Invalid nakLord. Must be one of: ${VALID_LORDS.join(", ")}`);
+  }
+
+  // Validate numeric parameters
+  const moonLongNum = parseFloat(moonLongitude);
+  const elapsedFracNum = parseFloat(elapsedFraction);
+  
+  if (isNaN(moonLongNum) || isNaN(elapsedFracNum)) {
+    throw validationError("moonLongitude and elapsedFraction must be valid numbers");
+  }
+
+  if (moonLongNum < 0 || moonLongNum >= 360) {
+    throw validationError("moonLongitude must be between 0 and 360");
+  }
+
+  if (elapsedFracNum < 0 || elapsedFracNum > 1) {
+    throw validationError("elapsedFraction must be between 0 and 1");
+  }
+
+  // Validate birth date
+  const birthDate = new Date(birthDateUtc);
+  if (isNaN(birthDate.getTime())) {
+    throw validationError("birthDateUtc must be a valid ISO date string");
+  }
+
+  // Calculate complete dasha timeline (120 years)
+  let dashaResult;
   try {
-    const { searchParams } = new URL(request.url);
-    
-    // Extract query parameters
-    const moonLongitude = parseFloat(searchParams.get('moonLongitude') || '0');
-    const birthDateUtc = searchParams.get('birthDateUtc');
-    const elapsedFraction = parseFloat(searchParams.get('elapsedFraction') || '0');
-    const nakLord = searchParams.get('nakLord');
-    
-    // Validate required parameters
-    if (!birthDateUtc || !nakLord) {
-      return NextResponse.json(
-        { 
-          success: false, 
-          error: 'Missing required parameters: birthDateUtc, nakLord' 
-        },
-        { status: 400 }
-      );
-    }
-    
-    if (isNaN(moonLongitude) || isNaN(elapsedFraction)) {
-      return NextResponse.json(
-        { 
-          success: false, 
-          error: 'Invalid numeric parameters' 
-        },
-        { status: 400 }
-      );
-    }
-    
-    // Parse birth date
-    const birthDate = new Date(birthDateUtc);
-    if (isNaN(birthDate.getTime())) {
-      return NextResponse.json(
-        { 
-          success: false, 
-          error: 'Invalid birthDateUtc format' 
-        },
-        { status: 400 }
-      );
-    }
-    
-    // Calculate complete dasha timeline (120 years)
-    const dashaResult = vimshottariDasha(
-      moonLongitude,
+    dashaResult = vimshottariDasha(
+      moonLongNum,
       birthDate,
-      elapsedFraction,
+      elapsedFracNum,
       nakLord as any,
       360 // Use 360-day year (classical Vedic)
     );
-    
-    return NextResponse.json({
-      success: true,
-      data: {
-        allMahadashas: dashaResult.allMahadashas,
-        balance: dashaResult.balance,
-        currentMahadasha: dashaResult.currentMahadasha,
-      }
-    });
-    
   } catch (error) {
-    console.error('Mahadasha calculation error:', error);
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: 'Failed to calculate mahadashas' 
-      },
-      { status: 500 }
-    );
+    logError("Mahadasha calculation failed", error, {
+      moonLongitude: moonLongNum,
+      birthDateUtc,
+      elapsedFraction: elapsedFracNum,
+      nakLord
+    });
+    throw error;
   }
-}
+
+  return successResponse({
+    allMahadashas: dashaResult.allMahadashas,
+    balance: dashaResult.balance,
+    currentMahadasha: dashaResult.currentMahadasha,
+  });
+});
