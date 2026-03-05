@@ -4,14 +4,15 @@ import { AYANAMSHA_LABEL, norm360 } from "./constants";
 import { buildPlanet } from "./planets";
 import { vimshottariDasha } from "./dasa";
 import { calculateAvakahada } from "./avakahada";
-import { calculateProfessionalSaturnAnalysis } from '@/lib/astrology/sadesati/calculator-PROFESSIONAL';
-
 
 
 export async function calculateKpChart(input: {
   name?: string;
+  gender?: string;
   birthDate: string;
   birthTime: string;
+  birthPlace?: string;
+  timePeriod?: string;
   latitude: number;
   longitude: number;
   timezone: string;
@@ -80,19 +81,13 @@ export async function calculateKpChart(input: {
   const ascLon = await sweAscendantSidereal(jdUt, input.latitude, input.longitude);
   const ascendant = buildPlanet("Ascendant", ascLon, undefined, sunLon);
 
-  const nakshatra = {
-    name: planets.Moon.kp.nakshatraName,
-    pada: planets.Moon.kp.nakshatraPada,
-    lord: planets.Moon.kp.nakshatraLord,
-  };
-
   const dasa = vimshottariDasha(
     planets.Moon.longitude,
     birthUtc,
     planets.Moon.kp.elapsedFractionOfNakshatra,
     planets.Moon.kp.nakshatraLord,
     360
-  );
+  ); 
 
   // Calculate Avakahada Chakra attributes
   const avakahada = calculateAvakahada(
@@ -104,66 +99,39 @@ export async function calculateKpChart(input: {
     planets.Moon.kp.nakshatraLord
   );
 
-  const currentDate = new Date();
-  
-  const currentSaturnPosition = await calculateCurrentSaturnPosition(
-  currentDate,
-  bodies.SATURN,
-  sunLon
-); 
-  
-  const saturnTransits = await calculateProfessionalSaturnAnalysis(
-  planets.Moon,
-  currentSaturnPosition,
-  planets, // All planets
-  ascendant,
-  birthUtc,
-  dasa, // Dasha info for activation analysis
-  {
-    includeDashaAnalysis: true,
-    calculatePeakWindows: true,
-    detectRetrogradeCycles: false, // Set to true if you want full retrograde tracking (expensive)
-    findNakshatraCrossings: false, // Set to true for nakshatra crossings (expensive)
-    analyzeJupiterProtection: true,
-    includeDetailedPhases: true,
-  }
-);
-  
   
   return {
     input: {
+      name: input.name,
+      gender: input.gender,
+      birthDate: input.birthDate,
+      birthTime: input.birthTime,
+      birthPlace: input.birthPlace,
+      timePeriod: input.timePeriod,
+      latitude: input.latitude,
+      longitude: input.longitude,
       timezone: input.timezone,
+    },
+     calculated: {
       tzOffsetMinutes: offsetMinutes,
       localDateTime: `${input.birthDate}T${input.birthTime}`,
       utcDateTime: birthUtc.toISOString(),
       julianDayUT: jdUt,
-      latitude: input.latitude,
-      longitude: input.longitude,
     },
     ayanamsha: AYANAMSHA_LABEL,
-    planets,
-    ascendant,
-    nakshatra,
-    dasa,
+    planets: {
+      ...planets,
+      Ascendant: {
+        ...ascendant,
+        key: "Ascendant",}
+    },
+    ascendant, // ⚠️ BACKWARD COMPATIBILITY: Keep old ascendant field , later delete this.
     avakahada,
     rahuKetuModes, 
-    saturnTransits, 
+    dasa: {
+      balance: dasa.balance,
+      currentMahadasha: dasa.currentMahadasha,
+    },
   };
 }
 
-async function calculateCurrentSaturnPosition(
-  date: Date,
-  saturnBodyId: number,
-  sunLon: number
-): Promise<PlanetData> {
-  // Calculate Julian day for current date
-  const jdUt = await sweJuldayUTC(date);
-  
-  // Get Saturn's position at this date
-  const saturnResult = await sweCalcSidereal(jdUt, saturnBodyId);
-  
-  // Build planet data (same format as birth planets)
-  const currentSaturn = buildPlanet("Saturn", saturnResult.lon, saturnResult.speed, sunLon);
-  
-  return currentSaturn;
-}
