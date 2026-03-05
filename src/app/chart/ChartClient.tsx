@@ -45,12 +45,23 @@ import {
 
 // Local types for page-specific data structures
 interface ChartInput {
-  localDateTime: string;
+  name: string;
+  gender: string;
+  birthDate: string;
+  birthTime: string;
+  birthPlace: string;
+  timePeriod: string;
   latitude: number;
   longitude: number;
   timezone: string;
 }
 
+interface CalculatedData {
+  tzOffsetMinutes: number;
+  localDateTime: string;
+  utcDateTime: string;
+  julianDayUT: number;
+}
 // Minimal ascendant type for page logic (compatible with AstroAscendantData)
 interface AscendantData {
   sign: string;
@@ -93,15 +104,17 @@ interface AvakhadaData {
 }
 
 interface ChartData {
+  id: string;
+  createdAt: string;
   input: ChartInput;
+  calculated: CalculatedData;
   planets: Record<string, PlanetData>;
   ascendant: AscendantData;
   dasa: DashaData;
   avakahada: AvakhadaData;
-  name: string;
-  gender?: string;
-  birthPlace?: string;   // city name e.g. "Baghpat, Uttar Pradesh, IN"
   ayanamsha?: string;
+  rahuKetuModes?: any;
+  saturnTransits?: any;  
 }
 
 type TabType = 'overview' | 'dasha'| 'divisional' | 'sadesati';
@@ -446,12 +459,12 @@ export default function ChartClient() {
       birthDate: formData.birthDate,
       birthTime: formData.birthTime,
       timePeriod: formData.timePeriod,
-      birthPlace: formData.cityName ?? chartData?.birthPlace ?? '',
+      birthPlace: formData.cityName ?? chartData?.input?.birthPlace ?? '',
       latitude: formData.latitude,
       longitude: formData.longitude,
       timezone: formData.timezone,
     }),
-    [chartData?.birthPlace]
+    [chartData?.input?.birthPlace]
   );
 
   const handleSaveChart = useCallback(
@@ -564,10 +577,10 @@ export default function ChartClient() {
       >
         {/* User Details Card */}
         <UserDetailsCard
-          name={chartData.name}
-          gender={chartData.gender}
+          name={chartData.input.name}
+          gender={chartData.input.gender}
           input={chartData.input}
-          birthPlace={chartData.birthPlace}
+          birthPlace={chartData.input.birthPlace}
           isEditing={isEditing}
           onEditToggle={() => setIsEditing(!isEditing)}
           rightContent={
@@ -592,13 +605,13 @@ export default function ChartClient() {
         <EditBirthDetailsForm
           isOpen={isEditing}
           currentData={{
-            name: chartData.name,
-            gender: chartData.gender as "Male" | "Female",
-            localDateTime: chartData.input.localDateTime,
+            name: chartData.input.name,
+            gender: chartData.input.gender as "Male" | "Female",
+            localDateTime: chartData.calculated.localDateTime,
             latitude: chartData.input.latitude,
             longitude: chartData.input.longitude,
             timezone: chartData.input.timezone,
-            cityName: chartData.birthPlace,
+            cityName: chartData.input.birthPlace,
           }}
           onSubmit={handleEditSubmit}
           onCancel={() => setIsEditing(false)}
@@ -689,7 +702,7 @@ export default function ChartClient() {
     {chartData.saturnTransits ? (
       <SadeSatiTableView 
         analysis={chartData.saturnTransits}
-        birthDate={new Date(chartData.input.localDateTime)}
+        birthDate={new Date(chartData.calculated.localDateTime)}
       />
     ) : (
       <div className="text-center py-12">

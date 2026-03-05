@@ -25,7 +25,6 @@ import type { ChartFormValues } from './BirthDataFormWrapper'
 
 // Extend the shared base schema with city-specific fields
 const birthDataSchema = baseBirthSchema.extend({
-  cityId:    z.number().optional(),
   stateName: z.string().optional(),
 })
 
@@ -103,7 +102,6 @@ export function BirthDataForm({ onSubmit, cardError, isAdmin = false }: Props) {
     longitude: number
     timezone: string
   }) => {
-    setValue('cityId',    city.id)
     setValue('cityName',  `${city.city_name}, ${city.state_name}`)
     coordsRef.current = { lat: city.latitude, lng: city.longitude, timezone: city.timezone }
     setCoordsError(false)

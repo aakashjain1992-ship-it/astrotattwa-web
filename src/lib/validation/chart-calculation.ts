@@ -40,8 +40,13 @@ export const chartCalculationSchema = z.object({
     required_error: 'Time period (AM/PM) is required',
   }),
 
-  // cities.id is int4 in Supabase: optional for calculation, useful for testing/traceability
-  cityId: z.number().int().optional(),
+  // Birth place name (city name from location search)
+  birthPlace: z
+    .string()
+    .min(1, 'Birth place cannot be empty')
+    .max(200, 'Birth place must be 200 characters or less')
+    .trim()
+    .optional(),
 
   latitude: z
     .number({ required_error: 'Latitude is required', invalid_type_error: 'Latitude must be a number' })
@@ -70,7 +75,7 @@ export const validTestRequest: ChartCalculationInput = {
   birthDate: '1992-03-25',
   birthTime: '11:55',
   timePeriod: 'AM',
-  cityId: 1,
+  birthPlace: 'Baghpat, Uttar Pradesh',
   latitude: 28.6139,
   longitude: 77.209,
   timezone: 'Asia/Kolkata',
