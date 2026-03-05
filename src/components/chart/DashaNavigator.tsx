@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { format, parseISO, isWithinInterval } from 'date-fns';
 import { ChevronRight, ChevronLeft, Loader2, Circle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -42,6 +42,12 @@ interface DashaNavigatorProps {
   dashaData: MahadashaData;
   /** Additional className */
   className?: string;
+  /** Moon longitude (required for fetching mahadashas) */
+  moonLongitude?: number;
+  /** Birth date UTC (required for fetching mahadashas) */
+  birthDateUtc?: string;
+  /** Nakshatra lord (required for fetching mahadashas) */
+  nakshatraLord?: string;
 }
 
 // ============================================
@@ -296,10 +302,20 @@ function DashaPeriodRow({ period, isCurrent, showArrow, onClick }: DashaPeriodRo
 export function DashaNavigator({
   dashaData,
   className,
+  moonLongitude,
+  birthDateUtc,
+  nakshatraLord,
 }: DashaNavigatorProps) {
   // Normalize API payload to the UI shape (mapping lord -> planet, nested balance, etc.)
+  
   const normalizedDashaData = normalizeMahadashaData(dashaData);
 
+
+  const [fetchedMahadashas, setFetchedMahadashas] = useState<DashaPeriod[] | null>(null);
+  const [isLoadingMahadashas, setIsLoadingMahadashas] = useState(false);
+  const [mahadashasError, setMahadashasError] = useState<string | null>(null);
+
+  
   // Navigation state
   const [currentLevel, setCurrentLevel] = useState<DashaLevel>('mahadasha');
   const [navigationPath, setNavigationPath] = useState<string[]>([]);
@@ -427,6 +443,61 @@ export function DashaNavigator({
     }
   }, []);
 
+   // Fetch mahadashas on mount if not provided in dashaData
+  useEffect(() => {
+    // If allMahadashas already provided via props, use them
+    if (normalizedDashaData.allMahadashas && normalizedDashaData.allMahadashas.length > 0) {
+      setFetchedMahadashas(normalizedDashaData.allMahadashas);
+      return;
+    }
+
+    // Otherwise, fetch from API
+    const fetchMahadashas = async () => {
+      if (!moonLongitude || !birthDateUtc || !nakshatraLord) {
+        setMahadashasError('Missing required data to fetch mahadashas');
+        return;
+      }
+
+      setIsLoadingMahadashas(true);
+      setMahadashasError(null);
+
+      try {
+        // Calculate elapsed fraction from nakshatra
+        // Each nakshatra spans 360/27 = 13.333... degrees
+        const nakshatraSpan = 360 / 27;
+        const nakshatraIndex = Math.floor(moonLongitude / nakshatraSpan);
+        const nakshatraStart = nakshatraIndex * nakshatraSpan;
+        const elapsedDegrees = moonLongitude - nakshatraStart;
+        const elapsedFraction = elapsedDegrees / nakshatraSpan;
+
+        const params = new URLSearchParams({
+          moonLongitude: moonLongitude.toString(),
+          birthDateUtc: birthDateUtc,
+          elapsedFraction: elapsedFraction.toString(),
+          nakLord: nakshatraLord,
+        });
+
+        const response = await fetch(`/api/dasha/mahadashas?${params}`);
+        const result = await response.json();
+
+        if (result.success && result.data?.allMahadashas) {
+          // Normalize the fetched data
+          const normalized = normalizeSubPeriods(result.data.allMahadashas);
+          setFetchedMahadashas(normalized);
+        } else {
+          throw new Error(result.error || 'Failed to fetch mahadashas');
+        }
+      } catch (err) {
+        console.error('Error fetching mahadashas:', err);
+        setMahadashasError('Failed to load dasha timeline');
+      } finally {
+        setIsLoadingMahadashas(false);
+      }
+    };
+
+    fetchMahadashas();
+  }, [normalizedDashaData.allMahadashas, moonLongitude, birthDateUtc, nakshatraLord]);
+
   // Handle click on a period
   const handlePeriodClick = useCallback(async (level: DashaLevel, planet: string) => {
     if (level === 'mahadasha') {
@@ -484,7 +555,7 @@ export function DashaNavigator({
   const getCurrentData = (): DashaPeriod[] => {
     switch (currentLevel) {
       case 'mahadasha':
-        return normalizedDashaData.allMahadashas || [];
+        return fetchedMahadashas || normalizedDashaData.allMahadashas || [];
       case 'antardasha':
         return antardashaData || [];
       case 'pratyantar':
@@ -550,12 +621,22 @@ export function DashaNavigator({
       )}
 
       {/* Loading state */}
-      {isLoading && (
+      {(isLoading || isLoadingMahadashas) && (
         <div className="flex items-center justify-center py-8">
           <Loader2 className="h-6 w-6 animate-spin text-primary" />
-          <span className="ml-2 text-muted-foreground">Loading...</span>
+          <span className="ml-2 text-muted-foreground">
+            {isLoadingMahadashas ? 'Loading dasha timeline...' : 'Loading...'}
+          </span>
         </div>
       )}
+
+       {/* Mahadasha fetch error (only show on mahadasha level) */}
+      {currentLevel === 'mahadasha' && mahadashasError && !isLoadingMahadashas && (
+        <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm">
+          {mahadashasError}
+        </div>
+      )}
+      
 
       {/* Error state */}
       {error && (
