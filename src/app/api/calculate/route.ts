@@ -7,6 +7,19 @@ import { successResponse, withErrorHandling, calculationError } from "@/lib/api/
 import { rateLimit, RateLimitPresets } from "@/lib/api/rateLimit";
 import { logError } from "@/lib/monitoring/errorLogger";
 
+
+/**
+ * Generate a unique chart ID
+ * Format: chart_<timestamp>_<random>
+ * Example: chart_1709654321000_a7f3
+ */
+
+function generateChartId(): string {
+  const timestamp = Date.now();
+  const random = Math.random().toString(36).substring(2, 6);
+  return `chart_${timestamp}_${random}`;
+}
+
 export async function GET() {
   return NextResponse.json(
     {
@@ -66,6 +79,8 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
 
   // 4. Round all decimals and return
   const roundedChart = {
+    id: generateChartId(),
+    createdAt: new Date().toISOString(),
     ...chart,
     planets: chart.planets ? roundAllPlanets(chart.planets) : chart.planets,
     ascendant: chart.ascendant ? roundAscendantDecimals(chart.ascendant) : chart.ascendant,
