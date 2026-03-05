@@ -18,7 +18,7 @@ export async function GET() {
         birthDate: "1992-03-25",
         birthTime: "11:55",
         timePeriod: "AM",
-        cityId: 1,
+        birthPlace: "Baghpat, Uttar Pradesh",
         latitude: 28.6139,
         longitude: 77.209,
         timezone: "Asia/Kolkata",
@@ -40,7 +40,7 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
     throw validationResult.error;
   }
 
-  const { name, gender, birthDate, birthTime, timePeriod, cityId, latitude, longitude, timezone } =
+  const { name, gender, birthDate, birthTime, timePeriod, birthPlace, latitude, longitude, timezone } =
     validationResult.data;
 
   // 2. Convert 12-hour time to 24-hour format
@@ -49,8 +49,17 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
   // 3. Calculate chart
   let chart;
   try {
-    chart = await calculateKpChart({ birthDate, birthTime: birthTime24, latitude, longitude, timezone });
-  } catch (error) {
+  chart = await calculateKpChart({
+      name,
+      gender,
+      birthDate,
+      birthTime: birthTime24,
+      birthPlace,
+      timePeriod,
+      latitude,
+      longitude,
+      timezone
+    });  } catch (error) {
     logError("Chart calculation failed", error, { birthDate, birthTime: birthTime24, latitude, longitude, timezone });
     throw calculationError("Failed to calculate chart. Please verify your birth data.");
   }
@@ -58,10 +67,6 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
   // 4. Round all decimals and return
   const roundedChart = {
     ...chart,
-    name,
-    gender,
-    timePeriod,
-    cityId,
     planets: chart.planets ? roundAllPlanets(chart.planets) : chart.planets,
     ascendant: chart.ascendant ? roundAscendantDecimals(chart.ascendant) : chart.ascendant,
     rahuKetuModes: chart.rahuKetuModes,
