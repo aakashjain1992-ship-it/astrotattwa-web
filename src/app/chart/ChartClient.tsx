@@ -689,7 +689,11 @@ export default function ChartClient() {
 
         {activeTab === 'dasha' && (
           <div className="animate-fade-in">
-            <DashaNavigator dashaData={chartData.dasa} />
+            <DashaNavigator dashaData={chartData.dasa}
+              moonLongitude={chartData.planets.Moon.longitude}
+              birthDateUtc={chartData.calculated.utcDateTime}
+              nakshatraLord={chartData.avakahada.nakshatraLord}
+              />
           </div>
         )}
 
