@@ -11,7 +11,7 @@ import { NextRequest } from "next/server";
 import { 
   calculateLifetimeSadeSati, 
   calculateLifetimeDhaiya 
-} from "@/lib/astrology/saturn/calculator-PROFESSIONAL";
+} from "@/lib/astrology/sadesati/calculator-PROFESSIONAL";
 import { successResponse, withErrorHandling, validationError } from "@/lib/api/errorHandling";
 import { rateLimit, RateLimitPresets } from "@/lib/api/rateLimit";
 import { logError } from "@/lib/monitoring/errorLogger";
