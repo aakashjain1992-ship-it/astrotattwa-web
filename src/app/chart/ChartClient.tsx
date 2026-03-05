@@ -579,7 +579,12 @@ export default function ChartClient() {
         <UserDetailsCard
           name={chartData.input.name}
           gender={chartData.input.gender}
-          input={chartData.input}
+          input={{
+               localDateTime: chartData.calculated.localDateTime,
+               latitude: chartData.input.latitude,
+               longitude: chartData.input.longitude,
+               timezone: chartData.input.timezone,
+               }}
           birthPlace={chartData.input.birthPlace}
           isEditing={isEditing}
           onEditToggle={() => setIsEditing(!isEditing)}
