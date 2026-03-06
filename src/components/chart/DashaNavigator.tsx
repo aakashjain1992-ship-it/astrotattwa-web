@@ -448,13 +448,20 @@ export function DashaNavigator({
     // If allMahadashas already provided via props, use them
     if (normalizedDashaData.allMahadashas && normalizedDashaData.allMahadashas.length > 0) {
       setFetchedMahadashas(normalizedDashaData.allMahadashas);
+      setIsLoadingMahadashas(false);
       return;
     }
 
+   // If already fetched, don't fetch again
+    if (fetchedMahadashas && fetchedMahadashas.length > 0) {
+    return;
+     }
     // Otherwise, fetch from API
     const fetchMahadashas = async () => {
       if (!moonLongitude || !birthDateUtc || !nakshatraLord) {
         setMahadashasError('Missing required data to fetch mahadashas');
+        setIsLoadingMahadashas(false);
+
         return;
       }
 
@@ -484,19 +491,25 @@ export function DashaNavigator({
           // Normalize the fetched data
           const normalized = normalizeSubPeriods(result.data.allMahadashas);
           setFetchedMahadashas(normalized);
+          setMahadashasError(null);
         } else {
           throw new Error(result.error || 'Failed to fetch mahadashas');
         }
       } catch (err) {
         console.error('Error fetching mahadashas:', err);
         setMahadashasError('Failed to load dasha timeline');
+
+         if (normalizedDashaData.allMahadashas && normalizedDashaData.allMahadashas.length > 0) {
+        setFetchedMahadashas(normalizedDashaData.allMahadashas);
+        setMahadashasError(null); // Clear error if fallback works
+      }
       } finally {
         setIsLoadingMahadashas(false);
       }
     };
 
     fetchMahadashas();
-  }, [normalizedDashaData.allMahadashas, moonLongitude, birthDateUtc, nakshatraLord]);
+  }, []);
 
   // Handle click on a period
   const handlePeriodClick = useCallback(async (level: DashaLevel, planet: string) => {
