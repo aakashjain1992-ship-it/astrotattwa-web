@@ -9,10 +9,9 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { calculateSadeSatiFromMoon } from '@/lib/astrology/sadesati/saturnWrappers'; // ✅ NEW
-import { withErrorHandling } from '@/lib/api/withErrorHandling';
-import { RateLimitPresets, rateLimit } from '@/lib/api/rateLimit';
-import { validationError, successResponse } from '@/lib/api/apiResponse';
-import { logError } from '@/lib/api/logger';
+import { successResponse, withErrorHandling, validationError } from '@/lib/api/errorHandling';
+import { rateLimit, RateLimitPresets } from '@/lib/api/rateLimit';
+import { logError } from '@/lib/monitoring/errorLogger';
 
 async function handler(req: NextRequest) {
   // Apply rate limiting
