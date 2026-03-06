@@ -688,6 +688,7 @@ function CycleBlock({ cycle, defaultOpen }: { cycle: any; defaultOpen: boolean }
 
 function SaturnCyclesTable({
   analysis,
+  birthDate,
 }: {
   analysis: any;
   birthDate: Date;
