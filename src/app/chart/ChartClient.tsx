@@ -706,22 +706,15 @@ export default function ChartClient() {
           </div>
         )}
 
-      {activeTab === 'sadesati' && (
+     {activeTab === 'sadesati' && (
   <div className="animate-fade-in">
-    {chartData.saturnTransits ? (
-      <SadeSatiTableView 
-        analysis={chartData.saturnTransits}
-        birthDate={new Date(chartData.calculated.localDateTime)}
-        planets={chartData.planets}
-        ascendant={chartData.ascendant}
-        dashaInfo={chartData.dasa}      />
-    ) : (
-      <div className="text-center py-12">
-        <p className="text-muted-foreground">
-          Loading Saturn transit analysis...
-        </p>
-      </div>
-    )}
+    <SadeSatiTableView 
+      analysis={chartData.saturnTransits}
+      birthDate={new Date(chartData.calculated.localDateTime)}
+      planets={chartData.planets}
+      ascendant={chartData.ascendant}
+      dashaInfo={chartData.dasa}
+    />
   </div>
 )}
         
