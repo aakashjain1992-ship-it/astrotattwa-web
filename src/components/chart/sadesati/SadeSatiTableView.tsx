@@ -10,8 +10,7 @@
  * @version 1.1.0
  */
 import { useState, useEffect } from 'react';  
-import { ..., Loader2 } from 'lucide-react'; 
-import { Circle, ChevronDown, ChevronRight, Shield, TrendingUp, Zap, Star } from 'lucide-react';
+import { Circle, ChevronDown, ChevronRight, Shield, TrendingUp, Zap, Star, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -30,6 +29,8 @@ interface EnhancedSadeSatiViewProps {
   analysis?: EnhancedSaturnTransitAnalysis; 
   birthDate: Date;
   moonLongitude?: number; 
+  ascendant?: AscendantData;             // Real ascendant
+  dashaInfo?: any;                       // Dasha data
 }
 
 type ActiveTab = 'analysis' | 'phases' | 'dhaiya' | 'timeline';
@@ -558,9 +559,11 @@ export function SadeSatiTableView({ analysis, birthDate, moonLongitude }: Enhanc
 
 
   useEffect(() => {
-    console.log('🔍 SadeSati useEffect triggered');
-    console.log('📊 analysis prop:', analysis);
-    console.log('🌙 moonLongitude:', moonLongitude);
+   console.log('🔍 SadeSati useEffect triggered');
+   console.log('📊 analysis prop:', analysis);
+   console.log('🌙 planets:', planets);
+   console.log('🔺 ascendant:', ascendant);
+   console.log('📅 dashaInfo:', dashaInfo);
     
     // If analysis provided via props AND has complete valid data, use it
     if (
@@ -583,47 +586,60 @@ export function SadeSatiTableView({ analysis, birthDate, moonLongitude }: Enhanc
 
     // Otherwise fetch from API
     const fetchSaturnTransits = async () => {
-      if (!moonLongitude) {
-        setError('Moon longitude not provided');
-        setIsLoading(false);
-        return;
+     if (!planets || !planets.Moon) {
+      setError('Planet data not provided');
+      setIsLoading(false);
+      return;
+    }
+
+    if (!ascendant) {
+      setError('Ascendant data not provided');
+      setIsLoading(false);
+      return;
+    }
+
+    console.log('🚀 Starting Saturn transit fetch with COMPLETE data...');
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const body = {
+        planets,              // ALL planets (Moon, Saturn, Jupiter, etc.)
+        ascendant,            // Real ascendant
+        birthDateUtc: birthDate.toISOString(),
+        dashaInfo,            // Dasha for activation analysis
+      };
+
+      console.log('📡 Calling API with body:', Object.keys(body));
+
+      const response = await fetch('/api/transits/saturn/sadesati', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      const result = await response.json();
+
+      console.log('📥 API response:', result);
+
+      if (result.success && result.data) {
+        // Convert date strings back to Date objects
+        const processedData = convertDates(result.data);
+        console.log('✅ Data processed successfully');
+        setFetchedAnalysis(processedData);
+      } else {
+        throw new Error(result.error || 'Failed to fetch Saturn transits');
       }
+    } catch (err) {
+      console.error('❌ Error fetching Saturn transits:', err);
+      setError('Failed to load Saturn transit analysis');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-      console.log('🚀 Starting Saturn transit fetch...');
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        const params = new URLSearchParams({
-          moonLongitude: moonLongitude.toString(),
-          birthDateUtc: birthDate.toISOString(),
-        });
-
-        console.log('📡 Calling API:', `/api/transits/saturn/sadesati?${params}`);
-
-        const response = await fetch(`/api/transits/saturn/sadesati?${params}`);
-        const result = await response.json();
-
-        console.log('📥 API response:', result);
-
-        if (result.success && result.data) {
-          // Convert date strings back to Date objects
-          const processedData = convertDates(result.data);
-          console.log('✅ Data processed successfully');
-          setFetchedAnalysis(processedData);
-        } else {
-          throw new Error(result.error || 'Failed to fetch Saturn transits');
-        }
-      } catch (err) {
-        console.error('❌ Error fetching Saturn transits:', err);
-        setError('Failed to load Saturn transit analysis');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchSaturnTransits();
-  }, []); // Empty array - only fetch once on mount
+  fetchSaturnTransits();
+}, []); 
 
   // Use fetched data or props data
   const activeAnalysis = fetchedAnalysis || analysis;
