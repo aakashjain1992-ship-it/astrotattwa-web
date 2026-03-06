@@ -1,78 +1,95 @@
 /**
- * FILE 8: src/app/api/transits/saturn/summary/route.ts
+ * GET /api/transits/saturn/summary
  * 
- * Returns quick summary of Saturn transits (for indicator dot)
- * Used to show orange dot on Sade Sati tab when currently active
+ * Returns a quick summary of Saturn transit status.
+ * Used for showing the orange indicator dot on the Sade Sati tab.
  * 
- * Returns: ~1KB JSON with current status
+ * Response: ~1KB
  */
 
-import { NextRequest } from "next/server";
-import { calculateLifetimeSadeSati } from "@/lib/astrology/sadesati/calculator-PROFESSIONAL";
-import { successResponse, withErrorHandling, validationError } from "@/lib/api/errorHandling";
-import { rateLimit, RateLimitPresets } from "@/lib/api/rateLimit";
-import { logError } from "@/lib/monitoring/errorLogger";
+import { NextRequest, NextResponse } from 'next/server';
+import { calculateSadeSatiFromMoon } from '@/lib/astrology/sadesati/saturnWrappers'; // ✅ NEW
+import { withErrorHandling } from '@/lib/api/withErrorHandling';
+import { RateLimitPresets, rateLimit } from '@/lib/api/rateLimit';
+import { validationError, successResponse } from '@/lib/api/apiResponse';
+import { logError } from '@/lib/api/logger';
 
-export const GET = withErrorHandling(async (req: NextRequest) => {
-  await rateLimit(req, RateLimitPresets.standard);
-
-  const { searchParams } = new URL(req.url);
-
-  const moonLongitude = searchParams.get('moonLongitude');
-  const birthDateUtc = searchParams.get('birthDateUtc');
-
-  // Validate required parameters
-  if (!moonLongitude || !birthDateUtc) {
-    throw validationError(
-      "Required parameters: moonLongitude, birthDateUtc",
-      { 
-        example: "/api/transits/saturn/summary?moonLongitude=211.95&birthDateUtc=1992-03-25T06:25:00.000Z" 
-      }
-    );
+async function handler(req: NextRequest) {
+  // Apply rate limiting
+  const rateLimitResult = await rateLimit(req, RateLimitPresets.standard);
+  if (!rateLimitResult.success) {
+    return rateLimitResult.response;
   }
 
-  // Validate numeric parameter
-  const moonLongNum = parseFloat(moonLongitude);
-  if (isNaN(moonLongNum)) {
-    throw validationError("moonLongitude must be a valid number");
-  }
-
-  if (moonLongNum < 0 || moonLongNum >= 360) {
-    throw validationError("moonLongitude must be between 0 and 360");
-  }
-
-  // Validate birth date
-  const birthDate = new Date(birthDateUtc);
-  if (isNaN(birthDate.getTime())) {
-    throw validationError("birthDateUtc must be a valid ISO date string");
-  }
-
-  const currentDate = new Date();
-
-  // Calculate Sade Sati periods
-  let sadeSatiPeriods;
   try {
-    sadeSatiPeriods = await calculateLifetimeSadeSati(
-      moonLongNum,
-      birthDate,
-      currentDate
-    );
-  } catch (error) {
-    logError("Saturn summary calculation failed", error, {
-      moonLongitude: moonLongNum,
-      birthDateUtc
+    const { searchParams } = new URL(req.url);
+    
+    // Extract query parameters
+    const moonLongitude = searchParams.get('moonLongitude');
+    const birthDateUtc = searchParams.get('birthDateUtc');
+
+    // Validation
+    if (!moonLongitude || !birthDateUtc) {
+      return validationError('Missing required parameters: moonLongitude, birthDateUtc');
+    }
+
+    // Validate moonLongitude range
+    const moonLong = parseFloat(moonLongitude);
+    if (isNaN(moonLong) || moonLong < 0 || moonLong >= 360) {
+      return validationError('moonLongitude must be between 0 and 360');
+    }
+
+    // Validate date
+    const birthDate = new Date(birthDateUtc);
+    if (isNaN(birthDate.getTime())) {
+      return validationError('Invalid birthDateUtc format');
+    }
+
+    // Calculate Sade Sati using wrapper
+    const result = await calculateSadeSatiFromMoon(moonLong, birthDate);
+
+    // Check if currently active
+    const isCurrentlyActive = result.sadeSati.current && 'isActive' in result.sadeSati.current
+      ? result.sadeSati.current.isActive !== false
+      : false;
+    
+    let activePeriod = null;
+    if (isCurrentlyActive && result.sadeSati.current && 'currentPhase' in result.sadeSati.current) {
+      const current = result.sadeSati.current as any;
+      activePeriod = {
+        startDate: current.startDate,
+        endDate: current.endDate,
+        phase: current.currentPhase?.phase || 'Unknown',
+        intensity: current.overallImpact?.intensity || 'moderate',
+      };
+    }
+
+    // Count total periods
+    const totalPeriods = 
+      result.sadeSati.past.length + 
+      (isCurrentlyActive ? 1 : 0) + 
+      result.sadeSati.future.length;
+
+    return successResponse({
+      isCurrentlyActive,
+      activePeriod,
+      totalPeriods,
     });
-    throw error;
+
+  } catch (error) {
+    logError(error, {
+      context: 'GET /api/transits/saturn/summary',
+      params: Object.fromEntries(new URL(req.url).searchParams),
+    });
+
+    return NextResponse.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to calculate Saturn summary',
+      },
+      { status: 500 }
+    );
   }
+}
 
-  // Find if currently active
-  const activePeriod = sadeSatiPeriods.find(period => 
-    currentDate >= period.startDate && currentDate <= period.endDate
-  );
-
-  return successResponse({
-    isCurrentlyActive: !!activePeriod,
-    activePeriod: activePeriod || null,
-    totalPeriods: sadeSatiPeriods.length
-  });
-});
+export const GET = withErrorHandling(handler);
