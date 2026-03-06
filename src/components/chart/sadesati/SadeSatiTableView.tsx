@@ -602,9 +602,9 @@ function CycleBlock({ cycle, defaultOpen }: { cycle: any; defaultOpen: boolean }
   const cycleStatus = hasCurrent ? 'current' : allPast ? 'past' : 'future';
 
   const badgeClass =
-    cycleStatus === 'current' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' :
-    cycleStatus === 'past'    ? 'bg-muted text-muted-foreground' :
-                                'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300';
+    cycleStatus === 'current' ? 'bg-amber-500 text-white' :
+    cycleStatus === 'past'    ? 'bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300' :
+                                'bg-blue-500 text-white';
 
   const badgeLabel =
     cycleStatus === 'current' ? 'Current' :
@@ -617,7 +617,7 @@ function CycleBlock({ cycle, defaultOpen }: { cycle: any; defaultOpen: boolean }
         onClick={() => setOpen(o => !o)}
         className="w-full flex items-center justify-between px-4 py-3 bg-muted/30 hover:bg-muted/50 transition-colors"
       >
-        <span className="font-bold text-[#8B1A1A] dark:text-[#e87070] text-sm">
+        <span className="font-bold text-foreground text-sm">
           {CYCLE_LABELS[cycle.cycleNumber] ?? `Cycle ${cycle.cycleNumber}:`}
         </span>
         <div className="flex items-center gap-2">
@@ -635,6 +635,25 @@ function CycleBlock({ cycle, defaultOpen }: { cycle: any; defaultOpen: boolean }
       {open && (
         <div className="overflow-x-auto">
           <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr className="border-b border-border/50 bg-muted/20">
+                <th className="py-2 pl-4 pr-3 text-left text-xs font-medium text-muted-foreground min-w-[170px]">
+                  Transit
+                </th>
+                <th className="py-2 px-2 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">
+                  Saturn in
+                </th>
+                <th className="py-2 px-2 text-left text-xs font-medium text-muted-foreground">
+                  1st Entry
+                </th>
+                <th className="py-2 px-2 text-left text-xs font-medium text-muted-foreground">
+                  Re-entry
+                </th>
+                <th className="py-2 px-2 text-left text-xs font-medium text-muted-foreground">
+                  Final Entry
+                </th>
+              </tr>
+            </thead>
             <tbody>
               {events.map((ev: any, idx: number) => {
                 const passes: any[] = ev.passes ?? [];
@@ -645,18 +664,33 @@ function CycleBlock({ cycle, defaultOpen }: { cycle: any; defaultOpen: boolean }
                   <tr
                     key={idx}
                     className={cn(
-                      'border-t border-border/30',
-                      isCurrentEvent
-                        ? 'bg-amber-50/70 dark:bg-amber-950/25'
-                        : 'hover:bg-muted/20',
+                      'border-t border-border/30 transition-colors',
+                      ev.status === 'current' ? 'bg-amber-50/60 dark:bg-amber-950/20' :
+                      ev.status === 'past'    ? 'opacity-60 hover:opacity-100 hover:bg-muted/20' :
+                                               'hover:bg-muted/20'
                     )}
                   >
                     {/* Event label */}
-                    <td className="py-2.5 pl-4 pr-3 font-medium whitespace-nowrap text-[#8B1A1A] dark:text-[#e87070] min-w-[170px]">
-                      {ev.label}
+                    <td className={cn(
+                      "py-2.5 pl-4 pr-3 font-medium whitespace-nowrap min-w-[200px]",
+                      ev.status === 'current'  ? 'text-amber-700 dark:text-amber-400' :
+                      ev.status === 'past'     ? 'text-muted-foreground' :
+                                                 'text-foreground'
+                    )}>
+                      {displayLabel(ev.label)}
                       {isCurrentEvent && (
                         <span className="ml-1.5 inline-flex h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse align-middle" />
                       )}
+                    </td>
+
+                    {/* Rashi column */}
+                    <td className={cn(
+                      "py-2.5 px-2 text-xs font-medium whitespace-nowrap",
+                      ev.status === 'current'  ? 'text-amber-600 dark:text-amber-400' :
+                      ev.status === 'past'     ? 'text-muted-foreground/60' :
+                                                 'text-foreground/70'
+                    )}>
+                      {ev.saturnSign ?? '—'}
                     </td>
 
                     {/* Pass date columns */}
@@ -664,10 +698,11 @@ function CycleBlock({ cycle, defaultOpen }: { cycle: any; defaultOpen: boolean }
                       <td
                         key={ci}
                         className={cn(
-                          'py-2.5 px-2 tabular-nums text-xs md:text-sm',
-                          pass
-                            ? 'text-foreground/80'
-                            : 'text-muted-foreground/40',
+                          'py-2.5 px-2 tabular-nums text-xs',
+                          !pass                          ? 'text-muted-foreground/30' :
+                          ev.status === 'current'        ? 'text-amber-800 dark:text-amber-300' :
+                          ev.status === 'past'           ? 'text-muted-foreground/70' :
+                                                           'text-foreground/80'
                         )}
                       >
                         {fmtPass(pass)}
@@ -724,10 +759,6 @@ function SaturnCyclesTable({
           />
         );
       })}
-
-      <p className="text-xs text-muted-foreground text-center pt-1 pb-2">
-        Dates shown as DD/MM/YYYY · Up to 3 retrograde passes per transit
-      </p>
     </div>
   );
 }
