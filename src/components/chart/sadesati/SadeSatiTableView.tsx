@@ -551,6 +551,182 @@ function TimelineEntry({
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
+// ─── Saturn Cycles Table (Timeline Tab) ──────────────────────────────────────
+
+/** Format a date as DD/MM/YYYY to match reference image */
+function fmtDMY(d: any): string {
+  const dt = d instanceof Date ? d : new Date(d);
+  if (isNaN(dt.getTime())) return '—';
+  const dd   = String(dt.getDate()).padStart(2, '0');
+  const mm   = String(dt.getMonth() + 1).padStart(2, '0');
+  const yyyy = dt.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
+}
+
+/** Format a pass as "DD/MM/YYYY-DD/MM/YYYY" */
+function fmtPass(pass: { start: Date | string; end: Date | string } | undefined): string {
+  if (!pass) return '—————————————————';
+  return `${fmtDMY(pass.start)}-${fmtDMY(pass.end)}`;
+}
+
+const CYCLE_LABELS: Record<number, string> = {
+  1: 'First Cycle:',
+  2: 'Second Cycle:',
+  3: 'Third Cycle:',
+};
+
+/** Fixed display order within a cycle — matches reference image */
+const EVENT_ORDER: Record<string, number> = {
+  ss_setting:  0,
+  dhaiya_4th:  1,
+  dhaiya_8th:  2,
+  ss_rising:   3,
+  ss_peak:     4,
+};
+
+// ── Single cycle block ────────────────────────────────────────────────────────
+
+function CycleBlock({ cycle, defaultOpen }: { cycle: any; defaultOpen: boolean }) {
+  const [open, setOpen] = useState(defaultOpen);
+
+  const events: any[] = [...(cycle.events ?? [])].sort((a: any, b: any) => {
+    const oa = EVENT_ORDER[a.type] ?? 99;
+    const ob = EVENT_ORDER[b.type] ?? 99;
+    if (oa !== ob) return oa - ob;
+    return new Date(a.startDate).getTime() - new Date(b.startDate).getTime();
+  });
+
+  if (!events.length) return null;
+
+  // Determine group status for the cycle header badge
+  const hasCurrent  = events.some((e: any) => e.status === 'current');
+  const allPast     = events.every((e: any) => e.status === 'past');
+  const cycleStatus = hasCurrent ? 'current' : allPast ? 'past' : 'future';
+
+  const badgeClass =
+    cycleStatus === 'current' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' :
+    cycleStatus === 'past'    ? 'bg-muted text-muted-foreground' :
+                                'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300';
+
+  const badgeLabel =
+    cycleStatus === 'current' ? 'Current' :
+    cycleStatus === 'past'    ? 'Past'    : 'Future';
+
+  return (
+    <div className="border border-border rounded-lg overflow-hidden">
+      {/* Collapsible header */}
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-4 py-3 bg-muted/30 hover:bg-muted/50 transition-colors"
+      >
+        <span className="font-bold text-[#8B1A1A] dark:text-[#e87070] text-sm">
+          {CYCLE_LABELS[cycle.cycleNumber] ?? `Cycle ${cycle.cycleNumber}:`}
+        </span>
+        <div className="flex items-center gap-2">
+          <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium', badgeClass)}>
+            {badgeLabel}
+          </span>
+          {open
+            ? <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            : <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          }
+        </div>
+      </button>
+
+      {/* Events table */}
+      {open && (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm border-collapse">
+            <tbody>
+              {events.map((ev: any, idx: number) => {
+                const passes: any[] = ev.passes ?? [];
+                const cols = [passes[0], passes[1], passes[2]];
+                const isCurrentEvent = ev.status === 'current';
+
+                return (
+                  <tr
+                    key={idx}
+                    className={cn(
+                      'border-t border-border/30',
+                      isCurrentEvent
+                        ? 'bg-amber-50/70 dark:bg-amber-950/25'
+                        : 'hover:bg-muted/20',
+                    )}
+                  >
+                    {/* Event label */}
+                    <td className="py-2.5 pl-4 pr-3 font-medium whitespace-nowrap text-[#8B1A1A] dark:text-[#e87070] min-w-[170px]">
+                      {ev.label}
+                      {isCurrentEvent && (
+                        <span className="ml-1.5 inline-flex h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse align-middle" />
+                      )}
+                    </td>
+
+                    {/* Pass date columns */}
+                    {cols.map((pass, ci) => (
+                      <td
+                        key={ci}
+                        className={cn(
+                          'py-2.5 px-2 tabular-nums text-xs md:text-sm',
+                          pass
+                            ? 'text-foreground/80'
+                            : 'text-muted-foreground/40',
+                        )}
+                      >
+                        {fmtPass(pass)}
+                      </td>
+                    ))}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Full cycles table ─────────────────────────────────────────────────────────
+
+function SaturnCyclesTable({
+  analysis,
+}: {
+  analysis: any;
+  birthDate: Date;
+}) {
+  const saturnCycles: any[] = (analysis as any).saturnCycles ?? [];
+
+  if (!saturnCycles.length) {
+    return (
+      <div className="py-10 text-center text-sm text-muted-foreground">
+        Saturn cycle data is not available. Please regenerate the chart.
+      </div>
+    );
+  }
+
+  return (
+    <div className="pt-2 space-y-3">
+      {saturnCycles.map((cycle: any) => {
+        if (!cycle.events?.length) return null;
+
+        // Current cycle is open by default; past/future cycles are collapsed
+        const hasCurrent = cycle.events.some((e: any) => e.status === 'current');
+        return (
+          <CycleBlock
+            key={cycle.cycleNumber}
+            cycle={cycle}
+            defaultOpen={hasCurrent}
+          />
+        );
+      })}
+
+      <p className="text-xs text-muted-foreground text-center pt-1 pb-2">
+        Dates shown as DD/MM/YYYY · Up to 3 retrograde passes per transit
+      </p>
+    </div>
+  );
+}
+
 export function SadeSatiTableView({ 
   analysis, 
   birthDate, 
@@ -1239,97 +1415,10 @@ export function SadeSatiTableView({
             TAB 4: TIMELINE
         ══════════════════════════════════════════════════════ */}
         {activeTab === 'timeline' && (
-          <div className="pt-2">
-            <Section title="Past Periods" badge={sadeSati.past.length.toString()}>
-              <div className="pt-2">
-                {sadeSati.past.length > 0 ? (
-                  sadeSati.past.map((p, i) => {
-                    const phases = p.allPhases;
-                    const first = phases?.[0];
-                    const last = phases?.[phases.length - 1];
-                    return (
-                      <TimelineEntry
-                        key={i}
-                        status="past"
-                        label={
-                          first && last
-                            ? `${new Date(first.startDate).getFullYear()} – ${new Date(last.endDate).getFullYear()}`
-                            : 'Past period'
-                        }
-                        sub={`${p.overallImpact?.intensity ?? ''} intensity · Cycle ${p.cycleNumber}`}
-                      />
-                    );
-                  })
-                ) : (
-                  <p className="text-sm text-muted-foreground">No past periods in lifetime.</p>
-                )}
-              </div>
-            </Section>
-
-            {activePeriod && (
-              <Section title="Current Period" defaultOpen>
-                <div className="pt-2">
-                  <TimelineEntry
-                    status="current"
-                    label={`${fmt(activePeriod.startDate)} – ${fmt(activePeriod.endDate)}`}
-                    sub={`${activePeriod.overallImpact.intensity.replace('_', ' ')} intensity · ${activePeriod.currentPhase?.phase} phase`}
-                    extra={`${activePeriod.elapsedPercentage?.toFixed(1)}% complete · ${activePeriod.daysRemainingInPhase} days remaining`}
-                  />
-                </div>
-              </Section>
-            )}
-
-            {/* Show current Dhaiya in timeline when not in Sade Sati */}
-            {dhaiyaPeriod && !activePeriod && (
-              <Section title="Current Dhaiya" defaultOpen>
-                <div className="pt-2">
-                  <TimelineEntry
-                    status="current"
-                    label={`${fmt(dhaiyaPeriod.startDate)} – ${fmt(dhaiyaPeriod.endDate)}`}
-                    sub={`${dhaiyaPeriod.type} house · ${dhaiyaPeriod.overallImpact.intensity} intensity`}
-                    extra={`Saturn in ${dhaiyaPeriod.saturnSign}`}
-                  />
-                </div>
-              </Section>
-            )}
-
-            {sadeSati.upcoming && (
-              <Section title="Next Sade Sati" defaultOpen>
-                <div className="pt-2">
-                  <TimelineEntry
-                    status="upcoming"
-                    label={`${fmt(sadeSati.upcoming.startDate)} – ${fmt(sadeSati.upcoming.endDate)}`}
-                    sub={`Expected ${sadeSati.upcoming.overallImpact?.intensity?.replace('_', ' ') ?? ''} intensity`}
-                    extra={sadeSati.next ? `In ${sadeSati.next.yearsFromNow.toFixed(1)} years` : undefined}
-                  />
-                </div>
-              </Section>
-            )}
-
-            {sadeSati.future.length > 0 && (
-              <Section title="Future Periods" badge={sadeSati.future.length.toString()}>
-                <div className="pt-2">
-                  {sadeSati.future.map((p, i) => {
-                    const phases = p.allPhases;
-                    const first = phases?.[0];
-                    const last = phases?.[phases.length - 1];
-                    return (
-                      <TimelineEntry
-                        key={i}
-                        status="future"
-                        label={
-                          first && last
-                            ? `${new Date(first.startDate).getFullYear()} – ${new Date(last.endDate).getFullYear()}`
-                            : 'Future period'
-                        }
-                        sub={`Cycle ${p.cycleNumber} · ${p.ageGroup?.replace('_', ' ')}`}
-                      />
-                    );
-                  })}
-                </div>
-              </Section>
-            )}
-          </div>
+          <SaturnCyclesTable
+            analysis={activeAnalysis}
+            birthDate={birthDate}
+          />
         )}
 
       </CardContent>

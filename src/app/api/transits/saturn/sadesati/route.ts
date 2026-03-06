@@ -1,12 +1,10 @@
 /**
  * POST /api/transits/saturn/sadesati
- * 
- * COMPLETE Saturn transit analysis with ALL factors from specification
- * 
+ *
+ * Complete Saturn transit analysis — Sade Sati + Dhaiya + Saturn Cycles.
+ *
  * Receives: Full chart data (planets, ascendant, dasha)
- * Returns: Professional-grade Sade Sati + Dhaiya analysis
- * 
- * Response: ~50KB
+ * Returns:  Professional-grade analysis including saturnCycles for Timeline tab
  */
 
 import { NextRequest } from 'next/server';
@@ -20,24 +18,15 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
   await rateLimit(req, RateLimitPresets.standard);
 
   const body = await req.json();
-  
-  // Extract all required data
-  const { 
-    planets,      // ALL planets (not just Moon)
-    ascendant,    // Real ascendant (not placeholder)
-    birthDateUtc, 
-    dashaInfo     // Current dasha
-  } = body;
 
-  // Validation
+  const { planets, ascendant, birthDateUtc, dashaInfo } = body;
+
   if (!planets || !planets.Moon || !planets.Saturn) {
     return validationError('Missing required planet data (Moon, Saturn)');
   }
-
   if (!ascendant || !ascendant.signNumber) {
     return validationError('Missing ascendant data');
   }
-
   if (!birthDateUtc) {
     return validationError('Missing birthDateUtc');
   }
@@ -48,74 +37,69 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
       return validationError('Invalid birthDateUtc format');
     }
 
-    // Call professional calculator with COMPLETE data
     const result = await calculateProfessionalSaturnAnalysis(
-      planets.Moon as PlanetData,
-      planets.Saturn as PlanetData,
-      planets as Record<string, PlanetData>,  // ALL planets
-      ascendant as AscendantData,              // Real ascendant
+      planets.Moon    as PlanetData,
+      planets.Saturn  as PlanetData,
+      planets         as Record<string, PlanetData>,
+      ascendant       as AscendantData,
       birthDate,
-      dashaInfo,  // Dasha info for activation analysis
+      dashaInfo,
       {
-        // Enable ALL features from specification
-        includeDashaAnalysis: !!dashaInfo,      // YES - we have dasha
-        calculatePeakWindows: true,              // YES - degree-based peaks
-        detectRetrogradeCycles: true,            // YES - retrograde 3-touch pattern
-        findNakshatraCrossings: true,            // YES - nakshatra triggers
-        analyzeJupiterProtection: !!planets.Jupiter, // YES - if Jupiter exists
-        includeDetailedPhases: true,             // YES - internal phases
-      }
+        includeDashaAnalysis:     !!dashaInfo,
+        calculatePeakWindows:     false,   // not displayed; skip to reduce calls
+        detectRetrogradeCycles:   true,
+        findNakshatraCrossings:   false,   // not displayed; skip to reduce calls
+        analyzeJupiterProtection: !!planets.Jupiter,
+        includeDetailedPhases:    true,
+      },
     );
 
-    // Build complete response matching specification
-    const isSadeSatiActive = result.sadeSati.current && 'isActive' in result.sadeSati.current
-      ? result.sadeSati.current.isActive !== false
-      : false;
-    
+    const isSadeSatiActive =
+      result.sadeSati.current &&
+      'isActive' in result.sadeSati.current
+        ? result.sadeSati.current.isActive !== false
+        : false;
+
     const isDhaiyaActive = result.dhaiya.current !== null;
 
-    let currentStatus: 'in_sadesati' | 'in_dhaiya' | 'in_both' | 'clear';
-    if (isSadeSatiActive && isDhaiyaActive) {
-      currentStatus = 'in_both';
-    } else if (isSadeSatiActive) {
-      currentStatus = 'in_sadesati';
-    } else if (isDhaiyaActive) {
-      currentStatus = 'in_dhaiya';
-    } else {
-      currentStatus = 'clear';
-    }
-
-    const topRecommendations: string[] = result.summary?.topRecommendations || [];
+    const currentStatus: 'in_sadesati' | 'in_dhaiya' | 'in_both' | 'clear' =
+      isSadeSatiActive && isDhaiyaActive ? 'in_both'     :
+      isSadeSatiActive                   ? 'in_sadesati' :
+      isDhaiyaActive                     ? 'in_dhaiya'   : 'clear';
 
     const analysisData = {
       sadeSati: {
-        past: result.sadeSati.past || [],
-        current: result.sadeSati.current,
+        past:     result.sadeSati.past     || [],
+        current:  result.sadeSati.current,
         upcoming: result.sadeSati.upcoming,
-        future: result.sadeSati.future || [],
-        next: result.sadeSati.next,
+        future:   result.sadeSati.future   || [],
+        next:     result.sadeSati.next,
       },
       dhaiya: {
-        current: result.dhaiya.current,
+        current:     result.dhaiya.current,
         upcoming4th: result.dhaiya.upcoming4th || [],
         upcoming8th: result.dhaiya.upcoming8th || [],
       },
+      // ─── Forwarded for the Timeline tab ───────────────────────────────────
+      saturnCycles: result.saturnCycles || [],
+      // ──────────────────────────────────────────────────────────────────────
       summary: {
         currentStatus,
-        totalSadeSatiPeriods: (result.sadeSati.past?.length || 0) + 
-                              (isSadeSatiActive ? 1 : 0) + 
-                              (result.sadeSati.future?.length || 0),
-        topRecommendations: topRecommendations.slice(0, 5),
+        totalSadeSatiPeriods:
+          (result.sadeSati.past?.length  || 0) +
+          (isSadeSatiActive ? 1 : 0)           +
+          (result.sadeSati.future?.length || 0),
+        topRecommendations: (result.summary?.topRecommendations || []).slice(0, 5),
       },
-      currentSaturn: result.currentSaturn,
-      calculatedAt: new Date().toISOString(),
+      currentSaturn:  result.currentSaturn,
+      calculatedAt:   new Date().toISOString(),
     };
 
     return successResponse(analysisData);
 
   } catch (error) {
     logError(error, {
-      context: 'POST /api/transits/saturn/sadesati',
+      context:  'POST /api/transits/saturn/sadesati',
       bodyKeys: Object.keys(body),
     });
     throw error;
