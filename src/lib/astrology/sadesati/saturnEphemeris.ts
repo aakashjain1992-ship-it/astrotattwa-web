@@ -184,8 +184,10 @@ export async function calculateSaturnIngress(
   const entryDegree = (targetSign - 1) * 30;       // 0° of sign
   const exitDegree  = (targetSign % 12) * 30;       // 0° of next sign (handles Pisces→Aries as 0°)
 
-  // Search window: 3 years back to 30 years forward — covers one full Saturn orbit (29.5 yrs)
-  const searchStart = new Date(approximateStartDate.getTime() - 3 * 365.25 * 86400000);
+  // Search window: cursor → +30 years (full Saturn orbit).
+  // NO lookback — caller always advances cursor past previous exit, so going
+  // back in time would re-discover the same ingress on every iteration.
+  const searchStart = new Date(approximateStartDate.getTime());
   const searchEnd   = new Date(approximateStartDate.getTime() + 30 * 365.25 * 86400000);
 
   const entryDate = await findForwardCrossing(entryDegree, searchStart, searchEnd);
