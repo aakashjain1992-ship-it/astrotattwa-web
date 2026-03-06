@@ -1,96 +1,115 @@
 /**
- * FILE 9: src/app/api/transits/saturn/sadesati/route.ts
+ * GET /api/transits/saturn/sadesati
  * 
- * Returns complete Saturn transit analysis (Sade Sati + Dhaiya)
- * Called by SadeSatiTableView component when user clicks "Sade Sati" tab
+ * Returns complete Sade Sati and Dhaiya analysis for lifetime.
+ * Lazy-loaded by SadeSatiTableView component on mount.
  * 
- * Returns: ~50KB JSON with lifetime Saturn transits
+ * Response: ~50KB (full lifetime analysis with all periods)
  */
 
-import { NextRequest } from "next/server";
-import { 
-  calculateLifetimeSadeSati, 
-  calculateLifetimeDhaiya 
-} from "@/lib/astrology/sadesati/calculator-PROFESSIONAL";
-import { successResponse, withErrorHandling, validationError } from "@/lib/api/errorHandling";
-import { rateLimit, RateLimitPresets } from "@/lib/api/rateLimit";
-import { logError } from "@/lib/monitoring/errorLogger";
+import { NextRequest, NextResponse } from 'next/server';
+import { calculateSadeSatiFromMoon } from '@/lib/astrology/sadesati/saturnWrappers'; // ✅ NEW
+import { withErrorHandling } from '@/lib/api/withErrorHandling';
+import { RateLimitPresets, rateLimit } from '@/lib/api/rateLimit';
+import { validationError, successResponse } from '@/lib/api/apiResponse';
+import { logError } from '@/lib/api/logger';
 
-export const GET = withErrorHandling(async (req: NextRequest) => {
-  await rateLimit(req, RateLimitPresets.standard);
+async function handler(req: NextRequest) {
+  // Apply rate limiting
+  const rateLimitResult = await rateLimit(req, RateLimitPresets.standard);
+  if (!rateLimitResult.success) {
+    return rateLimitResult.response;
+  }
 
-  const { searchParams } = new URL(req.url);
+  try {
+    const { searchParams } = new URL(req.url);
+    
+    // Extract query parameters
+    const moonLongitude = searchParams.get('moonLongitude');
+    const birthDateUtc = searchParams.get('birthDateUtc');
 
-  const moonLongitude = searchParams.get('moonLongitude');
-  const birthDateUtc = searchParams.get('birthDateUtc');
+    // Validation
+    if (!moonLongitude || !birthDateUtc) {
+      return validationError('Missing required parameters: moonLongitude, birthDateUtc');
+    }
 
-  // Validate required parameters
-  if (!moonLongitude || !birthDateUtc) {
-    throw validationError(
-      "Required parameters: moonLongitude, birthDateUtc",
-      { 
-        example: "/api/transits/saturn/sadesati?moonLongitude=211.95&birthDateUtc=1992-03-25T06:25:00.000Z" 
-      }
+    // Validate moonLongitude range
+    const moonLong = parseFloat(moonLongitude);
+    if (isNaN(moonLong) || moonLong < 0 || moonLong >= 360) {
+      return validationError('moonLongitude must be between 0 and 360');
+    }
+
+    // Validate date
+    const birthDate = new Date(birthDateUtc);
+    if (isNaN(birthDate.getTime())) {
+      return validationError('Invalid birthDateUtc format');
+    }
+
+    // Calculate full Saturn analysis using wrapper
+    const result = await calculateSadeSatiFromMoon(moonLong, birthDate);
+
+    // Build summary
+    const isSadeSatiActive = result.sadeSati.current && 'isActive' in result.sadeSati.current
+      ? result.sadeSati.current.isActive !== false
+      : false;
+    
+    const isDhaiyaActive = result.dhaiya.current !== null;
+
+    let currentStatus: 'in_sadesati' | 'in_dhaiya' | 'in_both' | 'clear';
+    if (isSadeSatiActive && isDhaiyaActive) {
+      currentStatus = 'in_both';
+    } else if (isSadeSatiActive) {
+      currentStatus = 'in_sadesati';
+    } else if (isDhaiyaActive) {
+      currentStatus = 'in_dhaiya';
+    } else {
+      currentStatus = 'clear';
+    }
+
+    // Collect top recommendations from the result
+    const topRecommendations: string[] = result.summary?.topRecommendations || [];
+
+    // Build complete response
+    const analysisData = {
+      sadeSati: {
+        past: result.sadeSati.past || [],
+        current: result.sadeSati.current,
+        upcoming: result.sadeSati.upcoming,
+        future: result.sadeSati.future || [],
+        next: result.sadeSati.next,
+      },
+      dhaiya: {
+        current: result.dhaiya.current,
+        upcoming4th: result.dhaiya.upcoming4th || [],
+        upcoming8th: result.dhaiya.upcoming8th || [],
+      },
+      summary: {
+        currentStatus,
+        totalSadeSatiPeriods: (result.sadeSati.past?.length || 0) + 
+                              (isSadeSatiActive ? 1 : 0) + 
+                              (result.sadeSati.future?.length || 0),
+        topRecommendations: topRecommendations.slice(0, 5),
+      },
+      currentSaturn: result.currentSaturn,
+      calculatedAt: new Date().toISOString(),
+    };
+
+    return successResponse(analysisData);
+
+  } catch (error) {
+    logError(error, {
+      context: 'GET /api/transits/saturn/sadesati',
+      params: Object.fromEntries(new URL(req.url).searchParams),
+    });
+
+    return NextResponse.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to calculate Saturn transits',
+      },
+      { status: 500 }
     );
   }
+}
 
-  // Validate numeric parameter
-  const moonLongNum = parseFloat(moonLongitude);
-  if (isNaN(moonLongNum)) {
-    throw validationError("moonLongitude must be a valid number");
-  }
-
-  if (moonLongNum < 0 || moonLongNum >= 360) {
-    throw validationError("moonLongitude must be between 0 and 360");
-  }
-
-  // Validate birth date
-  const birthDate = new Date(birthDateUtc);
-  if (isNaN(birthDate.getTime())) {
-    throw validationError("birthDateUtc must be a valid ISO date string");
-  }
-
-  const currentDate = new Date();
-
-  // Calculate both Sade Sati and Dhaiya
-  let sadeSatiPeriods, dhaiyaPeriods;
-  try {
-    [sadeSatiPeriods, dhaiyaPeriods] = await Promise.all([
-      calculateLifetimeSadeSati(moonLongNum, birthDate, currentDate),
-      calculateLifetimeDhaiya(moonLongNum, birthDate, currentDate)
-    ]);
-  } catch (error) {
-    logError("Saturn transit calculation failed", error, {
-      moonLongitude: moonLongNum,
-      birthDateUtc
-    });
-    throw error;
-  }
-
-  // Find current periods
-  const currentSadeSati = sadeSatiPeriods.find(p => 
-    currentDate >= p.startDate && currentDate <= p.endDate
-  );
-
-  const currentDhaiya = dhaiyaPeriods.find(p =>
-    currentDate >= p.startDate && currentDate <= p.endDate
-  );
-
-  return successResponse({
-    sadeSati: {
-      current: {
-        isActive: !!currentSadeSati,
-        period: currentSadeSati || null
-      },
-      allPeriods: sadeSatiPeriods
-    },
-    dhaiya: {
-      current: {
-        isActive: !!currentDhaiya,
-        period: currentDhaiya || null
-      },
-      allPeriods: dhaiyaPeriods
-    },
-    calculatedAt: new Date().toISOString()
-  });
-});
+export const GET = withErrorHandling(handler);
