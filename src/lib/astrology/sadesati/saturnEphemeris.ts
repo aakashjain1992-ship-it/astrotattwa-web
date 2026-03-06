@@ -83,70 +83,90 @@ function angleDiff(a: number, b: number): number {
 }
 
 /**
- * Find the date Saturn crosses a specific ecliptic degree while moving FORWARD
- * (i.e. the first forward crossing within [startDate, endDate]).
+ * Find the date Saturn makes its first FORWARD crossing of targetDegree
+ * within [startDate, endDate].
  *
- * Algorithm:
- *  1. Coarse scan every SCAN_STEP_DAYS — detect when sign of angleDiff flips
- *     from negative→positive (meaning Saturn passed the target going forward).
- *  2. Narrow binary search on the detected 10-day window.
+ * Three-phase approach:
+ *   1. 30-day coarse scan  — locates the ~30-day window (max ~365 calls/30yr window)
+ *   2. 10-day fine scan    — narrows to ~10-day bracket (~3 calls)
+ *   3. Binary search       — minute-level precision (~50 calls)
  *
- * Handles:
- *  - Retrograde periods (only forward crossings are detected)
- *  - Pisces→Aries 360°/0° wrap-around
- *
- * Throws if no crossing is found within the window.
+ * Total: ~418 ephemeris calls per ingress vs 10-day-only scan's ~1095.
+ * Handles retrograde and Pisces→Aries wrap-around correctly.
  */
 async function findForwardCrossing(
   targetDegree: number,
   startDate: Date,
   endDate: Date,
 ): Promise<Date> {
-  const SCAN_STEP_MS  = 10 * 86400000; // 10 days coarse scan
-  const MAX_ITER      = 50;             // binary search iterations
+  const COARSE_MS = 30 * 86400000; // 30-day coarse scan
+  const FINE_MS   = 10 * 86400000; // 10-day fine scan
+  const MAX_ITER  = 50;             // binary search iterations
 
+  // ── Phase 1: 30-day coarse scan to find the crossing window ───────────────
   let prevPos: SaturnPosition | null = null;
   let prevTime = startDate.getTime();
+  let coarseLo = -1;
+  let coarseHi = -1;
 
-  let t = startDate.getTime();
-  while (t <= endDate.getTime()) {
+  for (let t = startDate.getTime(); t <= endDate.getTime(); t += COARSE_MS) {
     const pos = await calculateSaturnAtDate(new Date(t));
-
     if (prevPos !== null) {
       const dPrev = angleDiff(prevPos.longitude, targetDegree);
       const dCurr = angleDiff(pos.longitude,     targetDegree);
-
-      // Forward crossing: went from behind (negative diff) to ahead (positive diff)
-      // AND both speeds are positive (Saturn moving direct at crossing)
       if (dPrev < 0 && dCurr >= 0) {
-        // Binary search this 10-day window
-        let lo = prevTime;
-        let hi = t;
-        for (let i = 0; i < MAX_ITER; i++) {
-          if (hi - lo < 60000) break; // 1-minute precision
-          const mid    = Math.floor((lo + hi) / 2);
-          const midPos = await calculateSaturnAtDate(new Date(mid));
-          if (angleDiff(midPos.longitude, targetDegree) < 0) {
-            lo = mid;
-          } else {
-            hi = mid;
-          }
-        }
-        return new Date(Math.floor((lo + hi) / 2));
+        coarseLo = prevTime;
+        coarseHi = t;
+        break;
       }
     }
-
     prevPos  = pos;
     prevTime = t;
-    t += SCAN_STEP_MS;
   }
 
-  throw new Error(
-    `No forward crossing of ${targetDegree}° found between ` +
-    `${startDate.toISOString()} and ${endDate.toISOString()}`
-  );
-}
+  if (coarseLo < 0) {
+    throw new Error(
+      `No forward crossing of ${targetDegree}\u00b0 found between ` +
+      `${startDate.toISOString()} and ${endDate.toISOString()}`
+    );
+  }
 
+  // ── Phase 2: 10-day fine scan within the 30-day coarse window ─────────────
+  let fineLo = coarseLo;
+  let fineHi = coarseHi;
+  prevPos  = null;
+  prevTime = coarseLo;
+
+  for (let t = coarseLo; t <= coarseHi; t += FINE_MS) {
+    const pos = await calculateSaturnAtDate(new Date(t));
+    if (prevPos !== null) {
+      const dPrev = angleDiff(prevPos.longitude, targetDegree);
+      const dCurr = angleDiff(pos.longitude,     targetDegree);
+      if (dPrev < 0 && dCurr >= 0) {
+        fineLo = prevTime;
+        fineHi = t;
+        break;
+      }
+    }
+    prevPos  = pos;
+    prevTime = t;
+  }
+
+  // ── Phase 3: binary search for minute-level precision ─────────────────────
+  let lo = fineLo;
+  let hi = fineHi;
+  for (let i = 0; i < MAX_ITER; i++) {
+    if (hi - lo < 60000) break;
+    const mid    = Math.floor((lo + hi) / 2);
+    const midPos = await calculateSaturnAtDate(new Date(mid));
+    if (angleDiff(midPos.longitude, targetDegree) < 0) {
+      lo = mid;
+    } else {
+      hi = mid;
+    }
+  }
+  return new Date(Math.floor((lo + hi) / 2));
+}
 // ─── Sign ingress calculator ──────────────────────────────────────────────────
 
 /**
@@ -164,14 +184,14 @@ export async function calculateSaturnIngress(
   const entryDegree = (targetSign - 1) * 30;       // 0° of sign
   const exitDegree  = (targetSign % 12) * 30;       // 0° of next sign (handles Pisces→Aries as 0°)
 
-  // Search window: start 60 days before the approximate date, end 4 years after
-  const searchStart = new Date(approximateStartDate.getTime() - 60  * 86400000);
-  const searchEnd   = new Date(approximateStartDate.getTime() + 1460 * 86400000); // 4 years
+  // Search window: 3 years back to 30 years forward — covers one full Saturn orbit (29.5 yrs)
+  const searchStart = new Date(approximateStartDate.getTime() - 3 * 365.25 * 86400000);
+  const searchEnd   = new Date(approximateStartDate.getTime() + 30 * 365.25 * 86400000);
 
   const entryDate = await findForwardCrossing(entryDegree, searchStart, searchEnd);
 
-  // Exit is always after entry; search up to 4 years after entry
-  const exitSearchEnd = new Date(entryDate.getTime() + 1460 * 86400000);
+  // Exit: up to 5 years after entry (Saturn spends ~2.5 years per sign)
+  const exitSearchEnd = new Date(entryDate.getTime() + 5 * 365.25 * 86400000);
   const exitDate      = await findForwardCrossing(exitDegree, entryDate, exitSearchEnd);
 
   const durationDays = Math.floor(
