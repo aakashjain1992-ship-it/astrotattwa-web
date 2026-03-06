@@ -335,9 +335,14 @@ export function DashaNavigator({
   const selectedPratyantar = navigationPath[2];
 
   // Find the selected mahadasha data to get date range
-  const findMahadashaData = useCallback((planet: string) => {
-    return normalizedDashaData.allMahadashas?.find(m => m.planet === planet);
-  }, [normalizedDashaData.allMahadashas]);
+ const findMahadashaData = useCallback(
+  (planet: string) => {
+    // Use fetched data if available, otherwise fall back to props
+    const data = fetchedMahadashas || normalizedDashaData.allMahadashas;
+    return data?.find(m => m.planet === planet);
+  },
+  [fetchedMahadashas, normalizedDashaData.allMahadashas]
+);
 
   // Find antardasha data
   const findAntardashaData = useCallback((planet: string) => {
