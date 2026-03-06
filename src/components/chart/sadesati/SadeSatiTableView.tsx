@@ -589,12 +589,10 @@ const EVENT_ORDER: Record<string, number> = {
 function CycleBlock({ cycle, defaultOpen }: { cycle: any; defaultOpen: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
 
-  const events: any[] = [...(cycle.events ?? [])].sort((a: any, b: any) => {
-    const oa = EVENT_ORDER[a.type] ?? 99;
-    const ob = EVENT_ORDER[b.type] ?? 99;
-    if (oa !== ob) return oa - ob;
-    return new Date(a.startDate).getTime() - new Date(b.startDate).getTime();
-  });
+  // Sort purely chronologically within cycle
+  const events: any[] = [...(cycle.events ?? [])].sort((a: any, b: any) =>
+    new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
+  );
 
   if (!events.length) return null;
 
@@ -704,17 +702,23 @@ function SaturnCyclesTable({
     );
   }
 
+  const birthMs = birthDate.getTime();
+
   return (
     <div className="pt-2 space-y-3">
       {saturnCycles.map((cycle: any) => {
-        if (!cycle.events?.length) return null;
+        // Filter out events that ended before birth date
+        const filteredEvents = (cycle.events ?? []).filter(
+          (e: any) => new Date(e.endDate).getTime() >= birthMs
+        );
+        if (!filteredEvents.length) return null;
 
-        // Current cycle is open by default; past/future cycles are collapsed
-        const hasCurrent = cycle.events.some((e: any) => e.status === 'current');
+        const filteredCycle = { ...cycle, events: filteredEvents };
+        const hasCurrent = filteredEvents.some((e: any) => e.status === 'current');
         return (
           <CycleBlock
             key={cycle.cycleNumber}
-            cycle={cycle}
+            cycle={filteredCycle}
             defaultOpen={hasCurrent}
           />
         );
