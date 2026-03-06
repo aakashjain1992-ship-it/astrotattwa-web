@@ -9,8 +9,8 @@
  * @file SadeSatiTableView.tsx
  * @version 1.1.0
  */
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';  
+import { ..., Loader2 } from 'lucide-react'; 
 import { Circle, ChevronDown, ChevronRight, Shield, TrendingUp, Zap, Star } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -27,8 +27,9 @@ import { PHASE_EFFECTS, PHASE_REMEDIES } from '@/lib/astrology/sadesati/constant
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 interface EnhancedSadeSatiViewProps {
-  analysis: EnhancedSaturnTransitAnalysis;
+  analysis?: EnhancedSaturnTransitAnalysis; 
   birthDate: Date;
+  moonLongitude?: number; 
 }
 
 type ActiveTab = 'analysis' | 'phases' | 'dhaiya' | 'timeline';
@@ -81,6 +82,39 @@ const OUTCOME_LABELS: Record<string, { label: string; icon: string }> = {
 };
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
+
+
+/**
+ * Convert date strings in API response back to Date objects
+ */
+function convertDates(obj: any): any {
+  if (!obj) return obj;
+  
+  if (Array.isArray(obj)) {
+    return obj.map(item => convertDates(item));
+  }
+  
+  if (typeof obj === 'object') {
+    const result: any = {};
+    
+    for (const key in obj) {
+      const value = obj[key];
+      
+      // Convert date strings to Date objects
+      if (key === 'startDate' || key === 'endDate' || key === 'calculatedAt' || key === 'start' || key === 'end') {
+        result[key] = typeof value === 'string' ? new Date(value) : value;
+      } else if (typeof value === 'object') {
+        result[key] = convertDates(value);
+      } else {
+        result[key] = value;
+      }
+    }
+    
+    return result;
+  }
+  
+  return obj;
+}
 
 function Section({
   title,
@@ -515,9 +549,122 @@ function TimelineEntry({
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export function SadeSatiTableView({ analysis, birthDate }: EnhancedSadeSatiViewProps) {
+export function SadeSatiTableView({ analysis, birthDate, moonLongitude }: EnhancedSadeSatiViewProps) {
   const [activeTab, setActiveTab] = useState<ActiveTab>('analysis');
-  const { sadeSati, dhaiya, summary, currentSaturn } = analysis;
+
+  const [fetchedAnalysis, setFetchedAnalysis] = useState<EnhancedSaturnTransitAnalysis | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+
+  useEffect(() => {
+    console.log('🔍 SadeSati useEffect triggered');
+    console.log('📊 analysis prop:', analysis);
+    console.log('🌙 moonLongitude:', moonLongitude);
+    
+    // If analysis provided via props AND has complete valid data, use it
+    if (
+      analysis && 
+      analysis.sadeSati && 
+      analysis.dhaiya && 
+      analysis.summary &&
+      analysis.currentSaturn
+    ) {
+      console.log('✅ Using complete analysis from props');
+      setFetchedAnalysis(analysis);
+      setIsLoading(false);
+      return;
+    }
+
+    // If analysis exists but incomplete, log and continue to fetch
+    if (analysis) {
+      console.log('⚠️ Incomplete analysis prop, will fetch from API');
+    }
+
+    // Otherwise fetch from API
+    const fetchSaturnTransits = async () => {
+      if (!moonLongitude) {
+        setError('Moon longitude not provided');
+        setIsLoading(false);
+        return;
+      }
+
+      console.log('🚀 Starting Saturn transit fetch...');
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const params = new URLSearchParams({
+          moonLongitude: moonLongitude.toString(),
+          birthDateUtc: birthDate.toISOString(),
+        });
+
+        console.log('📡 Calling API:', `/api/transits/saturn/sadesati?${params}`);
+
+        const response = await fetch(`/api/transits/saturn/sadesati?${params}`);
+        const result = await response.json();
+
+        console.log('📥 API response:', result);
+
+        if (result.success && result.data) {
+          // Convert date strings back to Date objects
+          const processedData = convertDates(result.data);
+          console.log('✅ Data processed successfully');
+          setFetchedAnalysis(processedData);
+        } else {
+          throw new Error(result.error || 'Failed to fetch Saturn transits');
+        }
+      } catch (err) {
+        console.error('❌ Error fetching Saturn transits:', err);
+        setError('Failed to load Saturn transit analysis');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchSaturnTransits();
+  }, []); // Empty array - only fetch once on mount
+
+  // Use fetched data or props data
+  const activeAnalysis = fetchedAnalysis || analysis;
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+          <p className="text-sm text-muted-foreground">Loading Saturn transit analysis...</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center justify-center py-12">
+          <p className="text-sm text-destructive mb-2">⚠️ {error}</p>
+          <p className="text-xs text-muted-foreground">Please refresh the page to try again.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // No data state
+  if (!activeAnalysis) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center justify-center py-12">
+          <p className="text-sm text-muted-foreground">No Saturn transit data available.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  
+  const { sadeSati, dhaiya, summary, currentSaturn } = activeAnalysis;
   const { current } = sadeSati;
 
   // Active Sade Sati period (null if not in Sade Sati)

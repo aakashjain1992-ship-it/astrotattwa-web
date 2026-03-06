@@ -712,6 +712,7 @@ export default function ChartClient() {
       <SadeSatiTableView 
         analysis={chartData.saturnTransits}
         birthDate={new Date(chartData.calculated.localDateTime)}
+         moonLongitude={chartData.planets.Moon.longitude}
       />
     ) : (
       <div className="text-center py-12">
