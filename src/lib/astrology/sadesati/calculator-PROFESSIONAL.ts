@@ -86,13 +86,13 @@ function toDate(d: Date | string | undefined): Date {
 async function getAllIngressesForSign(
   sign: number,
   fromDate: Date,
-  toDate: Date
+  endDate: Date
 ): Promise<any[]> {
   const results: any[] = [];
   let cursor = new Date(fromDate.getTime());
 
   for (let i = 0; i < MAX_INGRESS_ITERS; i++) {
-    if (cursor >= toDate) break;
+    if (cursor >= endDate) break;
     try {
       const raw = await calculateSaturnIngress(sign, cursor);
       if (!raw?.entryDate) break;
@@ -103,12 +103,13 @@ async function getAllIngressesForSign(
         exitDate:  toDate(raw.exitDate),
       };
 
-      if (ingress.entryDate >= toDate) break;
+      if (ingress.entryDate >= endDate) break;
       results.push(ingress);
 
       // Jump past this transit to find the next one
       cursor = new Date(ingress.exitDate.getTime() + INGRESS_BUFFER_DAYS * 86400000);
-    } catch {
+    } catch (err) {
+      console.error(`[getAllIngressesForSign] sign=${sign} cursor=${cursor.toISOString()} error:`, err)
       break;
     }
   }
