@@ -167,6 +167,50 @@ async function findForwardCrossing(
   }
   return new Date(Math.floor((lo + hi) / 2));
 }
+/**
+ * Like findForwardCrossing but uses 10-day steps (no coarse phase).
+ * Used for exit crossings where the window is short (≤5 years = 183 steps).
+ * Avoids the 30-day coarse scan missing a crossing shorter than one step.
+ */
+async function findForwardCrossingFine(
+  targetDegree: number,
+  startDate: Date,
+  endDate: Date,
+): Promise<Date> {
+  const STEP_MS  = 10 * 86400000;
+  const MAX_ITER = 50;
+
+  let prevPos: SaturnPosition | null = null;
+  let prevTime = startDate.getTime();
+
+  for (let t = startDate.getTime(); t <= endDate.getTime(); t += STEP_MS) {
+    const pos = await calculateSaturnAtDate(new Date(t));
+    if (prevPos !== null) {
+      const dPrev = angleDiff(prevPos.longitude, targetDegree);
+      const dCurr = angleDiff(pos.longitude,     targetDegree);
+      if (dPrev < 0 && dCurr >= 0) {
+        let lo = prevTime, hi = t;
+        for (let i = 0; i < MAX_ITER; i++) {
+          if (hi - lo < 60000) break;
+          const mid    = Math.floor((lo + hi) / 2);
+          const midPos = await calculateSaturnAtDate(new Date(mid));
+          if (angleDiff(midPos.longitude, targetDegree) < 0) lo = mid;
+          else hi = mid;
+        }
+        return new Date(Math.floor((lo + hi) / 2));
+      }
+    }
+    prevPos  = pos;
+    prevTime = t;
+  }
+
+  throw new Error(
+    `No forward crossing of ${targetDegree}\u00b0 found between ` +
+    `${startDate.toISOString()} and ${endDate.toISOString()}`
+  );
+}
+
+
 // ─── Sign ingress calculator ──────────────────────────────────────────────────
 
 /**
@@ -192,9 +236,10 @@ export async function calculateSaturnIngress(
 
   const entryDate = await findForwardCrossing(entryDegree, searchStart, searchEnd);
 
-  // Exit: up to 5 years after entry (Saturn spends ~2.5 years per sign)
+  // Exit: Saturn spends 2-3 years per sign. Use fine scan (10-day steps) since
+  // the window is small — 30-day coarse scan can miss short spans like Leo (30°).
   const exitSearchEnd = new Date(entryDate.getTime() + 5 * 365.25 * 86400000);
-  const exitDate      = await findForwardCrossing(exitDegree, entryDate, exitSearchEnd);
+  const exitDate      = await findForwardCrossingFine(exitDegree, entryDate, exitSearchEnd);
 
   const durationDays = Math.floor(
     (exitDate.getTime() - entryDate.getTime()) / 86400000,
