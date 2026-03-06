@@ -7,7 +7,7 @@
  * Consumes EnhancedSaturnTransitAnalysis from calculator-PROFESSIONAL.ts
  *
  * @file SadeSatiTableView.tsx
- * @version 1.1.0
+ * @version 1.2.0 - COMPLETE with full chart data
  */
 import { useState, useEffect } from 'react';  
 import { Circle, ChevronDown, ChevronRight, Shield, TrendingUp, Zap, Star, Loader2 } from 'lucide-react';
@@ -21,6 +21,7 @@ import type {
   DashaActivation,
 } from '@/lib/astrology/sadesati/types-enhanced';
 import type { StrengthAssessment } from '@/lib/astrology/sadesati/strengthAnalyzer';
+import type { PlanetData, AscendantData } from '@/types/astrology';  // ✅ ADDED
 import { PHASE_EFFECTS, PHASE_REMEDIES } from '@/lib/astrology/sadesati/constants';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -28,9 +29,9 @@ import { PHASE_EFFECTS, PHASE_REMEDIES } from '@/lib/astrology/sadesati/constant
 interface EnhancedSadeSatiViewProps {
   analysis?: EnhancedSaturnTransitAnalysis; 
   birthDate: Date;
-  moonLongitude?: number; 
-  ascendant?: AscendantData;             // Real ascendant
-  dashaInfo?: any;                       // Dasha data
+  planets?: Record<string, PlanetData>;  // ✅ FIXED - replaced moonLongitude
+  ascendant?: AscendantData;
+  dashaInfo?: any;
 }
 
 type ActiveTab = 'analysis' | 'phases' | 'dhaiya' | 'timeline';
@@ -550,7 +551,13 @@ function TimelineEntry({
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export function SadeSatiTableView({ analysis, birthDate, moonLongitude }: EnhancedSadeSatiViewProps) {
+export function SadeSatiTableView({ 
+  analysis, 
+  birthDate, 
+  planets,      // ✅ FIXED - added to destructuring
+  ascendant,    // ✅ FIXED - added to destructuring
+  dashaInfo     // ✅ FIXED - added to destructuring
+}: EnhancedSadeSatiViewProps) {
   const [activeTab, setActiveTab] = useState<ActiveTab>('analysis');
 
   const [fetchedAnalysis, setFetchedAnalysis] = useState<EnhancedSaturnTransitAnalysis | null>(null);
@@ -639,7 +646,7 @@ export function SadeSatiTableView({ analysis, birthDate, moonLongitude }: Enhanc
   };
 
   fetchSaturnTransits();
-}, []); 
+}, []); // Empty dependency array - only fetch once on mount
 
   // Use fetched data or props data
   const activeAnalysis = fetchedAnalysis || analysis;
@@ -719,7 +726,7 @@ export function SadeSatiTableView({ analysis, birthDate, moonLongitude }: Enhanc
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
-            <CardTitle> Saturn Transit Analysis </CardTitle>
+            <CardTitle>Saturn Transit Analysis</CardTitle>
           </div>
 
           <div
