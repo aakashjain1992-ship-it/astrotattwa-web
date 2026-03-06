@@ -1,53 +1,73 @@
 /**
- * GET /api/transits/saturn/sadesati
+ * POST /api/transits/saturn/sadesati
  * 
- * Returns complete Sade Sati and Dhaiya analysis for lifetime.
- * Lazy-loaded by SadeSatiTableView component on mount.
+ * COMPLETE Saturn transit analysis with ALL factors from specification
  * 
- * Response: ~50KB (full lifetime analysis with all periods)
+ * Receives: Full chart data (planets, ascendant, dasha)
+ * Returns: Professional-grade Sade Sati + Dhaiya analysis
+ * 
+ * Response: ~50KB
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { calculateSadeSatiFromMoon } from '@/lib/astrology/sadesati/saturnWrappers'; // ✅ NEW
+import { NextRequest } from 'next/server';
+import { calculateProfessionalSaturnAnalysis } from '@/lib/astrology/sadesati/calculator-PROFESSIONAL';
 import { successResponse, withErrorHandling, validationError } from '@/lib/api/errorHandling';
 import { rateLimit, RateLimitPresets } from '@/lib/api/rateLimit';
 import { logError } from '@/lib/monitoring/errorLogger';
+import type { PlanetData, AscendantData } from '@/types/astrology';
 
-async function handler(req: NextRequest) {
-  // Apply rate limiting
-  const rateLimitResult = await rateLimit(req, RateLimitPresets.standard);
-  if (!rateLimitResult.success) {
-    return rateLimitResult.response;
+export const POST = withErrorHandling(async (req: NextRequest) => {
+  await rateLimit(req, RateLimitPresets.standard);
+
+  const body = await req.json();
+  
+  // Extract all required data
+  const { 
+    planets,      // ALL planets (not just Moon)
+    ascendant,    // Real ascendant (not placeholder)
+    birthDateUtc, 
+    dashaInfo     // Current dasha
+  } = body;
+
+  // Validation
+  if (!planets || !planets.Moon || !planets.Saturn) {
+    return validationError('Missing required planet data (Moon, Saturn)');
+  }
+
+  if (!ascendant || !ascendant.signNumber) {
+    return validationError('Missing ascendant data');
+  }
+
+  if (!birthDateUtc) {
+    return validationError('Missing birthDateUtc');
   }
 
   try {
-    const { searchParams } = new URL(req.url);
-    
-    // Extract query parameters
-    const moonLongitude = searchParams.get('moonLongitude');
-    const birthDateUtc = searchParams.get('birthDateUtc');
-
-    // Validation
-    if (!moonLongitude || !birthDateUtc) {
-      return validationError('Missing required parameters: moonLongitude, birthDateUtc');
-    }
-
-    // Validate moonLongitude range
-    const moonLong = parseFloat(moonLongitude);
-    if (isNaN(moonLong) || moonLong < 0 || moonLong >= 360) {
-      return validationError('moonLongitude must be between 0 and 360');
-    }
-
-    // Validate date
     const birthDate = new Date(birthDateUtc);
     if (isNaN(birthDate.getTime())) {
       return validationError('Invalid birthDateUtc format');
     }
 
-    // Calculate full Saturn analysis using wrapper
-    const result = await calculateSadeSatiFromMoon(moonLong, birthDate);
+    // Call professional calculator with COMPLETE data
+    const result = await calculateProfessionalSaturnAnalysis(
+      planets.Moon as PlanetData,
+      planets.Saturn as PlanetData,
+      planets as Record<string, PlanetData>,  // ALL planets
+      ascendant as AscendantData,              // Real ascendant
+      birthDate,
+      dashaInfo,  // Dasha info for activation analysis
+      {
+        // Enable ALL features from specification
+        includeDashaAnalysis: !!dashaInfo,      // YES - we have dasha
+        calculatePeakWindows: true,              // YES - degree-based peaks
+        detectRetrogradeCycles: true,            // YES - retrograde 3-touch pattern
+        findNakshatraCrossings: true,            // YES - nakshatra triggers
+        analyzeJupiterProtection: !!planets.Jupiter, // YES - if Jupiter exists
+        includeDetailedPhases: true,             // YES - internal phases
+      }
+    );
 
-    // Build summary
+    // Build complete response matching specification
     const isSadeSatiActive = result.sadeSati.current && 'isActive' in result.sadeSati.current
       ? result.sadeSati.current.isActive !== false
       : false;
@@ -65,10 +85,8 @@ async function handler(req: NextRequest) {
       currentStatus = 'clear';
     }
 
-    // Collect top recommendations from the result
     const topRecommendations: string[] = result.summary?.topRecommendations || [];
 
-    // Build complete response
     const analysisData = {
       sadeSati: {
         past: result.sadeSati.past || [],
@@ -97,18 +115,9 @@ async function handler(req: NextRequest) {
 
   } catch (error) {
     logError(error, {
-      context: 'GET /api/transits/saturn/sadesati',
-      params: Object.fromEntries(new URL(req.url).searchParams),
+      context: 'POST /api/transits/saturn/sadesati',
+      bodyKeys: Object.keys(body),
     });
-
-    return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to calculate Saturn transits',
-      },
-      { status: 500 }
-    );
+    throw error;
   }
-}
-
-export const GET = withErrorHandling(handler);
+});
