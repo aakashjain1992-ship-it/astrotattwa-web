@@ -553,21 +553,18 @@ function TimelineEntry({
 
 // ─── Saturn Cycles Table (Timeline Tab) ──────────────────────────────────────
 
-/** Format a date as DD/MM/YYYY to match reference image */
+/** Format a date as "Dec 15, 1990" */
 function fmtDMY(d: any): string {
   const dt = d instanceof Date ? d : new Date(d);
   if (isNaN(dt.getTime())) return '—';
-  const dd   = String(dt.getDate()).padStart(2, '0');
-  const mm   = String(dt.getMonth() + 1).padStart(2, '0');
-  const yyyy = dt.getFullYear();
-  return `${dd}/${mm}/${yyyy}`;
+  return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+/** Format a pass as "Dec 15, 1990 – Mar 5, 1993" */
+function fmtPass(pass: { start: Date | string; end: Date | string } | undefined): string {
+  if (!pass) return '—';
+  return `${fmtDMY(pass.start)} – ${fmtDMY(pass.end)}`;
 }
 
-/** Format a pass as "DD/MM/YYYY-DD/MM/YYYY" */
-function fmtPass(pass: { start: Date | string; end: Date | string } | undefined): string {
-  if (!pass) return '—————————————————';
-  return `${fmtDMY(pass.start)}-${fmtDMY(pass.end)}`;
-}
 
 const CYCLE_LABELS: Record<number, string> = {
   1: 'First Cycle:',
@@ -684,8 +681,8 @@ function CycleBlock({ cycle, defaultOpen }: { cycle: any; defaultOpen: boolean }
                   >
                     {/* Event label */}
                     <td className={cn(
-                      "py-2.5 pl-4 pr-3 font-medium whitespace-nowrap min-w-[200px]",
-                      ev.status === 'current'  ? 'text-amber-700 dark:text-amber-400' :
+                      "py-2.5 pl-4 pr-3 font-semibold whitespace-nowrap min-w-[200px]",
+                      ev.status === 'current'  ? 'text-foreground' :
                       ev.status === 'past'     ? 'text-muted-foreground' :
                                                  'text-foreground'
                     )}>
@@ -698,7 +695,7 @@ function CycleBlock({ cycle, defaultOpen }: { cycle: any; defaultOpen: boolean }
                     {/* Rashi column */}
                     <td className={cn(
                       "py-2.5 px-2 text-xs font-medium whitespace-nowrap",
-                      ev.status === 'current'  ? 'text-amber-600 dark:text-amber-400' :
+                      ev.status === 'current'  ? 'text-foreground/80' :
                       ev.status === 'past'     ? 'text-muted-foreground/60' :
                                                  'text-foreground/70'
                     )}>
@@ -712,7 +709,7 @@ function CycleBlock({ cycle, defaultOpen }: { cycle: any; defaultOpen: boolean }
                         className={cn(
                           'py-2.5 px-2 tabular-nums text-xs',
                           !pass                          ? 'text-muted-foreground/30' :
-                          ev.status === 'current'        ? 'text-amber-800 dark:text-amber-300' :
+                          ev.status === 'current'        ? 'text-foreground font-medium' :
                           ev.status === 'past'           ? 'text-muted-foreground/70' :
                                                            'text-foreground/80'
                         )}
