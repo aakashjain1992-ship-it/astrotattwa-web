@@ -584,6 +584,18 @@ const EVENT_ORDER: Record<string, number> = {
   ss_peak:     4,
 };
 
+/** Map internal labels to readable display names with Rising/Peak/Setting phase */
+function displayLabel(label: string): string {
+  const map: Record<string, string> = {
+    "Sadesati's 1st Dhaiya": 'Sade Sati — Rising Phase',
+    "Sadesati's 2nd Dhaiya": 'Sade Sati — Peak Phase',
+    "Sadesati's 3rd Dhaiya": 'Sade Sati — Setting Phase',
+    'Dhaiya over 4th House':  'Dhaiya — 4th House',
+    'Dhaiya over 8th House':  'Dhaiya — 8th House',
+  };
+  return map[label] ?? label;
+}
+
 // ── Single cycle block ────────────────────────────────────────────────────────
 
 function CycleBlock({ cycle, defaultOpen }: { cycle: any; defaultOpen: boolean }) {
