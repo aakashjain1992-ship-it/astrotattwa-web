@@ -86,13 +86,13 @@ function toDate(d: Date | string | undefined): Date {
 async function getAllIngressesForSign(
   sign: number,
   fromDate: Date,
-  endDate: Date
+  toDate: Date
 ): Promise<any[]> {
   const results: any[] = [];
   let cursor = new Date(fromDate.getTime());
 
   for (let i = 0; i < MAX_INGRESS_ITERS; i++) {
-    if (cursor >= endDate) break;
+    if (cursor >= toDate) break;
     try {
       const raw = await calculateSaturnIngress(sign, cursor);
       if (!raw?.entryDate) break;
@@ -103,13 +103,12 @@ async function getAllIngressesForSign(
         exitDate:  toDate(raw.exitDate),
       };
 
-      if (ingress.entryDate >= endDate) break;
+      if (ingress.entryDate >= toDate) break;
       results.push(ingress);
 
       // Jump past this transit to find the next one
       cursor = new Date(ingress.exitDate.getTime() + INGRESS_BUFFER_DAYS * 86400000);
-    } catch (err) {
-      console.error(`[getAllIngressesForSign] sign=${sign} cursor=${cursor.toISOString()} error:`, err)
+    } catch {
       break;
     }
   }
@@ -164,42 +163,38 @@ function buildRetrogradePattern(ingress: any): {
 
 /**
  * Build the date-range "passes" array — the 3 columns shown in the reference table.
- * Uses retrograde station dates when available; falls back to equal-segment split.
  *
- * TODO: Replace with exact sign-boundary crossing dates once saturnEphemeris
- * exposes them (currently stations are recorded but boundary dates are not).
+ * Uses ingress.subEntries (actual sign boundary crossing dates detected by
+ * saturnEphemeris.detectSubEntries). Each sub-entry starts a pass; the pass ends
+ * at the next sub-entry (or at exitDate for the last pass).
+ *
+ * subEntries: [firstEntry, reEntry?, finalEntry?]
+ * pass[0]: firstEntry → reEntry (or exitDate if only 1 entry)
+ * pass[1]: reEntry → finalEntry (or exitDate if only 2 entries)
+ * pass[2]: finalEntry → exitDate
  */
 function buildPasses(ingress: any): Array<{ start: Date; end: Date }> {
-  const { touchCount } = buildRetrogradePattern(ingress);
+  const exitDate = ingress.exitDate instanceof Date ? ingress.exitDate : new Date(ingress.exitDate);
+
+  // Use actual sub-entry dates from ephemeris if available
+  const subEntries: Date[] = Array.isArray(ingress.subEntries)
+    ? ingress.subEntries.map((d: any) => d instanceof Date ? d : new Date(d)).filter((d: Date) => !isNaN(d.getTime()))
+    : [];
+
+  if (subEntries.length >= 2) {
+    const passes: Array<{ start: Date; end: Date }> = [];
+    for (let i = 0; i < subEntries.length; i++) {
+      passes.push({
+        start: subEntries[i],
+        end:   i + 1 < subEntries.length ? subEntries[i + 1] : exitDate,
+      });
+    }
+    return passes;
+  }
+
+  // Fallback: single pass (no retrograde re-entries detected)
   const start = ingress.entryDate instanceof Date ? ingress.entryDate : new Date(ingress.entryDate);
-  const end   = ingress.exitDate  instanceof Date ? ingress.exitDate  : new Date(ingress.exitDate);
-
-  if (touchCount <= 1) return [{ start, end }];
-
-  // Try to use actual station dates
-  const stations: Date[] = (Array.isArray(ingress.retrogradeStations)
-    ? ingress.retrogradeStations : [])
-    .map((s: any) => s?.date ? new Date(s.date) : null)
-    .filter(Boolean);
-
-  if (stations.length >= 2 && touchCount === 2) {
-    return [{ start, end: stations[0] }, { start: stations[1], end }];
-  }
-  if (stations.length >= 4 && touchCount === 3) {
-    return [
-      { start, end: stations[0] },
-      { start: stations[1], end: stations[2] },
-      { start: stations[3], end },
-    ];
-  }
-
-  // Fallback: equal segments
-  const totalMs = end.getTime() - start.getTime();
-  const segMs   = totalMs / touchCount;
-  return Array.from({ length: touchCount }, (_, i) => ({
-    start: new Date(start.getTime() + i       * segMs),
-    end:   new Date(start.getTime() + (i + 1) * segMs),
-  }));
+  return [{ start, end: exitDate }];
 }
 
 /** Standard entry/peak/exit internal phases (25%/50%/25% split) */

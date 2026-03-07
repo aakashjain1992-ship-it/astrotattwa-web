@@ -168,11 +168,14 @@ async function findForwardCrossing(
   return new Date(Math.floor((lo + hi) / 2));
 }
 /**
- * Like findForwardCrossing but uses 10-day steps (no coarse phase).
- * Used for exit crossings where the window is short (≤5 years = 183 steps).
- * Avoids the 30-day coarse scan missing a crossing shorter than one step.
+ * Find the LAST forward crossing of targetDegree within [startDate, endDate].
+ * Used for sign EXIT crossings — Saturn may briefly touch the exit degree during
+ * retrograde then pull back. We want the final definitive forward crossing.
+ *
+ * Scans the full window in 10-day steps, records ALL forward crossings, returns
+ * the last one (= the true exit when Saturn leaves the sign permanently).
  */
-async function findForwardCrossingFine(
+async function findLastForwardCrossing(
   targetDegree: number,
   startDate: Date,
   endDate: Date,
@@ -183,12 +186,16 @@ async function findForwardCrossingFine(
   let prevPos: SaturnPosition | null = null;
   let prevTime = startDate.getTime();
 
+  // Collect ALL forward crossings
+  const crossings: number[] = [];
+
   for (let t = startDate.getTime(); t <= endDate.getTime(); t += STEP_MS) {
     const pos = await calculateSaturnAtDate(new Date(t));
     if (prevPos !== null) {
       const dPrev = angleDiff(prevPos.longitude, targetDegree);
       const dCurr = angleDiff(pos.longitude,     targetDegree);
       if (dPrev < 0 && dCurr >= 0) {
+        // Binary search this 10-day window for precision
         let lo = prevTime, hi = t;
         for (let i = 0; i < MAX_ITER; i++) {
           if (hi - lo < 60000) break;
@@ -197,19 +204,72 @@ async function findForwardCrossingFine(
           if (angleDiff(midPos.longitude, targetDegree) < 0) lo = mid;
           else hi = mid;
         }
-        return new Date(Math.floor((lo + hi) / 2));
+        crossings.push(Math.floor((lo + hi) / 2));
       }
     }
     prevPos  = pos;
     prevTime = t;
   }
 
-  throw new Error(
-    `No forward crossing of ${targetDegree}\u00b0 found between ` +
-    `${startDate.toISOString()} and ${endDate.toISOString()}`
-  );
+  if (crossings.length === 0) {
+    throw new Error(
+      `No forward crossing of ${targetDegree}\u00b0 found between ` +
+      `${startDate.toISOString()} and ${endDate.toISOString()}`
+    );
+  }
+
+  // Return the LAST crossing = true sign exit
+  return new Date(crossings[crossings.length - 1]);
 }
 
+
+/**
+ * Detect all forward crossings of entryDegree within [entryDate, exitDate].
+ * Returns the actual sign re-entry dates — used for the pass columns in the
+ * reference table (1st Entry, Re-entry, Final Entry).
+ *
+ * Saturn may cross the sign boundary 1-3 times total during a transit due to
+ * retrograde motion. Each crossing is one "pass" column.
+ */
+async function detectSubEntries(
+  entryDegree: number,
+  entryDate: Date,
+  exitDate: Date,
+): Promise<Date[]> {
+  // Start slightly after entryDate to avoid immediately re-detecting the entry
+  const scanStart = new Date(entryDate.getTime() + 2 * 86400000);
+  const STEP_MS   = 10 * 86400000;
+  const MAX_ITER  = 50;
+
+  const entries: Date[] = [entryDate]; // first entry is always entryDate
+
+  let prevPos: SaturnPosition | null = null;
+  let prevTime = scanStart.getTime();
+
+  for (let t = scanStart.getTime(); t <= exitDate.getTime(); t += STEP_MS) {
+    const pos = await calculateSaturnAtDate(new Date(t));
+    if (prevPos !== null) {
+      const dPrev = angleDiff(prevPos.longitude, entryDegree);
+      const dCurr = angleDiff(pos.longitude,     entryDegree);
+      if (dPrev < 0 && dCurr >= 0) {
+        let lo = prevTime, hi = t;
+        for (let i = 0; i < MAX_ITER; i++) {
+          if (hi - lo < 60000) break;
+          const mid    = Math.floor((lo + hi) / 2);
+          const midPos = await calculateSaturnAtDate(new Date(mid));
+          if (angleDiff(midPos.longitude, entryDegree) < 0) lo = mid;
+          else hi = mid;
+        }
+        entries.push(new Date(Math.floor((lo + hi) / 2)));
+        if (entries.length >= 3) break; // max 3 passes
+      }
+    }
+    prevPos  = pos;
+    prevTime = t;
+  }
+
+  return entries;
+}
 
 // ─── Sign ingress calculator ──────────────────────────────────────────────────
 
@@ -239,13 +299,18 @@ export async function calculateSaturnIngress(
   // Exit: Saturn spends 2-3 years per sign. Use fine scan (10-day steps) since
   // the window is small — 30-day coarse scan can miss short spans like Leo (30°).
   const exitSearchEnd = new Date(entryDate.getTime() + 5 * 365.25 * 86400000);
-  const exitDate      = await findForwardCrossingFine(exitDegree, entryDate, exitSearchEnd);
+  const exitDate      = await findLastForwardCrossing(exitDegree, entryDate, exitSearchEnd);
 
   const durationDays = Math.floor(
     (exitDate.getTime() - entryDate.getTime()) / 86400000,
   );
 
   const retrogradeStations = await detectRetrogradeStations(entryDate, exitDate);
+
+  // Detect actual sign re-entries (all forward crossings of entryDegree within transit).
+  // subEntries[0] = first entry, [1] = re-entry after retrograde, [2] = final entry.
+  // These are the correct dates for the 3 columns shown in the reference table.
+  const subEntries = await detectSubEntries(entryDegree, entryDate, exitDate);
 
   return {
     sign:     targetSign,
@@ -254,6 +319,7 @@ export async function calculateSaturnIngress(
     exitDate,
     durationDays,
     retrogradeStations,
+    subEntries,   // actual re-entry dates for pass columns
   };
 }
 
