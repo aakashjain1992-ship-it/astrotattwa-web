@@ -22,6 +22,9 @@ import {
   findSaturnPeakWindow,
   getCurrentSaturnTransit,
 } from './saturnEphemeris';
+
+import { getSaturnTransitsFromDB } from './saturnTransitDB';
+
 import {
   analyzeMoonStrength,
   analyzeSaturnStrength,
@@ -181,15 +184,22 @@ function buildPasses(ingress: any): Array<{ start: Date; end: Date }> {
     ? ingress.subEntries.map((d: any) => d instanceof Date ? d : new Date(d)).filter((d: Date) => !isNaN(d.getTime()))
     : [];
 
+  const subExits: Date[] = Array.isArray(ingress.subExits)
+    ? ingress.subExits.map((d: any) => d instanceof Date ? d : new Date(d)).filter((d: Date) => !isNaN(d.getTime()))
+    : [];
+
+ // Use sub_exits if available and lengths match — gives correct non-overlapping ranges.
+  // e.g. Taurus pass 0: Aug 8 2029 → Oct 5 2029 (not → Apr 17 2030)
+  if (subEntries.length >= 1 && subExits.length === subEntries.length) {
+    return subEntries.map((start, i) => ({ start, end: subExits[i] }));
+  }
+
+  // Fallback for old rows without sub_exits: use next entry as end (previous behaviour)
   if (subEntries.length >= 2) {
-    const passes: Array<{ start: Date; end: Date }> = [];
-    for (let i = 0; i < subEntries.length; i++) {
-      passes.push({
-        start: subEntries[i],
-        end:   i + 1 < subEntries.length ? subEntries[i + 1] : exitDate,
-      });
-    }
-    return passes;
+    return subEntries.map((start, i) => ({
+      start,
+      end: i + 1 < subEntries.length ? subEntries[i + 1] : exitDate,
+    }));
   }
 
   // Fallback: single pass (no retrograde re-entries detected)
@@ -268,13 +278,17 @@ async function computeLifetimeTransits(
   const from = new Date(birthDate.getTime() - 10 * 365.25 * 86400000);
   const to   = new Date(birthDate.getTime() + LIFETIME_SEARCH_YEARS * 365.25 * 86400000);
 
-  const [risingIng, peakIng, settingIng, d4thIng, d8thIng] = await Promise.all([
-    getAllIngressesForSign(signs.rising,    from, to),
-    getAllIngressesForSign(signs.peak,      from, to),
-    getAllIngressesForSign(signs.setting,   from, to),
-    getAllIngressesForSign(signs.dhaiya4th, from, to),
-    getAllIngressesForSign(signs.dhaiya8th, from, to),
-  ]);
+  // Single Supabase query returns all 5 signs in one round-trip (<50ms).
+  const uniqueSigns = [...new Set([
+    signs.rising, signs.peak, signs.setting, signs.dhaiya4th, signs.dhaiya8th,
+  ])];
+  const dbTransits = await getSaturnTransitsFromDB(uniqueSigns, from, to);
+
+  const risingIng   = dbTransits.get(signs.rising)    ?? [];
+  const peakIng     = dbTransits.get(signs.peak)      ?? [];
+  const settingIng  = dbTransits.get(signs.setting)   ?? [];
+  const d4thIng     = dbTransits.get(signs.dhaiya4th) ?? [];
+  const d8thIng     = dbTransits.get(signs.dhaiya8th) ?? [];
 
   const now = currentDate;
   const allEvents: SaturnCycleEvent[] = [];
