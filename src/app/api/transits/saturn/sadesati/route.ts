@@ -15,7 +15,7 @@ import { logError } from '@/lib/monitoring/errorLogger';
 import type { PlanetData, AscendantData } from '@/types/astrology';
 
 // Saturn lifetime calculation can take 60-120s on first load (no cache yet)
-export const maxDuration = 10;
+export const maxDuration = 120;
 
 export const POST = withErrorHandling(async (req: NextRequest) => {
   await rateLimit(req, RateLimitPresets.standard);
