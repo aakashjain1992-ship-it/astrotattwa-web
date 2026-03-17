@@ -737,8 +737,6 @@ export function SadeSatiTableView({
   return (
     <Card>
       <CardContent className="pt-5 pb-6">
-        <h2 className="text-xl font-semibold text-foreground mb-4">Sade Sati</h2>
-
         {/* State 1A: Active */}
         {isActive && (
           <>
