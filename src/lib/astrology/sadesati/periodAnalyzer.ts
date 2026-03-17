@@ -506,7 +506,7 @@ async function getJupiterWindowsForPeriod(
       description = 'Jupiter does not aspect Moon or Saturn — this window has less planetary protection';
     }
 
-    // Clamp entry/exit to the period window
+    // Clamp entry/exit to the period window for display purposes
     const entryDate = row.entryDate < periodStart ? periodStart : row.entryDate;
     const exitDate  = row.exitDate  > periodEnd   ? periodEnd   : row.exitDate;
 
@@ -515,12 +515,16 @@ async function getJupiterWindowsForPeriod(
       jupiterSignName:      row.signName,
       startDate:            entryDate,
       exitDate,
+      // Store unclamped dates for use in summary sentences
+      // so "Jupiter in X from [actual entry] to [actual exit]" is always meaningful
+      _rawEntryDate:        row.entryDate,
+      _rawExitDate:         row.exitDate,
       aspectsMoon,
       aspectsSaturnTransit,
       aspectsNatalSaturn,
       protectionStrength,
       description,
-    });
+    } as any);
   }
 
   return windows;
@@ -646,22 +650,39 @@ const TYPE_LIFE_AREA_LABELS: Record<SelectedPeriod['type'], { label: string; des
   ],
 };
 
+function ordinal(n: number): string {
+  if (n === 1) return '1st';
+  if (n === 2) return '2nd';
+  if (n === 3) return '3rd';
+  return `${n}th`;
+}
+
 function deriveLifeAreas(
   type: SelectedPeriod['type'],
   saturnAspects: SaturnAspectInfo,
 ): LifeAreaItem[] {
   const items: LifeAreaItem[] = [...TYPE_LIFE_AREA_LABELS[type]];
 
-  // Add aspect-derived areas for aspected houses (limit to 2 extras max)
+  // Keywords already covered by the primary items — used to skip duplicates
+  const coveredKeywords = items
+    .map(i => i.label.toLowerCase().split(/[\s&,–]/)[0].trim());
+
+  // Add aspect-derived areas, skipping any that duplicate an existing primary area
   let extras = 0;
   for (const house of saturnAspects.aspectsHouses) {
     if (extras >= 2) break;
     const domains = HOUSE_LIFE_DOMAINS[house];
     if (!domains) continue;
+
+    // Skip if the primary keyword of this domain already appears in the list
+    const keyword = domains[0].toLowerCase().split(/[\s&,–]/)[0].trim();
+    if (coveredKeywords.some(k => k === keyword || keyword.includes(k) || k.includes(keyword))) continue;
+
     items.push({
       label:       domains[0],
-      description: `Saturn's 3rd/7th/10th aspect activates your ${house}th house — ${domains.slice(1).join(' and ').toLowerCase()} may also be in play`,
+      description: `Saturn's ${ordinal(saturnAspects.aspectsHouses.indexOf(house) === 0 ? 3 : saturnAspects.aspectsHouses.indexOf(house) === 1 ? 7 : 10)} aspect activates your ${ordinal(house)} house — ${domains.slice(1).join(' and ').toLowerCase()} may also be in play`,
     });
+    coveredKeywords.push(keyword);
     extras++;
   }
 
@@ -821,9 +842,17 @@ function generateSummary(
       `Not equally intense throughout: the sharpest window is when ${peakDasha.pratyantar.lord} Pratyantar coincides with the transit — specifically ${fmtMonYear(peakDasha.pratyantar.start)}–${fmtMonYear(peakDasha.pratyantar.end)}.`
     );
   } else if (bestJupiter && bestJupiter.protectionStrength === 'strong') {
-    const from = fmtMonYear(bestJupiter.startDate);
-    const to   = fmtMonYear(bestJupiter.exitDate);
-    sentences.push(`Jupiter provides strong protection from ${from} to ${to}, creating a notably more supported window within this period.`);
+    // Use raw (unclamped) dates so we show the full Jupiter sign tenure,
+    // not just the slice that overlaps the period start/end
+    const raw = bestJupiter as any;
+    const from = fmtMonYear(raw._rawEntryDate ?? bestJupiter.startDate);
+    const to   = fmtMonYear(raw._rawExitDate  ?? bestJupiter.exitDate);
+    // Only show the sentence if the dates are meaningfully different
+    if (from !== to) {
+      sentences.push(`Jupiter provides strong protection from ${from} to ${to}, creating a notably more supported window within this period.`);
+    } else {
+      sentences.push(`Jupiter provides strong protection during ${from}, easing some of the pressure in this window.`);
+    }
   }
 
   return sentences.join(' ');
@@ -870,19 +899,21 @@ function buildTimingWindows(
   // Find the relief window: strong Jupiter protection
   const protectedJupiter = jupiterWindows.find(w => w.protectionStrength === 'strong' || w.protectionStrength === 'moderate');
   if (protectedJupiter) {
-    const start = protectedJupiter.startDate;
-    const end   = protectedJupiter.exitDate;
-    const age1  = ageAt(start, birthDate);
-    const age2  = ageAt(end,   birthDate);
+    const rawJ = protectedJupiter as any;
+    const start = (rawJ._rawEntryDate ?? protectedJupiter.startDate) as Date;
+    const end   = (rawJ._rawExitDate  ?? protectedJupiter.exitDate)  as Date;
+    const age1  = ageAt(protectedJupiter.startDate, birthDate);
+    const age2  = ageAt(protectedJupiter.exitDate,  birthDate);
     const ageLabel = age1 === age2 ? `Age ${age1}` : `Age ${age1}–${age2}`;
-    const label = `${fmtMonYear(start)} – ${fmtMonYear(end)} · ${ageLabel}`;
-    const intensity: TimingWindow['intensity'] = vhDasha
-      ? 'pressured' // still some pressure even with Jupiter
-      : 'easing';
+    const fromStr = fmtMonYear(start);
+    const toStr   = fmtMonYear(end);
+    const label = fromStr !== toStr
+      ? `${fromStr} – ${toStr} · ${ageLabel}`
+      : `${fromStr} · ${ageLabel}`;
+    const intensity: TimingWindow['intensity'] = vhDasha ? 'pressured' : 'easing';
 
-    // Only add if this doesn't overlap the "hardest" window already shown
     const overlapsHardest = vhDasha
-      ? datesOverlap(start, end, vhDasha.pratyantar.start, vhDasha.pratyantar.end)
+      ? datesOverlap(protectedJupiter.startDate, protectedJupiter.exitDate, vhDasha.pratyantar.start, vhDasha.pratyantar.end)
       : false;
 
     if (!overlapsHardest) {
@@ -939,50 +970,62 @@ function buildGuidance(
   saturnStrength: ReturnType<typeof analyzeSaturnStrength>,
   retrogradeInfo: PeriodAnalysisResult['retrogradeInfo'],
 ): GuidanceContent {
-  // Avoid items — always include retrograde caution if applicable
-  const avoid: string[] = [];
   const avoidPeak = mostActivated[0];
 
-  if (avoidPeak) {
-    avoid.push(`Health neglect or ignoring physical symptoms during ${fmtMonYear(avoidPeak.pratyantar.start)}–${fmtMonYear(avoidPeak.pratyantar.end)}`);
-  }
+  // Avoid items — type-specific, date removed from bullet (already shown in card label)
+  const avoid: string[] = [];
+  const AVOID_BY_TYPE: Record<SelectedPeriod['type'], string[]> = {
+    ss_rising:  ['Unnecessary expenses and impulsive financial decisions', 'Isolation — stay connected with trusted people'],
+    ss_peak:    ['Health neglect or ignoring physical symptoms', 'Impulsive decisions about identity, career, or relationships'],
+    ss_setting: ['Taking on new debt or making large financial commitments', 'Conflicts over money or speech with family members'],
+    dhaiya_4th: ['Domestic disputes and property decisions made under stress', 'Neglecting the home environment or parent relationships'],
+    dhaiya_8th: ['Risky investments or sudden large financial moves', 'Ignoring health symptoms — get check-ups proactively'],
+  };
+  avoid.push(...AVOID_BY_TYPE[type]);
   if (retrogradeInfo.hasRetrograde) {
-    avoid.push('Major irreversible decisions during Saturn\'s retrograde re-entry — themes resurface for review, not resolution');
+    avoid.push("Major irreversible decisions during Saturn's retrograde re-entry — themes resurface for review, not resolution");
   }
-  avoid.push('Forcing outcomes in important relationships — Saturn\'s pressure here needs patience, not force');
 
-  // Build / opportunities
+  // Build / opportunities — type-specific
   const build: string[] = [];
+  const BUILD_BY_TYPE: Record<SelectedPeriod['type'], string[]> = {
+    ss_rising:  ['Spiritual practice and inner work — Saturn rewards this in the 12th house', 'Clearing old debts, obligations, and patterns before the peak arrives'],
+    ss_peak:    ['Discipline in health routines — habits built now create a strong foundation', 'Career structures built under pressure here tend to be durable and lasting'],
+    ss_setting: ['Financial discipline and careful budgeting — Saturn in the 2nd rewards this', 'Communicating clearly and patiently with close family'],
+    dhaiya_4th: ['Investing in the home environment — this period rewards domestic stability', 'Career discipline — what you build at work now carries Saturn\'s durability'],
+    dhaiya_8th: ['Research, investigation, and depth work — Saturn in the 8th supports this', 'Transformative change you choose is easier than change imposed on you'],
+  };
+  build.push(...BUILD_BY_TYPE[type]);
   if (saturnStrength.isYogakaraka) {
-    build.push('Discipline and hard work — Saturn as Yogakaraka converts effort into lasting results for your chart');
+    build.push('Saturn is Yogakaraka for your chart — consistent effort converts to lasting results more reliably than for others');
   }
   if (bestJupiter) {
-    build.push(`Use the ${fmtMonYear(bestJupiter.startDate)}–${fmtMonYear(bestJupiter.exitDate)} window for key career or life decisions — Jupiter provides strong backing`);
+    const raw = bestJupiter as any;
+    const from = fmtMonYear(raw._rawEntryDate ?? bestJupiter.startDate);
+    const to   = fmtMonYear(raw._rawExitDate  ?? bestJupiter.exitDate);
+    const rangeStr = from !== to ? `${from}–${to}` : from;
+    build.push(`The ${rangeStr} window has Jupiter's protection — use it for decisions with long-term consequences`);
   }
-  build.push('Structures that last — what you build under Saturn\'s pressure tends to be durable');
-  build.push('Service and spiritual practice — these amplify Saturn\'s constructive side');
 
-  // Type-specific remedies from constants
+  // Practices — type-specific remedies
   let practices: string[] = [];
-  if (type === 'ss_rising') {
-    practices = PHASE_REMEDIES.Rising.slice(0, 4);
-  } else if (type === 'ss_peak') {
-    practices = PHASE_REMEDIES.Peak.slice(0, 4);
-  } else if (type === 'ss_setting') {
-    practices = PHASE_REMEDIES.Setting.slice(0, 4);
-  } else if (type === 'dhaiya_4th') {
-    practices = DHAIYA_REMEDIES['4th'].slice(0, 4);
-  } else {
-    practices = DHAIYA_REMEDIES['8th'].slice(0, 4);
-  }
+  if (type === 'ss_rising')  practices = PHASE_REMEDIES.Rising.slice(0, 4);
+  else if (type === 'ss_peak')    practices = PHASE_REMEDIES.Peak.slice(0, 4);
+  else if (type === 'ss_setting') practices = PHASE_REMEDIES.Setting.slice(0, 4);
+  else if (type === 'dhaiya_4th') practices = DHAIYA_REMEDIES['4th'].slice(0, 4);
+  else                            practices = DHAIYA_REMEDIES['8th'].slice(0, 4);
 
-  // Window labels
   const avoidWindow = avoidPeak
     ? `${fmtMonYear(avoidPeak.pratyantar.start)}–${fmtMonYear(avoidPeak.pratyantar.end)}`
     : 'peak activation window';
 
   const buildWindow = bestJupiter
-    ? `${fmtMonYear(bestJupiter.startDate)}–${fmtMonYear(bestJupiter.exitDate)}`
+    ? (() => {
+        const raw = bestJupiter as any;
+        const from = fmtMonYear(raw._rawEntryDate ?? bestJupiter.startDate);
+        const to   = fmtMonYear(raw._rawExitDate  ?? bestJupiter.exitDate);
+        return from !== to ? `${from}–${to}` : from;
+      })()
     : 'throughout the period';
 
   return { avoid, avoidWindow, build, buildWindow, practices };

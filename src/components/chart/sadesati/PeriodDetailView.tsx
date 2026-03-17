@@ -408,7 +408,11 @@ export function PeriodDetailView({
                 <InfoRow label="House from Moon" value={`${period.houseFromMoon}${period.houseFromMoon === 1 ? 'st' : period.houseFromMoon === 2 ? 'nd' : 'th'}`} />
                 <InfoRow
                   label="House from Lagna"
-                  value={`${analysis.saturnAspects.houseFromLagna}th house`}
+                  value={(() => {
+                    const h = analysis.saturnAspects.houseFromLagna;
+                    const ord = h === 1 ? 'st' : h === 2 ? 'nd' : h === 3 ? 'rd' : 'th';
+                    return `${h}${ord} house`;
+                  })()}
                 />
                 <InfoRow
                   label="Saturn house effect"
