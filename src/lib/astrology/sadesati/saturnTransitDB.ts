@@ -1,16 +1,22 @@
 /**
- * Saturn Transit DB Query Helper
+ * Transit DB Query Helper
  *
- * Fetches Saturn sign transits from planet_sign_transits table.
- * Returns data in the same shape expected by calculator-PROFESSIONAL.ts,
- * replacing the slow calculateSaturnIngress (Swiss Ephemeris) calls.
+ * Fetches planet sign transits from the planet_sign_transits table.
  *
- * Performance: single Supabase query <50ms vs 10-16 minutes via ephemeris.
+ * getSaturnTransitsFromDB — used by calculator-PROFESSIONAL.ts for the
+ *   lifetime Saturn transit engine. Returns full IngressRecord shape.
+ *
+ * getJupiterTransitsFromDB — used by periodAnalyzer.ts for Jupiter aspect
+ *   calculation within a selected period. Returns a lightweight row shape
+ *   (sign + date range only — sub-entries not needed for aspect checks).
+ *
+ * Performance: single Supabase query <50ms vs Swiss Ephemeris calls.
  *
  * @file saturnTransitDB.ts
  */
 
 import { createClient } from '@supabase/supabase-js';
+import type { JupiterDBRow } from './period-analysis-types';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -137,4 +143,47 @@ export async function getSaturnTransitsFromDB(
   }
 
   return result;
+}
+
+// ── Jupiter query ─────────────────────────────────────────────────────────────
+
+/**
+ * Fetch Jupiter sign transits overlapping a given date window.
+ *
+ * Used by periodAnalyzer.ts to check Jupiter's aspect on Moon and Saturn
+ * during each year of a selected Sade Sati / Dhaiya period.
+ *
+ * Returns lightweight rows (sign + date range only).
+ * Sub-entries are intentionally omitted — for aspect calculation we only
+ * need which sign Jupiter occupies at any point during the window.
+ *
+ * Coverage: 1940–2100 (Jupiter extended via generate-planet-transits.js).
+ *
+ * @param fromDate  Start of the date window (period.startDate)
+ * @param toDate    End of the date window (period.endDate)
+ */
+export async function getJupiterTransitsFromDB(
+  fromDate: Date,
+  toDate: Date,
+): Promise<JupiterDBRow[]> {
+  const supabase = getServiceClient();
+
+  const { data, error } = await supabase
+    .from('planet_sign_transits')
+    .select('sign, sign_name, entry_date, exit_date')
+    .eq('planet', 'Jupiter')
+    .lt('entry_date', toDate.toISOString())
+    .gt('exit_date',  fromDate.toISOString())
+    .order('entry_date', { ascending: true });
+
+  if (error) {
+    throw new Error(`Failed to fetch Jupiter transits from DB: ${error.message}`);
+  }
+
+  return (data || []).map(row => ({
+    sign:      row.sign      as number,
+    signName:  row.sign_name as string,
+    entryDate: new Date(row.entry_date),
+    exitDate:  new Date(row.exit_date),
+  }));
 }
