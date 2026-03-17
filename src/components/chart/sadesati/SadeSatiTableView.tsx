@@ -197,7 +197,7 @@ function TimelineBar({ saturnCycles, birthDate, onEventClick }: {
               title={`${displayLabel(ev.label)} — ${ev.saturnSign} · Age ${startAge}`}
               style={{ flexBasis: `${widthPct}%`, flexShrink: 0 }}
               className={cn(
-                'h-10 rounded-md transition-opacity hover:opacity-70 flex items-center justify-center relative',
+                'h-10 rounded-md transition-opacity hover:opacity-70 flex items-center justify-center relative px-1',
                 INTENSITY_FILL[ev.type] ?? 'bg-foreground/10',
                 isNow && 'outline outline-2 outline-foreground outline-offset-1',
               )}
@@ -822,7 +822,7 @@ export function SadeSatiTableView({
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 mt-5">
           All periods
         </p>
-        <div className="border border-border rounded-lg p-4 mb-4">
+        <div className="border border-border rounded-lg p-4 mb-6">
           <TimelineBar saturnCycles={saturnCycles} birthDate={birthDate} onEventClick={handleEventClick} />
         </div>
 

@@ -207,8 +207,42 @@ export interface GuidanceContent {
 }
 
 /**
- * One item in the "Which life areas" section.
+ * Three-dimensional intensity breakdown — replaces the single "Intense" label.
+ * Each dimension rates on a 0–4 scale mapped to a display string.
  */
+export interface DimensionalIntensity {
+  emotional:   'very_high' | 'high' | 'moderate' | 'low';
+  structural:  'very_high' | 'high' | 'moderate' | 'low';
+  external:    'very_high' | 'high' | 'moderate' | 'low';
+  /** One-line reason for each dimension — shown as tooltip / subtitle */
+  emotionalReason:   string;
+  structuralReason:  string;
+  externalReason:    string;
+}
+
+/**
+ * Early / mid / late phase narrative — answers "how does this period unfold?"
+ */
+export interface PhaseProgression {
+  early:  string;   // First ~30% of the period
+  mid:    string;   // Middle ~40%
+  late:   string;   // Final ~30%
+  /** Approximate calendar window labels for each phase */
+  earlyWindow: string;
+  midWindow:   string;
+  lateWindow:  string;
+}
+
+/**
+ * At-a-glance window summary — three key dates the user needs to know.
+ */
+export interface WindowSummary {
+  bestWindow:    { label: string; reason: string };
+  highestRisk:   { label: string; reason: string };
+  reviewPhase?:  { label: string; reason: string };
+}
+
+
 export interface LifeAreaItem {
   /** Short label — e.g. "Identity & health" — shown in uppercase */
   label: string;
@@ -287,6 +321,8 @@ export interface PeriodAnalysisResult {
 
   // ── Overall assessment ────────────────────────────────────────────
   overallIntensity: 'very_intense' | 'intense' | 'moderate' | 'mild' | 'very_mild';
+  /** Three-dimensional intensity breakdown replacing the single "Intense" label */
+  dimensionalIntensity: DimensionalIntensity;
 
   // ── UI-ready narrative (template-generated, no AI) ────────────────
   /** 2–3 sentence plain-language summary paragraph */
@@ -295,6 +331,12 @@ export interface PeriodAnalysisResult {
   timingWindows: TimingWindow[];
   /** Three left-border guidance cards */
   guidance: GuidanceContent;
+  /** Early / mid / late phase narrative */
+  phaseProgression: PhaseProgression;
+  /** At-a-glance window summary */
+  windowSummary: WindowSummary;
+  /** Confidence basis shown below the header */
+  confidenceBasis: string;
 }
 
 // ═══════════════════════════════════════════════════════════════════
