@@ -5,15 +5,15 @@
  * Step 4: One-Time Planet Transit Generator
  *
  * Computes sign transits for all planets EXCEPT Saturn:
- *   Jupiter, Mars, Mercury, Venus, Sun  — 2020–2040, with sub-entries
- *   Rahu, Ketu                          — 2020–2040, no sub-entries
- *                                          (mean node, always retrograde)
+ *   Jupiter  — 1940–2100 (extended for Sade Sati period analysis)
+ *   Mars, Mercury, Venus, Sun — 2020–2040, with sub-entries
+ *   Rahu, Ketu — 2020–2040, no sub-entries (mean node, always retrograde)
  *
  * Usage:
- *   node generate-planet-transits.js
+ *   node generate-planet-transits.js              — run all planets
+ *   node generate-planet-transits.js --planet Jupiter  — run one planet only
  *
- * - Runs once, completes in 5–10 minutes
- * - Safe to re-run (unique constraint silently ignores duplicates)
+ * - Runs once per planet, safe to re-run (unique constraint silently ignores duplicates)
  * - Does NOT use transit_generation_log (no cron needed)
  * - Sends a single completion email via Resend when done
  *
@@ -71,10 +71,16 @@ const supabase = createClient(SUPABASE_URL, SERVICE_KEY, {
 // 2. PLANET CONFIG
 // ─────────────────────────────────────────────────────────────
 
-// Each planet: bodyId (Swiss Ephemeris), hasSubEntries, isNode
-// isNode = true for Rahu/Ketu (always retrograde, different crossing logic)
+// Default date range for all non-Saturn, non-Jupiter planets
+const DEFAULT_START_YEAR = 2020;
+const DEFAULT_END_YEAR   = 2040;
+
+// Per-planet config — endYear/startYear override the defaults
+// Jupiter is extended to 2100 because Sade Sati period analysis
+// needs Jupiter transit positions for periods far into the future
+// (e.g. the 2046–2049 Peak Phase requires Jupiter data through 2050+)
 const PLANET_CONFIGS = [
-  { name: 'Jupiter', hasSubEntries: true,  isNode: false },
+  { name: 'Jupiter', hasSubEntries: true,  isNode: false, startYear: 1940, endYear: 2100 },
   { name: 'Mars',    hasSubEntries: true,  isNode: false },
   { name: 'Mercury', hasSubEntries: true,  isNode: false },
   { name: 'Venus',   hasSubEntries: true,  isNode: false },
@@ -88,12 +94,23 @@ const SIGN_NAMES = [
   'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces',
 ];
 
-// Date range for all non-Saturn planets
-const START_YEAR = 2020;
-const END_YEAR   = 2040;
+// ─────────────────────────────────────────────────────────────
+// 3. CLI FLAG — --planet <Name>
+// ─────────────────────────────────────────────────────────────
+
+const planetArg = (() => {
+  const idx = process.argv.indexOf('--planet');
+  if (idx === -1) return null;
+  const name = process.argv[idx + 1];
+  if (!name || name.startsWith('--')) {
+    console.error('ERROR: --planet requires a planet name (e.g. --planet Jupiter)');
+    process.exit(1);
+  }
+  return name;
+})();
 
 // ─────────────────────────────────────────────────────────────
-// 3. SWISS EPHEMERIS
+// 4. SWISS EPHEMERIS
 // Same patterns as swissEph.ts and transit-cron-worker.js
 // ─────────────────────────────────────────────────────────────
 
@@ -141,7 +158,6 @@ function planetAt(jd, planetName) {
 
   if (planetName === 'Ketu') {
     lon = (lon + 180) % 360;
-    // Ketu speed is same magnitude as Rahu but same direction
   }
 
   return { lon, speed };
@@ -182,16 +198,13 @@ function jdToDate(jd) {
  * Is the crossing from → to in the PROGRADE (forward zodiac) direction?
  * For regular planets: Aries→Taurus→...→Pisces→Aries is forward.
  * For nodes (Rahu/Ketu): they always move backward (Pisces→Aquarius...).
- * We call their natural backward motion "forward" so the logic is uniform.
  */
 function isForward(fromSign, toSign, isNode) {
   if (isNode) {
-    // Nodes move backward: Pisces(12)→Aquarius(11)→...→Aries(1)→Pisces(12)
-    if (fromSign === 1  && toSign === 12) return true;   // Aries → Pisces (backward = their forward)
+    if (fromSign === 1  && toSign === 12) return true;
     if (fromSign === 12 && toSign === 1)  return false;
     return toSign < fromSign;
   }
-  // Normal planets
   if (fromSign === 12 && toSign === 1)  return true;
   if (fromSign === 1  && toSign === 12) return false;
   return toSign > fromSign;
@@ -213,7 +226,7 @@ function refineCrossing(jdLo, jdHi, signAtLo, planetName) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// 4. TRANSIT FINDING
+// 5. TRANSIT FINDING
 // ─────────────────────────────────────────────────────────────
 
 /**
@@ -245,7 +258,7 @@ function findAllCrossings(jdStart, jdEnd, planetName, isNode) {
 }
 
 /**
- * Build complete transit records for a planet over [startYear, endYear].
+ * Build complete transit records for a planet over its configured date range.
  *
  * For planets with sub-entries (Jupiter, Mars, Mercury, Venus):
  *   Groups forward entries into the same sign, tracking retrograde re-exits
@@ -253,15 +266,17 @@ function findAllCrossings(jdStart, jdEnd, planetName, isNode) {
  *
  * For Sun and nodes (Rahu, Ketu):
  *   Each forward crossing into a new sign is a clean transit.
- *   exit_date = next forward crossing out.
  *   sub_entries = NULL.
  */
-function buildTransits(planetName, hasSubEntries, isNode) {
-  const jdStart = dateToJd(startYear(planetName), 1, 1, 0);
-  const jdEnd   = dateToJd(END_YEAR + 1, 1, 1, 0);
+function buildTransits(config) {
+  const { name: planetName, hasSubEntries, isNode } = config;
+  const startYr = config.startYear ?? DEFAULT_START_YEAR;
+  const endYr   = config.endYear   ?? DEFAULT_END_YEAR;
 
-  // Scan a bit before start year to catch mid-transit entries
-  const jdScanStart = dateToJd(startYear(planetName) - 2, 1, 1, 0);
+  const jdStart     = dateToJd(startYr, 1, 1, 0);
+  const jdEnd       = dateToJd(endYr + 1, 1, 1, 0);
+  // Scan 2 years before start to catch mid-transit entries
+  const jdScanStart = dateToJd(startYr - 2, 1, 1, 0);
 
   const crossings = findAllCrossings(jdScanStart, jdEnd, planetName, isNode);
 
@@ -269,16 +284,13 @@ function buildTransits(planetName, hasSubEntries, isNode) {
 
   if (!hasSubEntries) {
     // Simple transit: each forward entry → next forward exit
-    // Used for Sun, Rahu, Ketu
     for (let i = 0; i < crossings.length; i++) {
       const c = crossings[i];
       if (!c.forward) continue;
 
-      // Entry into a new sign
       const entryJd   = c.jd;
       const entrySign = c.toSign;
 
-      // Find the next forward exit from this sign
       let exitJd = null;
       for (let j = i + 1; j < crossings.length; j++) {
         if (crossings[j].fromSign === entrySign && crossings[j].forward) {
@@ -287,15 +299,14 @@ function buildTransits(planetName, hasSubEntries, isNode) {
         }
       }
 
-      if (!exitJd) continue; // Transit extends beyond end of scan range — skip
+      if (!exitJd) continue;
 
       const entryDate    = jdToDate(entryJd);
       const exitDate     = jdToDate(exitJd);
       const durationDays = parseFloat((exitJd - entryJd).toFixed(2));
 
-      // Only include transits that overlap our target range
-      if (exitDate.getFullYear() < START_YEAR) continue;
-      if (entryDate.getFullYear() > END_YEAR)  continue;
+      if (exitDate.getFullYear() < startYr) continue;
+      if (entryDate.getFullYear() > endYr)  continue;
 
       records.push({
         planet:        planetName,
@@ -312,51 +323,39 @@ function buildTransits(planetName, hasSubEntries, isNode) {
     }
   } else {
     // Complex transit with sub-entries: Jupiter, Mars, Mercury, Venus
-    // Group all crossings related to the same "residency" in a sign.
-    // A residency = from first forward entry until last forward exit,
-    // potentially interrupted by retrograde exits and re-entries.
-
     let i = 0;
     while (i < crossings.length) {
       const c = crossings[i];
       if (!c.forward) { i++; continue; }
 
-      const entrySign     = c.toSign;
-      const firstEntryJd  = c.jd;
-      const subEntryJds  = [firstEntryJd]; // [i] = entry JD for i-th pass
-      const subExitJds   = [];             // [i] = departure JD for i-th pass
+      const entrySign    = c.toSign;
+      const firstEntryJd = c.jd;
+      const subEntryJds  = [firstEntryJd];
+      const subExitJds   = [];
       let   lastExitJd   = null;
       let   isRetrograde = false;
 
-      // Walk forward through crossings to build this residency
       let j = i + 1;
       while (j < crossings.length) {
         const d = crossings[j];
 
         if (d.fromSign === entrySign) {
-          // Planet is LEAVING entrySign — record exact departure for current pass
           subExitJds.push(d.jd);
 
           if (d.forward) {
-            // Forward exit — candidate for final exit
             lastExitJd = d.jd;
             j++;
-            // Look ahead: does the planet come back?
             if (j < crossings.length && crossings[j].toSign === entrySign) {
-              // Not the final exit — planet will retrograde back in
               lastExitJd   = null;
               isRetrograde = true;
             } else {
-              // This IS the final exit
               break;
             }
           } else {
-            // Retrograde exit — planet will come back forward
             isRetrograde = true;
             j++;
           }
         } else if (d.toSign === entrySign) {
-          // Re-entry into our sign (after retrograde)
           subEntryJds.push(d.jd);
           j++;
         } else {
@@ -365,8 +364,6 @@ function buildTransits(planetName, hasSubEntries, isNode) {
       }
 
       if (!lastExitJd) {
-        // Could not find final exit in scan range — transit extends beyond END_YEAR+buffer
-        // Skip this transit (partial data)
         i++;
         continue;
       }
@@ -375,13 +372,11 @@ function buildTransits(planetName, hasSubEntries, isNode) {
       const exitDate     = jdToDate(lastExitJd);
       const durationDays = parseFloat((lastExitJd - firstEntryJd).toFixed(2));
 
-      // Only include if it overlaps our target range
-      if (exitDate.getFullYear() < START_YEAR) { i++; continue; }
-      if (entryDate.getFullYear() > END_YEAR)  { i++; continue; }
+      if (exitDate.getFullYear() < startYr) { i++; continue; }
+      if (entryDate.getFullYear() > endYr)  { i++; continue; }
 
       const retrograde = isRetrograde || subEntryJds.length > 1;
 
-      // sub_exits must be parallel to sub_entries
       if (subExitJds.length !== subEntryJds.length) {
         console.warn(`  ⚠ sub_entries/sub_exits mismatch for ${planetName} sign ${entrySign}: ${subEntryJds.length} entries vs ${subExitJds.length} exits — skipping`);
         i++;
@@ -408,15 +403,8 @@ function buildTransits(planetName, hasSubEntries, isNode) {
   return records;
 }
 
-/**
- * Scan start year — go back 2 years to catch mid-transit at START_YEAR.
- */
-function startYear(planetName) {
-  return START_YEAR;
-}
-
 // ─────────────────────────────────────────────────────────────
-// 5. SUPABASE INSERT
+// 6. SUPABASE INSERT
 // ─────────────────────────────────────────────────────────────
 
 async function insertRecords(records, planetName) {
@@ -446,10 +434,10 @@ async function insertRecords(records, planetName) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// 6. EMAIL
+// 7. EMAIL
 // ─────────────────────────────────────────────────────────────
 
-async function sendCompletionEmail(summary) {
+async function sendCompletionEmail(summary, singlePlanet) {
   if (!RESEND_KEY) {
     console.log('\n[email] RESEND_API_KEY not set — skipping completion email.');
     return;
@@ -458,6 +446,7 @@ async function sendCompletionEmail(summary) {
   const rows = summary.map(s =>
     `<tr>
       <td style="padding:4px 8px">${s.planet}</td>
+      <td style="padding:4px 8px;text-align:center">${s.range}</td>
       <td style="padding:4px 8px;text-align:center">${s.records}</td>
       <td style="padding:4px 8px;text-align:center">${s.inserted}</td>
       <td style="padding:4px 8px;text-align:center">${s.duration}s</td>
@@ -466,14 +455,17 @@ async function sendCompletionEmail(summary) {
 
   const totalRecords  = summary.reduce((a, s) => a + s.records, 0);
   const totalInserted = summary.reduce((a, s) => a + s.inserted, 0);
+  const title = singlePlanet
+    ? `${singlePlanet} transit generation complete`
+    : 'All planet transits generated';
 
   const html = `
-    <h2>✅ Planet Transit Generation Complete</h2>
-    <p>All 7 non-Saturn planets have been processed for 2020–2040.</p>
+    <h2>✅ ${title}</h2>
     <table border="1" cellspacing="0" style="border-collapse:collapse;font-family:monospace">
       <thead>
         <tr style="background:#f0f0f0">
           <th style="padding:4px 8px">Planet</th>
+          <th style="padding:4px 8px">Year Range</th>
           <th style="padding:4px 8px">Records Built</th>
           <th style="padding:4px 8px">Inserted</th>
           <th style="padding:4px 8px">Time</th>
@@ -482,15 +474,13 @@ async function sendCompletionEmail(summary) {
       <tbody>${rows}</tbody>
       <tfoot>
         <tr style="font-weight:bold">
-          <td style="padding:4px 8px">TOTAL</td>
+          <td style="padding:4px 8px" colspan="2">TOTAL</td>
           <td style="padding:4px 8px;text-align:center">${totalRecords}</td>
           <td style="padding:4px 8px;text-align:center">${totalInserted}</td>
           <td style="padding:4px 8px"></td>
         </tr>
       </tfoot>
     </table>
-    <br>
-    <p><strong>Next step:</strong> Start the daily positions cron (positions-cron-worker.js).</p>
   `;
 
   try {
@@ -503,7 +493,7 @@ async function sendCompletionEmail(summary) {
       body: JSON.stringify({
         from:    ALERT_FROM,
         to:      [ALERT_TO],
-        subject: `[Transit DB] ✅ All planet transits generated — ${totalInserted} rows inserted`,
+        subject: `[Transit DB] ✅ ${title} — ${totalInserted} rows inserted`,
         html,
       }),
     });
@@ -515,38 +505,52 @@ async function sendCompletionEmail(summary) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// 7. MAIN
+// 8. MAIN
 // ─────────────────────────────────────────────────────────────
 
 async function main() {
+  // Determine which planets to run
+  const configs = planetArg
+    ? PLANET_CONFIGS.filter(c => c.name.toLowerCase() === planetArg.toLowerCase())
+    : PLANET_CONFIGS;
+
+  if (configs.length === 0) {
+    console.error(`ERROR: Unknown planet "${planetArg}". Valid options: ${PLANET_CONFIGS.map(c => c.name).join(', ')}`);
+    process.exit(1);
+  }
+
+  const title = planetArg
+    ? `Astrotattwa — Generate Transit: ${configs[0].name} (${configs[0].startYear ?? DEFAULT_START_YEAR}–${configs[0].endYear ?? DEFAULT_END_YEAR})`
+    : `Astrotattwa — Generate Planet Sign Transits`;
+
   console.log('='.repeat(60));
-  console.log('Astrotattwa — Generate Planet Sign Transits (2020–2040)');
+  console.log(title);
   console.log('='.repeat(60));
-  console.log(`Planets: Jupiter, Mars, Mercury, Venus, Sun, Rahu, Ketu`);
-  console.log(`Range:   ${START_YEAR}–${END_YEAR}`);
+  console.log(`Planets: ${configs.map(c => c.name).join(', ')}`);
   console.log();
 
   const summary = [];
 
-  for (const config of PLANET_CONFIGS) {
-    const { name: planetName, hasSubEntries, isNode } = config;
+  for (const config of configs) {
+    const startYr = config.startYear ?? DEFAULT_START_YEAR;
+    const endYr   = config.endYear   ?? DEFAULT_END_YEAR;
     const t0 = Date.now();
 
-    console.log(`─── ${planetName} ${'─'.repeat(50 - planetName.length)}`);
+    console.log(`─── ${config.name} ${'─'.repeat(50 - config.name.length)}`);
+    console.log(`  Range: ${startYr}–${endYr}`);
     process.stdout.write(`  Building transit records...`);
 
     let records;
     try {
-      records = buildTransits(planetName, hasSubEntries, isNode);
+      records = buildTransits(config);
     } catch (err) {
-      console.error(`\n  ERROR building ${planetName}: ${err.message}`);
+      console.error(`\n  ERROR building ${config.name}: ${err.message}`);
       console.error(err.stack);
       process.exit(1);
     }
 
     console.log(` ${records.length} records built.`);
 
-    // Print a sample (first 3)
     for (const r of records.slice(0, 3)) {
       const sub = r.sub_entries ? `${r.sub_entries.length} sub-entries` : 'no sub-entries';
       console.log(
@@ -560,9 +564,9 @@ async function main() {
     process.stdout.write(`  Inserting into Supabase...`);
     let inserted;
     try {
-      inserted = await insertRecords(records, planetName);
+      inserted = await insertRecords(records, config.name);
     } catch (err) {
-      console.error(`\n  ERROR inserting ${planetName}: ${err.message}`);
+      console.error(`\n  ERROR inserting ${config.name}: ${err.message}`);
       process.exit(1);
     }
 
@@ -571,28 +575,32 @@ async function main() {
     console.log(` Done. Inserted: ${inserted}  Skipped (duplicates): ${skipped}  Time: ${duration}s`);
     console.log();
 
-    summary.push({ planet: planetName, records: records.length, inserted, duration });
+    summary.push({
+      planet:   config.name,
+      range:    `${startYr}–${endYr}`,
+      records:  records.length,
+      inserted,
+      duration,
+    });
   }
 
-  // ── Final summary ────────────────────────────────────────────
   console.log('='.repeat(60));
   console.log('Summary');
   console.log('='.repeat(60));
-  console.log(`${'Planet'.padEnd(10)} ${'Records'.padStart(8)} ${'Inserted'.padStart(9)} ${'Time'.padStart(7)}`);
-  console.log('─'.repeat(38));
+  console.log(`${'Planet'.padEnd(10)} ${'Range'.padEnd(12)} ${'Records'.padStart(8)} ${'Inserted'.padStart(9)} ${'Time'.padStart(7)}`);
+  console.log('─'.repeat(52));
   for (const s of summary) {
     console.log(
-      `${s.planet.padEnd(10)} ${String(s.records).padStart(8)} ` +
+      `${s.planet.padEnd(10)} ${s.range.padEnd(12)} ${String(s.records).padStart(8)} ` +
       `${String(s.inserted).padStart(9)} ${(s.duration + 's').padStart(7)}`
     );
   }
-  console.log('─'.repeat(38));
+  console.log('─'.repeat(52));
   const totalInserted = summary.reduce((a, s) => a + s.inserted, 0);
   const totalRecords  = summary.reduce((a, s) => a + s.records, 0);
-  console.log(`${'TOTAL'.padEnd(10)} ${String(totalRecords).padStart(8)} ${String(totalInserted).padStart(9)}`);
+  console.log(`${'TOTAL'.padEnd(22)} ${String(totalRecords).padStart(8)} ${String(totalInserted).padStart(9)}`);
   console.log();
 
-  // ── Verify row counts in Supabase ────────────────────────────
   console.log('Verifying in Supabase...');
   for (const s of summary) {
     const { count } = await supabase
@@ -604,10 +612,10 @@ async function main() {
   }
 
   console.log();
-  await sendCompletionEmail(summary);
+  await sendCompletionEmail(summary, planetArg);
 
   console.log();
-  console.log('All done. Next: start the daily positions cron.');
+  console.log('Done.');
   console.log('='.repeat(60));
 }
 
