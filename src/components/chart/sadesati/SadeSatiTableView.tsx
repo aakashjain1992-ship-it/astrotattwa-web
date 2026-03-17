@@ -187,8 +187,8 @@ function TimelineBar({ saturnCycles, birthDate, onEventClick }: {
           const widthPct   = Math.max(5, (durationMs / totalMs) * 100);
           const isNow      = ev.status === 'current';
           const startAge   = ageAt(displayStart, birthDate);
-          // Only show age label if block is wide enough (> 7% of total)
-          const showAge    = widthPct > 7;
+          // Show age label if block is wide enough (> 4% of total)
+          const showAge    = widthPct > 4;
 
           return (
             <button
