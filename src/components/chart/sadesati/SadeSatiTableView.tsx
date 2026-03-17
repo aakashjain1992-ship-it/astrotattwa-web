@@ -178,42 +178,44 @@ function TimelineBar({ saturnCycles, birthDate, onEventClick }: {
 
   return (
     <div>
-      <div className="flex gap-1 items-stretch mb-1 overflow-x-auto pb-1">
+      <p className="text-xs text-muted-foreground/60 mb-2">
+        Age at start · darker = heavier · tap to open
+      </p>
+      <div className="flex gap-1 items-stretch overflow-x-auto pb-1">
         {eventDisplayRanges.map(({ ev, displayStart, displayEnd }, i) => {
           const durationMs = displayEnd.getTime() - displayStart.getTime();
           const widthPct   = Math.max(5, (durationMs / totalMs) * 100);
           const isNow      = ev.status === 'current';
+          const startAge   = ageAt(displayStart, birthDate);
+          // Only show age label if block is wide enough (> 7% of total)
+          const showAge    = widthPct > 7;
+
           return (
             <button
               key={i}
               onClick={() => onEventClick(ev)}
-              title={`${displayLabel(ev.label)} — ${ev.saturnSign}`}
+              title={`${displayLabel(ev.label)} — ${ev.saturnSign} · Age ${startAge}`}
               style={{ flexBasis: `${widthPct}%`, flexShrink: 0 }}
               className={cn(
-                'h-6 rounded-sm transition-opacity hover:opacity-70',
+                'h-10 rounded-md transition-opacity hover:opacity-70 flex items-center justify-center relative',
                 INTENSITY_FILL[ev.type] ?? 'bg-foreground/10',
                 isNow && 'outline outline-2 outline-foreground outline-offset-1',
               )}
-            />
+            >
+              {showAge && (
+                <span className={cn(
+                  'text-[10px] font-medium leading-none select-none',
+                  ev.type === 'ss_peak' || ev.type === 'dhaiya_8th'
+                    ? 'text-foreground/70'
+                    : 'text-foreground/50',
+                )}>
+                  {startAge}
+                </span>
+              )}
+            </button>
           );
         })}
       </div>
-      <div className="flex gap-1 overflow-x-auto pb-0.5">
-        {eventDisplayRanges.map(({ ev, displayStart, displayEnd }, i) => {
-          const durationMs = displayEnd.getTime() - displayStart.getTime();
-          const widthPct   = Math.max(5, (durationMs / totalMs) * 100);
-          return (
-            <div key={i} style={{ flexBasis: `${widthPct}%`, flexShrink: 0 }} className="text-center">
-              <span className="text-[10px] text-muted-foreground/60 leading-none">
-                {ageAt(displayStart, birthDate)}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-      <p className="text-xs text-muted-foreground/60 mt-1.5">
-        Darker = heavier period · tap any block to open
-      </p>
     </div>
   );
 }
