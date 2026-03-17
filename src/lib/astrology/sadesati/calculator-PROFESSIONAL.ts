@@ -17,11 +17,13 @@
 import type { PlanetData, AscendantData } from '@/types/astrology';
 import type { DashaInfo } from '@/types/astrology';
 import {
-  calculateSaturnAtDate,
   calculateSaturnIngress,
   findSaturnPeakWindow,
   getCurrentSaturnTransit,
 } from './saturnEphemeris';
+
+import { getSaturnTransitsFromDB } from './saturnTransitDB';
+
 import {
   analyzeMoonStrength,
   analyzeSaturnStrength,
@@ -38,7 +40,6 @@ import type {
   CalculationOptions,
 } from './types-enhanced';
 import {
-  SATURN_PERIOD_PER_SIGN_DAYS,
   getSignName,
   getHouseFromMoon,
   PHASE_DESCRIPTIONS,
@@ -53,8 +54,7 @@ import type { SadeSatiPhase } from '@/types/sadesati';
 
 const SATURN_ORBIT_YEARS = 29.46;
 const LIFETIME_SEARCH_YEARS = 92;     // 3 full Saturn cycles
-const INGRESS_BUFFER_DAYS = 90;       // Gap cursor advances past each transit
-const MAX_INGRESS_ITERS = 6;          // Safety cap per sign
+
 
 /** Sign number modular arithmetic (always returns 1–12) */
 function mod12(n: number): number {
@@ -78,43 +78,6 @@ function toDate(d: Date | string | undefined): Date {
   return d instanceof Date ? d : new Date(d);
 }
 
-/**
- * Fetch ALL Saturn transits through a given sign within [fromDate, toDate].
- * Calls calculateSaturnIngress iteratively, advancing the cursor past each exit.
- * Saturn spends ~2.5 years per sign, so this returns ~3 results across a 90-year window.
- */
-async function getAllIngressesForSign(
-  sign: number,
-  fromDate: Date,
-  toDate: Date
-): Promise<any[]> {
-  const results: any[] = [];
-  let cursor = new Date(fromDate.getTime());
-
-  for (let i = 0; i < MAX_INGRESS_ITERS; i++) {
-    if (cursor >= toDate) break;
-    try {
-      const raw = await calculateSaturnIngress(sign, cursor);
-      if (!raw?.entryDate) break;
-
-      const ingress = {
-        ...raw,
-        entryDate: toDate(raw.entryDate),
-        exitDate:  toDate(raw.exitDate),
-      };
-
-      if (ingress.entryDate >= toDate) break;
-      results.push(ingress);
-
-      // Jump past this transit to find the next one
-      cursor = new Date(ingress.exitDate.getTime() + INGRESS_BUFFER_DAYS * 86400000);
-    } catch {
-      break;
-    }
-  }
-
-  return results;
-}
 
 /**
  * Determine Saturn cycle number (1/2/3) for a given event date.
@@ -181,15 +144,22 @@ function buildPasses(ingress: any): Array<{ start: Date; end: Date }> {
     ? ingress.subEntries.map((d: any) => d instanceof Date ? d : new Date(d)).filter((d: Date) => !isNaN(d.getTime()))
     : [];
 
+  const subExits: Date[] = Array.isArray(ingress.subExits)
+    ? ingress.subExits.map((d: any) => d instanceof Date ? d : new Date(d)).filter((d: Date) => !isNaN(d.getTime()))
+    : [];
+
+ // Use sub_exits if available and lengths match — gives correct non-overlapping ranges.
+  // e.g. Taurus pass 0: Aug 8 2029 → Oct 5 2029 (not → Apr 17 2030)
+  if (subEntries.length >= 1 && subExits.length === subEntries.length) {
+    return subEntries.map((start, i) => ({ start, end: subExits[i] }));
+  }
+
+  // Fallback for old rows without sub_exits: use next entry as end (previous behaviour)
   if (subEntries.length >= 2) {
-    const passes: Array<{ start: Date; end: Date }> = [];
-    for (let i = 0; i < subEntries.length; i++) {
-      passes.push({
-        start: subEntries[i],
-        end:   i + 1 < subEntries.length ? subEntries[i + 1] : exitDate,
-      });
-    }
-    return passes;
+    return subEntries.map((start, i) => ({
+      start,
+      end: i + 1 < subEntries.length ? subEntries[i + 1] : exitDate,
+    }));
   }
 
   // Fallback: single pass (no retrograde re-entries detected)
@@ -268,13 +238,17 @@ async function computeLifetimeTransits(
   const from = new Date(birthDate.getTime() - 10 * 365.25 * 86400000);
   const to   = new Date(birthDate.getTime() + LIFETIME_SEARCH_YEARS * 365.25 * 86400000);
 
-  const [risingIng, peakIng, settingIng, d4thIng, d8thIng] = await Promise.all([
-    getAllIngressesForSign(signs.rising,    from, to),
-    getAllIngressesForSign(signs.peak,      from, to),
-    getAllIngressesForSign(signs.setting,   from, to),
-    getAllIngressesForSign(signs.dhaiya4th, from, to),
-    getAllIngressesForSign(signs.dhaiya8th, from, to),
-  ]);
+  // Single Supabase query returns all 5 signs in one round-trip (<50ms).
+  const uniqueSigns = [...new Set([
+    signs.rising, signs.peak, signs.setting, signs.dhaiya4th, signs.dhaiya8th,
+  ])];
+  const dbTransits = await getSaturnTransitsFromDB(uniqueSigns, from, to);
+
+  const risingIng   = dbTransits.get(signs.rising)    ?? [];
+  const peakIng     = dbTransits.get(signs.peak)      ?? [];
+  const settingIng  = dbTransits.get(signs.setting)   ?? [];
+  const d4thIng     = dbTransits.get(signs.dhaiya4th) ?? [];
+  const d8thIng     = dbTransits.get(signs.dhaiya8th) ?? [];
 
   const now = currentDate;
   const allEvents: SaturnCycleEvent[] = [];
@@ -339,6 +313,96 @@ async function computeLifetimeTransits(
   };
 }
 
+
+/** Find which Mahadasha is running at a specific date */
+function getDashaAtDate(dashaInfo: DashaInfo | undefined, targetDate: Date): DashaActivation {
+  if (!dashaInfo?.allMahadashas?.length) {
+    return { isActivating: false, currentDasha: 'Unknown', activationLevel: 'low', reason: 'Dasha data not available' };
+  }
+ 
+  const target = targetDate.getTime();
+  const maha = dashaInfo.allMahadashas.find(m => {
+    const s = new Date(m.startUtc).getTime();
+    const e = new Date(m.endUtc).getTime();
+    return target >= s && target <= e;
+  });
+ 
+  const lord = maha?.lord ?? 'Unknown';
+ 
+  if (['Saturn', 'Moon', 'Rahu'].includes(lord)) {
+    return { isActivating: true, currentDasha: lord, activationLevel: 'very_high', reason: `${lord} Mahadasha strongly activates Saturn transits` };
+  }
+  if (['Mars', 'Sun'].includes(lord)) {
+    return { isActivating: true, currentDasha: lord, activationLevel: 'moderate', reason: `${lord} Mahadasha provides moderate activation` };
+  }
+  return { isActivating: false, currentDasha: lord, activationLevel: 'low', reason: `${lord} Mahadasha — transit effects may be milder` };
+}
+
+// Computes the analysis data shown in the Analysis tab when the status is 'clear'. //
+
+export interface UpcomingAnalysis {
+  startDate:           Date;
+  yearsFromNow:        number;
+  expectedIntensity:   string;
+  moonStrength:        any;
+  saturnStrength:      any;
+  dashaAtStart:        DashaActivation;
+  jupiterWillProtect:  boolean;
+  jupiterProtection:   { isProtecting: boolean; protectionStrength: string };
+  overallImpact:       any;
+  phase:               string;  // 'Rising' | 'Peak' | 'Setting' — first phase of next SS
+  saturnSign:          string;
+}
+ 
+function buildUpcomingAnalysis(
+  upcoming: EnhancedSadeSatiPeriod | undefined,
+  moonStrength: any,
+  saturnStrength: any,
+  dashaInfo: DashaInfo | undefined,
+  allPlanets: Record<string, PlanetData>,
+  currentDate: Date
+): UpcomingAnalysis | null {
+  if (!upcoming) return null;
+ 
+  const startDate    = toDate(upcoming.startDate);
+  const yearsFromNow = (startDate.getTime() - currentDate.getTime()) / (365.25 * 86400000);
+  const dashaAtStart = getDashaAtDate(dashaInfo, startDate);
+ 
+  // Jupiter protection: check if Jupiter will aspect Moon or Saturn
+  // at the time of next Sade Sati start — use natal Jupiter position as approximation
+  // (for a precise answer you'd need Jupiter's future position, but natal is a good proxy)
+  const jupiter = allPlanets.Jupiter;
+  const jupiterProtection = {
+    isProtecting:       checkJupiterProtection(jupiter, allPlanets.Moon),
+    protectionStrength: getJupiterProtectionStrength(jupiter, allPlanets.Moon, allPlanets.Saturn),
+  };
+ 
+  const overallImpact = assessOverallImpact(
+    moonStrength, saturnStrength, dashaAtStart, jupiterProtection,
+    upcoming.cycleNumber
+  );
+ 
+  // First phase of the upcoming Sade Sati
+  const firstPhase = upcoming.allPhases?.[0];
+ 
+  return {
+    startDate,
+    yearsFromNow,
+    expectedIntensity:  overallImpact.intensity,
+    moonStrength,
+    saturnStrength,
+    dashaAtStart,
+    jupiterWillProtect: jupiterProtection.isProtecting,
+    jupiterProtection,
+    overallImpact,
+    phase:      firstPhase?.phase ?? 'Rising',
+    saturnSign: firstPhase?.saturnSign ?? upcoming.saturnSign ?? '',
+  };
+}
+
+
+
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // SECTION 2 — MAIN ENTRY POINT
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -358,7 +422,7 @@ export async function calculateProfessionalSaturnAnalysis(
     analyzeJupiterProtection:true,
     includeDetailedPhases:   true,
   }
-): Promise<EnhancedSaturnTransitAnalysis & { saturnCycles: SaturnCycle[] }> {
+): Promise<EnhancedSaturnTransitAnalysis & { saturnCycles: SaturnCycle[]; upcomingAnalysis: UpcomingAnalysis | null}> {
   const currentDate = new Date();
   const currentSaturn = await getCurrentSaturnTransit();
 
@@ -378,7 +442,8 @@ export async function calculateProfessionalSaturnAnalysis(
     currentSadeSati = await buildEnhancedSadeSatiPeriod(
       moonPlanet, saturnPlanet, allPlanets, ascendant,
       birthDate, currentDate, sadeSatiStatus.phase!,
-      currentSaturn, moonStrength, saturnStrength, dashaInfo, options, 1
+      currentSaturn, moonStrength, saturnStrength, dashaInfo, options, 1,
+      lifetimeData
     );
   } else {
     currentSadeSati = { isActive: false };
@@ -425,6 +490,9 @@ export async function calculateProfessionalSaturnAnalysis(
     ],
     saturnCycles: lifetimeData.saturnCycles,
     summary,
+    upcomingAnalysis: buildUpcomingAnalysis(
+      upcoming, moonStrength, saturnStrength, dashaInfo, allPlanets, currentDate
+    ),
   };
 }
 
@@ -652,7 +720,15 @@ async function calculateEnhancedDhaiya(
 
   if (houseFromMoon === 4 || houseFromMoon === 8) {
     const type = houseFromMoon === 4 ? '4th' : '8th';
-    const ingress = await calculateSaturnIngress(currentSaturn.sign, currentDate);
+    const dhaiyaList = houseFromMoon === 4
+  ? lifetimeData.ingresses.dhaiya4th
+  : lifetimeData.ingresses.dhaiya8th;
+
+const ingress =
+  dhaiyaList.find(ing =>
+    toDate(ing.entryDate) <= currentDate && currentDate <= toDate(ing.exitDate)
+  ) ?? await calculateSaturnIngress(currentSaturn.sign, currentDate);
+    
     current = await buildEnhancedDhaiyaPeriod(
       type, moonPlanet, saturnPlanet, allPlanets,
       ascendant, ingress, moonStrength, saturnStrength, dashaInfo, options
@@ -756,7 +832,8 @@ async function buildEnhancedSadeSatiPeriod(
   saturnStrength: any,
   dashaInfo: DashaInfo | undefined,
   options: CalculationOptions,
-  cycleNumber: 1 | 2 | 3
+  cycleNumber: 1 | 2 | 3,
+  lifetimeData?: LifetimeTransitData
 ): Promise<EnhancedSadeSatiPeriod> {
   const moonSign = moonPlanet.signNumber;
 
@@ -764,9 +841,24 @@ async function buildEnhancedSadeSatiPeriod(
   const peakSign    = moonSign;
   const settingSign = mod12(moonSign + 1);
 
-  const risingIngress  = await calculateSaturnIngress(risingSign, currentDate);
-  const peakIngress    = await calculateSaturnIngress(peakSign,    risingIngress.exitDate);
-  const settingIngress = await calculateSaturnIngress(settingSign, peakIngress.exitDate);
+  const findIngress = (ingresses: any[], sign: number): any | null =>
+    ingresses.find(ing =>
+      ing.sign === sign &&
+      toDate(ing.entryDate) <= currentDate &&
+      currentDate <= toDate(ing.exitDate)
+    ) ?? ingresses.find(ing => ing.sign === sign) ?? null;
+
+  const risingIngress  = lifetimeData
+    ? (findIngress(lifetimeData.ingresses.rising,  risingSign)  ?? await calculateSaturnIngress(risingSign,  currentDate))
+    : await calculateSaturnIngress(risingSign,  currentDate);
+
+  const peakIngress    = lifetimeData
+    ? (findIngress(lifetimeData.ingresses.peak,    peakSign)    ?? await calculateSaturnIngress(peakSign,    toDate(risingIngress.exitDate)))
+    : await calculateSaturnIngress(peakSign,    toDate(risingIngress.exitDate));
+
+  const settingIngress = lifetimeData
+    ? (findIngress(lifetimeData.ingresses.setting, settingSign) ?? await calculateSaturnIngress(settingSign, toDate(peakIngress.exitDate)))
+    : await calculateSaturnIngress(settingSign, toDate(peakIngress.exitDate));
 
   const makePhaseObj = (ing: any, ph: SadeSatiPhase, house: number) => ({
     phase: ph,
