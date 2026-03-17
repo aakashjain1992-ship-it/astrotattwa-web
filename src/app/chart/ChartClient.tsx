@@ -223,7 +223,7 @@ function TabButton({
       type="button"
       onClick={onClick}
       className={cn(
-        'px-4 py-2 text-sm font-medium rounded-md transition-all duration-200',
+        'px-3 py-2 text-sm font-medium rounded-md transition-all duration-200 whitespace-nowrap flex-shrink-0',
         active
           ? 'bg-primary text-primary-foreground shadow-sm'
           : 'text-muted-foreground hover:text-foreground hover:bg-accent'
@@ -374,6 +374,7 @@ export default function ChartClient() {
         birthDate: formData.birthDate,
         birthTime: formData.birthTime,
         timePeriod: formData.timePeriod,
+        birthPlace: formData.cityName ?? chartData?.input?.birthPlace ?? '',
         latitude: formData.latitude,
         longitude: formData.longitude,
         timezone: formData.timezone,
@@ -388,9 +389,13 @@ export default function ChartClient() {
       const result = await response.json();
       
       if (result.success && result.data) {
+        const cityName = formData.cityName ?? chartData?.input?.birthPlace ?? (chartData as any)?.birthPlace ?? '';
         const updatedData = {
           ...result.data,
-          birthPlace: formData.cityName ?? chartData?.birthPlace,
+          input: {
+            ...result.data.input,
+            birthPlace: cityName,
+          },
         };
         setChartData(updatedData);
         saveChartToStorage(updatedData);
@@ -585,7 +590,7 @@ export default function ChartClient() {
                longitude: chartData.input.longitude,
                timezone: chartData.input.timezone,
                }}
-          birthPlace={chartData.input.birthPlace}
+          birthPlace={chartData.input.birthPlace || (chartData as any).birthPlace || ''}
           isEditing={isEditing}
           onEditToggle={() => setIsEditing(!isEditing)}
           rightContent={
@@ -630,7 +635,7 @@ export default function ChartClient() {
         />
 
         {/* Main Tabs */}
-        <div className="flex gap-2 p-1 rounded-lg bg-muted w-fit">
+        <div className="flex gap-1 p-1 rounded-lg bg-muted overflow-x-auto scrollbar-none w-full sm:w-fit">
           <TabButton
             active={activeTab === 'overview'}
             onClick={() => setTab('overview')}
