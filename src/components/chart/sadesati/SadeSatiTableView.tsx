@@ -15,13 +15,14 @@
  * @version 2.0.0
  */
 
-import { useState } from 'react';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import {
   fmtDMY,
   fmtPass,
+  convertDates,
   TRANSIT_RESULTS,
   CYCLE_LABELS,
 } from './shared';
@@ -606,7 +607,57 @@ export function SadeSatiTableView({
 }: EnhancedSadeSatiViewProps) {
 
   const [selectedPeriod, setSelectedPeriod] = useState<SelectedPeriod | null>(null);
+  const [fetchedAnalysis, setFetchedAnalysis] = useState<EnhancedSaturnTransitAnalysis | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
+  // Fetch sadesati analysis from API when not provided via props
+  // (chartData.saturnTransits is only populated after first load + localStorage save)
+  useEffect(() => {
+    // Use props data if it has the required fields
+    if (
+      analysis &&
+      analysis.sadeSati &&
+      analysis.dhaiya &&
+      analysis.summary &&
+      analysis.currentSaturn
+    ) {
+      return;
+    }
+
+    if (!planets?.Moon || !ascendant) {
+      return;
+    }
+
+    setIsLoading(true);
+    setFetchError(null);
+
+    fetch('/api/transits/saturn/sadesati', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        planets,
+        ascendant,
+        birthDateUtc: birthDate.toISOString(),
+        dashaInfo,
+      }),
+    })
+      .then(r => r.json())
+      .then(result => {
+        if (result.success && result.data) {
+          setFetchedAnalysis(convertDates(result.data));
+        } else {
+          throw new Error(result.error?.message || 'Failed to load Saturn analysis');
+        }
+      })
+      .catch(err => setFetchError(err.message || 'Failed to load Saturn transit analysis'))
+      .finally(() => setIsLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const activeAnalysis = fetchedAnalysis ?? analysis ?? null;
+
+  // ── State 2: Period selected ───────────────────────────────────
   // ── State 2: Period selected ───────────────────────────────────
   if (selectedPeriod) {
     return (
@@ -626,11 +677,35 @@ export function SadeSatiTableView({
     );
   }
 
-  if (!analysis) {
+  // ── Loading ────────────────────────────────────────────────────
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center justify-center py-12">
+          <Loader2 className="h-7 w-7 animate-spin text-muted-foreground mb-3" />
+          <p className="text-sm text-muted-foreground">Loading Saturn transit analysis…</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // ── Error ──────────────────────────────────────────────────────
+  if (fetchError) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center justify-center py-12">
+          <p className="text-sm text-destructive mb-2">⚠️ {fetchError}</p>
+          <p className="text-xs text-muted-foreground">Please refresh the page to try again.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!activeAnalysis) {
     return (
       <Card>
         <CardContent className="py-10 text-center">
-          <p className="text-sm text-muted-foreground">Saturn transit data is loading…</p>
+          <p className="text-sm text-muted-foreground">No Saturn transit data available.</p>
         </CardContent>
       </Card>
     );
@@ -638,9 +713,9 @@ export function SadeSatiTableView({
 
   const handleEventClick = (ev: any) => setSelectedPeriod(eventToSelectedPeriod(ev));
 
-  const { summary } = analysis;
+  const { summary } = activeAnalysis;
   const isActive   = summary.currentStatus !== 'clear';
-  const saturnCycles: any[] = (analysis as any).saturnCycles ?? [];
+  const saturnCycles: any[] = (activeAnalysis as any).saturnCycles ?? [];
 
   const upcomingEvents = saturnCycles
     .flatMap((c: any) => c.events ?? [])
@@ -648,9 +723,8 @@ export function SadeSatiTableView({
     .sort((a: any, b: any) => toDate(a.startDate).getTime() - toDate(b.startDate).getTime())
     .slice(0, 2);
 
-  // Check Yogakaraka for clear state advice
   const lagnaSign = ascendant?.signNumber;
-  const isYogakaraka = lagnaSign === 2 || lagnaSign === 7; // Taurus / Libra
+  const isYogakaraka = lagnaSign === 2 || lagnaSign === 7;
 
   return (
     <Card>
@@ -660,7 +734,7 @@ export function SadeSatiTableView({
         {/* State 1A: Active */}
         {isActive && (
           <>
-            <ActiveStatusCard analysis={analysis} birthDate={birthDate} onOpenDetail={handleEventClick} />
+            <ActiveStatusCard analysis={activeAnalysis} birthDate={birthDate} onOpenDetail={handleEventClick} />
             {upcomingEvents.length > 0 && (
               <>
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 mt-5">
@@ -677,7 +751,7 @@ export function SadeSatiTableView({
         {/* State 1B: Clear */}
         {!isActive && (
           <>
-            <ClearStatusCard analysis={analysis} birthDate={birthDate} />
+            <ClearStatusCard analysis={activeAnalysis} birthDate={birthDate} />
             <ClearWindowAdvice isYogakaraka={isYogakaraka} />
             {upcomingEvents[0] && (
               <>
@@ -699,7 +773,7 @@ export function SadeSatiTableView({
         </div>
 
         {/* Full cycle table */}
-        <SaturnCyclesTable analysis={analysis} birthDate={birthDate} onEventClick={handleEventClick} />
+        <SaturnCyclesTable analysis={activeAnalysis} birthDate={birthDate} onEventClick={handleEventClick} />
 
         {/* Explainer — bottom */}
         <div className="mt-4">
