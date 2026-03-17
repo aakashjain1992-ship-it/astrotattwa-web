@@ -159,25 +159,29 @@ function TimelineBar({ saturnCycles, birthDate, onEventClick }: {
 }) {
   const allEvents: any[] = saturnCycles
     .flatMap((c: any) => c.events ?? [])
-    .filter((ev: any) => {
-      // Show only events that end after birth AND started before or after birth
-      // For events that started before birth, we still show them (e.g. ongoing at birth)
-      // but clamp the display start to birth
-      return toDate(ev.endDate).getTime() >= birthDate.getTime();
-    })
+    .filter((ev: any) => toDate(ev.endDate).getTime() >= birthDate.getTime())
     .sort((a: any, b: any) => toDate(a.startDate).getTime() - toDate(b.startDate).getTime());
 
   if (!allEvents.length) return null;
 
-  const totalMs = allEvents.reduce((sum, ev) =>
-    sum + (toDate(ev.endDate).getTime() - toDate(ev.startDate).getTime()), 0);
+  // For each event, compute the display start (clamped to birth) and display end
+  const eventDisplayRanges = allEvents.map(ev => ({
+    ev,
+    displayStart: toDate(ev.startDate) < birthDate ? birthDate : toDate(ev.startDate),
+    displayEnd:   toDate(ev.endDate),
+  }));
+
+  const totalMs = eventDisplayRanges.reduce((sum, { displayStart, displayEnd }) =>
+    sum + Math.max(0, displayEnd.getTime() - displayStart.getTime()), 0);
+
+  if (totalMs === 0) return null;
 
   return (
     <div>
       <div className="flex gap-1 items-stretch mb-1 overflow-x-auto pb-1">
-        {allEvents.map((ev: any, i: number) => {
-          const durationMs = toDate(ev.endDate).getTime() - toDate(ev.startDate).getTime();
-          const widthPct   = Math.max(6, (durationMs / totalMs) * 100);
+        {eventDisplayRanges.map(({ ev, displayStart, displayEnd }, i) => {
+          const durationMs = displayEnd.getTime() - displayStart.getTime();
+          const widthPct   = Math.max(5, (durationMs / totalMs) * 100);
           const isNow      = ev.status === 'current';
           return (
             <button
@@ -195,17 +199,13 @@ function TimelineBar({ saturnCycles, birthDate, onEventClick }: {
         })}
       </div>
       <div className="flex gap-1 overflow-x-auto pb-0.5">
-        {allEvents.map((ev: any, i: number) => {
-          const evStart    = toDate(ev.startDate);
-          const durationMs = toDate(ev.endDate).getTime() - evStart.getTime();
-          const widthPct   = Math.max(6, (durationMs / totalMs) * 100);
-          // Always show age from birth — clamp start date if period began before birth
-          const displayStart = evStart < birthDate ? birthDate : evStart;
-          const a1 = ageAt(displayStart, birthDate);
+        {eventDisplayRanges.map(({ ev, displayStart, displayEnd }, i) => {
+          const durationMs = displayEnd.getTime() - displayStart.getTime();
+          const widthPct   = Math.max(5, (durationMs / totalMs) * 100);
           return (
             <div key={i} style={{ flexBasis: `${widthPct}%`, flexShrink: 0 }} className="text-center">
               <span className="text-[10px] text-muted-foreground/60 leading-none">
-                {a1}
+                {ageAt(displayStart, birthDate)}
               </span>
             </div>
           );
@@ -331,76 +331,122 @@ function CycleBlock({ cycle, defaultOpen, onEventClick }: {
         </div>
       </button>
       {open && (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm border-collapse">
-            <thead>
-              <tr className="border-b border-border/50 bg-muted/20">
-                <th className="py-2 pl-4 pr-3 text-left text-xs font-medium text-muted-foreground min-w-[170px]">Transit</th>
-                <th className="py-2 px-2 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">Saturn in</th>
-                <th className="py-2 px-2 text-left text-xs font-medium text-muted-foreground">1st Entry</th>
-                <th className="py-2 px-2 text-left text-xs font-medium text-muted-foreground">Re-entry</th>
-                <th className="py-2 px-2 text-left text-xs font-medium text-muted-foreground">Final Entry</th>
-                <th className="py-2 px-2 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">Result</th>
-                <th className="py-2 px-2 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">Life Area</th>
-              </tr>
-            </thead>
-            <tbody>
-              {events.map((ev: any, idx: number) => {
-                const passes: any[] = ev.passes ?? [];
-                const cols = [passes[0], passes[1], passes[2]];
-                const isNow = ev.status === 'current';
-                return (
-                  <tr
-                    key={idx}
-                    onClick={() => onEventClick(ev)}
-                    className={cn(
-                      'border-t border-border/30 cursor-pointer transition-colors hover:bg-muted/30',
-                      isNow          ? 'bg-amber-50/40 dark:bg-amber-950/10' :
-                      ev.status === 'past' ? 'opacity-60 hover:opacity-100' : '',
-                    )}
-                  >
-                    <td className={cn(
-                      'py-2.5 pl-4 pr-3 font-semibold whitespace-nowrap',
+        <>
+          {/* ── Mobile card layout (< md) ── */}
+          <div className="md:hidden divide-y divide-border/30">
+            {events.map((ev: any, idx: number) => {
+              const passes: any[] = ev.passes ?? [];
+              const isNow = ev.status === 'current';
+              const resultInfo = TRANSIT_RESULTS[ev.type];
+              return (
+                <button
+                  key={idx}
+                  onClick={() => onEventClick(ev)}
+                  className={cn(
+                    'w-full text-left px-4 py-3 transition-colors active:bg-muted/40',
+                    isNow ? 'bg-amber-50/40 dark:bg-amber-950/10' :
+                    ev.status === 'past' ? 'opacity-60' : '',
+                  )}
+                >
+                  <div className="flex justify-between items-start gap-2 mb-1">
+                    <span className={cn(
+                      'text-sm font-semibold leading-tight',
                       ev.status === 'past' ? 'text-muted-foreground' : 'text-foreground',
                     )}>
                       {displayLabel(ev.label)}
-                      {isNow && (
-                        <span className="ml-1.5 inline-flex h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse align-middle" />
-                      )}
-                    </td>
-                    <td className="py-2.5 px-2 text-xs text-muted-foreground whitespace-nowrap">
-                      {ev.saturnSign ?? '—'}
-                    </td>
-                    {cols.map((pass, ci) => (
-                      <td key={ci} className={cn(
-                        'py-2.5 px-2 tabular-nums text-xs',
-                        !pass                ? 'text-muted-foreground/30' :
-                        isNow                ? 'text-foreground font-medium' :
-                        ev.status === 'past' ? 'text-muted-foreground/70' :
-                                               'text-foreground/80',
-                      )}>
+                      {isNow && <span className="ml-1.5 inline-flex h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse align-middle" />}
+                    </span>
+                    <span className={cn(
+                      'text-xs font-semibold flex-shrink-0 mt-0.5',
+                      ev.status === 'past' ? 'text-muted-foreground/60' : resultInfo?.resultClass,
+                    )}>
+                      {resultInfo?.result ?? '—'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mb-1.5">
+                    Saturn in {ev.saturnSign ?? '—'} · {resultInfo?.area ?? '—'}
+                  </p>
+                  <div className="space-y-0.5">
+                    {passes.map((pass, pi) => pass && (
+                      <p key={pi} className="text-xs text-muted-foreground/80 tabular-nums">
+                        <span className="text-muted-foreground/50 mr-1">
+                          {pi === 0 ? '1st:' : pi === 1 ? 'Re-entry:' : 'Final:'}
+                        </span>
                         {fmtPass(pass)}
-                      </td>
+                      </p>
                     ))}
-                    <td className="py-2.5 px-2 text-xs whitespace-nowrap">
-                      <span className={cn(
-                        'font-semibold',
-                        ev.status === 'past'
-                          ? 'text-muted-foreground/60'
-                          : TRANSIT_RESULTS[ev.type]?.resultClass ?? 'text-muted-foreground',
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* ── Desktop table layout (≥ md) ── */}
+          <div className="hidden md:block overflow-x-auto">
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr className="border-b border-border/50 bg-muted/20">
+                  <th className="py-2 pl-4 pr-3 text-left text-xs font-medium text-muted-foreground min-w-[170px]">Transit</th>
+                  <th className="py-2 px-2 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">Saturn in</th>
+                  <th className="py-2 px-2 text-left text-xs font-medium text-muted-foreground">1st Entry</th>
+                  <th className="py-2 px-2 text-left text-xs font-medium text-muted-foreground">Re-entry</th>
+                  <th className="py-2 px-2 text-left text-xs font-medium text-muted-foreground">Final Entry</th>
+                  <th className="py-2 px-2 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">Result</th>
+                  <th className="py-2 px-2 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">Life Area</th>
+                </tr>
+              </thead>
+              <tbody>
+                {events.map((ev: any, idx: number) => {
+                  const passes: any[] = ev.passes ?? [];
+                  const cols = [passes[0], passes[1], passes[2]];
+                  const isNow = ev.status === 'current';
+                  return (
+                    <tr
+                      key={idx}
+                      onClick={() => onEventClick(ev)}
+                      className={cn(
+                        'border-t border-border/30 cursor-pointer transition-colors hover:bg-muted/30',
+                        isNow          ? 'bg-amber-50/40 dark:bg-amber-950/10' :
+                        ev.status === 'past' ? 'opacity-60 hover:opacity-100' : '',
+                      )}
+                    >
+                      <td className={cn(
+                        'py-2.5 pl-4 pr-3 font-semibold whitespace-nowrap',
+                        ev.status === 'past' ? 'text-muted-foreground' : 'text-foreground',
                       )}>
-                        {TRANSIT_RESULTS[ev.type]?.result ?? '—'}
-                      </span>
-                    </td>
-                    <td className="py-2.5 px-2 text-xs text-muted-foreground whitespace-nowrap">
-                      {TRANSIT_RESULTS[ev.type]?.area ?? '—'}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                        {displayLabel(ev.label)}
+                        {isNow && <span className="ml-1.5 inline-flex h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse align-middle" />}
+                      </td>
+                      <td className="py-2.5 px-2 text-xs text-muted-foreground whitespace-nowrap">{ev.saturnSign ?? '—'}</td>
+                      {cols.map((pass, ci) => (
+                        <td key={ci} className={cn(
+                          'py-2.5 px-2 tabular-nums text-xs',
+                          !pass                ? 'text-muted-foreground/30' :
+                          isNow                ? 'text-foreground font-medium' :
+                          ev.status === 'past' ? 'text-muted-foreground/70' :
+                                                 'text-foreground/80',
+                        )}>
+                          {fmtPass(pass)}
+                        </td>
+                      ))}
+                      <td className="py-2.5 px-2 text-xs whitespace-nowrap">
+                        <span className={cn(
+                          'font-semibold',
+                          ev.status === 'past' ? 'text-muted-foreground/60' : TRANSIT_RESULTS[ev.type]?.resultClass ?? 'text-muted-foreground',
+                        )}>
+                          {TRANSIT_RESULTS[ev.type]?.result ?? '—'}
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-2 text-xs text-muted-foreground whitespace-nowrap">
+                        {TRANSIT_RESULTS[ev.type]?.area ?? '—'}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </div>
   );
