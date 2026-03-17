@@ -374,6 +374,7 @@ export default function ChartClient() {
         birthDate: formData.birthDate,
         birthTime: formData.birthTime,
         timePeriod: formData.timePeriod,
+        birthPlace: formData.cityName ?? chartData?.input?.birthPlace ?? '',
         latitude: formData.latitude,
         longitude: formData.longitude,
         timezone: formData.timezone,
@@ -388,9 +389,13 @@ export default function ChartClient() {
       const result = await response.json();
       
       if (result.success && result.data) {
+        const cityName = formData.cityName ?? chartData?.input?.birthPlace ?? (chartData as any)?.birthPlace ?? '';
         const updatedData = {
           ...result.data,
-          birthPlace: formData.cityName ?? chartData?.birthPlace,
+          input: {
+            ...result.data.input,
+            birthPlace: cityName,
+          },
         };
         setChartData(updatedData);
         saveChartToStorage(updatedData);
@@ -585,7 +590,7 @@ export default function ChartClient() {
                longitude: chartData.input.longitude,
                timezone: chartData.input.timezone,
                }}
-          birthPlace={chartData.input.birthPlace}
+          birthPlace={chartData.input.birthPlace || (chartData as any).birthPlace || ''}
           isEditing={isEditing}
           onEditToggle={() => setIsEditing(!isEditing)}
           rightContent={
