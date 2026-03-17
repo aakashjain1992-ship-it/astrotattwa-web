@@ -714,6 +714,10 @@ export default function ChartClient() {
       planets={chartData.planets}
       ascendant={chartData.ascendant}
       dashaInfo={chartData.dasa}
+      moonLongitude={chartData.planets.Moon?.longitude}
+      elapsedFractionOfNakshatra={chartData.planets.Moon?.kp?.elapsedFractionOfNakshatra}
+      nakshatraLord={chartData.avakahada?.nakshatraLord}
+      utcBirthDate={chartData.calculated.utcDateTime}
     />
   </div>
 )}
