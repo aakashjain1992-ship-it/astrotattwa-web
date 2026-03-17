@@ -47,6 +47,9 @@ import type {
   TimingWindow,
   GuidanceContent,
   LifeAreaItem,
+  DimensionalIntensity,
+  PhaseProgression,
+  WindowSummary,
 } from './period-analysis-types';
 
 // ═══════════════════════════════════════════════════════════════════
@@ -1116,6 +1119,202 @@ function buildGuidance(
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// DIMENSIONAL INTENSITY
+// ═══════════════════════════════════════════════════════════════════
+
+type DimLevel = 'very_high' | 'high' | 'moderate' | 'low';
+
+function scoreToDimLevel(score: number): DimLevel {
+  if (score >= 3) return 'very_high';
+  if (score >= 2) return 'high';
+  if (score >= 1) return 'moderate';
+  return 'low';
+}
+
+function buildDimensionalIntensity(
+  type: SelectedPeriod['type'],
+  moonStrength: ReturnType<typeof analyzeMoonStrength>,
+  saturnStrength: ReturnType<typeof analyzeSaturnStrength>,
+  mostActivated: DashaHierarchyWindow[],
+  bestJupiter: JupiterTransitWindow | undefined,
+): DimensionalIntensity {
+  // Emotional: driven by Moon strength + type (Peak/Rising hit emotions hardest)
+  let emotScore = 0;
+  if (type === 'ss_peak')    emotScore += 2;
+  else if (type === 'ss_rising') emotScore += 1;
+  else if (type === 'dhaiya_8th') emotScore += 1;
+  if (moonStrength.overallStrength === 'weak')   emotScore += 2;
+  else if (moonStrength.overallStrength === 'strong') emotScore -= 1;
+  const emotionalReason = moonStrength.overallStrength === 'weak'
+    ? 'Moon is weak in your chart — emotional sensitivity is higher'
+    : moonStrength.overallStrength === 'strong'
+    ? 'Moon is strong — emotional resilience is available'
+    : 'Moon is moderately placed — some emotional pressure';
+
+  // Structural: career/home/finances — driven by type + Saturn aspects
+  let structScore = 0;
+  if (type === 'dhaiya_4th')  structScore += 2;
+  else if (type === 'ss_setting') structScore += 2;
+  else if (type === 'ss_peak')    structScore += 1;
+  else if (type === 'dhaiya_8th') structScore += 2;
+  if (saturnStrength.isYogakaraka) structScore -= 1;
+  const structuralReason = type === 'dhaiya_4th'
+    ? 'Home, career, and property under Saturn\'s direct focus'
+    : type === 'dhaiya_8th'
+    ? 'Finances and life structures face sudden disruption'
+    : type === 'ss_setting'
+    ? 'Finances and family relationships face restructuring pressure'
+    : saturnStrength.isYogakaraka
+    ? 'Saturn is Yogakaraka — structural pressure converts to lasting results'
+    : 'Career and life structures are affected but not the primary focus';
+
+  // External: world events / outcomes visible to others — dasha activation + Jupiter
+  let extScore = 0;
+  if (mostActivated.some(w => w.activationLevel === 'very_high')) extScore += 3;
+  else if (mostActivated.some(w => w.activationLevel === 'high')) extScore += 2;
+  else if (mostActivated.some(w => w.activationLevel === 'moderate')) extScore += 1;
+  if (bestJupiter?.protectionStrength === 'strong')   extScore -= 2;
+  else if (bestJupiter?.protectionStrength === 'moderate') extScore -= 1;
+  const raw = bestJupiter as any;
+  const jupFrom = raw?._rawEntryDate ? fmtMonYear(raw._rawEntryDate) : bestJupiter ? fmtMonYear(bestJupiter.startDate) : null;
+  const jupTo   = raw?._rawExitDate  ? fmtMonYear(raw._rawExitDate)  : bestJupiter ? fmtMonYear(bestJupiter.exitDate)  : null;
+  const externalReason = bestJupiter?.protectionStrength === 'strong' && jupFrom && jupTo && jupFrom !== jupTo
+    ? `Jupiter protection present ${jupFrom}–${jupTo} — reduces external impact`
+    : mostActivated.some(w => w.activationLevel === 'very_high')
+    ? 'Dasha activation peaks align with transit — visible external effects likely'
+    : 'Moderate external impact — effects felt more internally than externally';
+
+  return {
+    emotional:  scoreToDimLevel(Math.max(0, emotScore)),
+    structural: scoreToDimLevel(Math.max(0, structScore)),
+    external:   scoreToDimLevel(Math.max(0, extScore)),
+    emotionalReason,
+    structuralReason,
+    externalReason,
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// PHASE PROGRESSION
+// ═══════════════════════════════════════════════════════════════════
+
+function buildPhaseProgression(
+  periodStart: Date,
+  periodEnd: Date,
+  birthDate: Date,
+  type: SelectedPeriod['type'],
+  mostActivated: DashaHierarchyWindow[],
+  retrogradeInfo: PeriodAnalysisResult['retrogradeInfo'],
+): PhaseProgression {
+  const totalMs = periodEnd.getTime() - periodStart.getTime();
+  const earlyEnd   = new Date(periodStart.getTime() + totalMs * 0.3);
+  const midEnd     = new Date(periodStart.getTime() + totalMs * 0.7);
+
+  const earlyWindow = `${fmtMonYear(periodStart)}–${fmtMonYear(earlyEnd)}`;
+  const midWindow   = `${fmtMonYear(earlyEnd)}–${fmtMonYear(midEnd)}`;
+  const lateWindow  = `${fmtMonYear(midEnd)}–${fmtMonYear(periodEnd)}`;
+
+  // Check if the peak dasha activation falls in early, mid, or late
+  const peakDasha = mostActivated.find(w => w.activationLevel === 'very_high' || w.activationLevel === 'high');
+  const peakInEarly = peakDasha && peakDasha.pratyantar.start < earlyEnd;
+  const peakInLate  = peakDasha && peakDasha.pratyantar.start >= midEnd;
+
+  const EARLY_BY_TYPE: Record<SelectedPeriod['type'], string> = {
+    ss_rising:  'Adjustment begins — unexpected expenses and disrupted routines surface. The main pressure has not yet peaked.',
+    ss_peak:    'Saturn enters your Moon sign. Initial disorientation, health attention needed, established patterns are questioned.',
+    ss_setting: 'Financial and family pressure begins building. Speech and communication require careful handling.',
+    dhaiya_4th: 'Home and workplace tensions emerge. Property and vehicle matters may require attention.',
+    dhaiya_8th: 'Unexpected disruptions begin — financial or circumstantial. Adaptability is the key skill.',
+  };
+  const MID_BY_TYPE: Record<SelectedPeriod['type'], string> = {
+    ss_rising:  peakInEarly ? 'The adjustment period eases somewhat — practical decisions made now carry weight.' : 'Peak pressure window. Multiple life areas feel the strain simultaneously.',
+    ss_peak:    peakDasha ? `Peak activation — ${peakDasha.pratyantar.lord} sub-period intensifies the transit's psychological and physical effects.` : 'Maximum Saturn pressure on Moon sign. Health, identity, and career face direct scrutiny.',
+    ss_setting: 'Financial restructuring is most active. Discipline around money and family communication is essential.',
+    dhaiya_4th: 'Career restructuring and domestic instability reach their peak. Saturn is testing the durability of your home and professional foundations.',
+    dhaiya_8th: 'Transformation is underway. Hidden matters surface. Health vigilance is most important in this phase.',
+  };
+  const LATE_BY_TYPE: Record<SelectedPeriod['type'], string> = {
+    ss_rising:  'Saturn approaches your Moon sign — the rising phase closes and preparation for peak matters more.',
+    ss_peak:    retrogradeInfo.hasRetrograde ? 'Saturn retraces key degrees — themes resurface for final integration. Review and closure, not new decisions.' : 'Saturn exits your Moon sign. Clarity and integration. The sharpest lessons are behind you.',
+    ss_setting: 'Gradual stabilisation. Financial discipline formed earlier begins to pay off. Family relationships can be repaired.',
+    dhaiya_4th: 'Pressure lifts as Saturn approaches sign exit. Foundations tested are now clearer — build on what survived.',
+    dhaiya_8th: peakInLate ? 'Final activation peak — last surge of pressure before Saturn exits. Stay steady and avoid reactive decisions.' : 'Integration and recovery. Transformations initiated earlier settle into their new form.',
+  };
+
+  return {
+    early: EARLY_BY_TYPE[type],
+    mid:   MID_BY_TYPE[type],
+    late:  LATE_BY_TYPE[type],
+    earlyWindow,
+    midWindow,
+    lateWindow,
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// WINDOW SUMMARY
+// ═══════════════════════════════════════════════════════════════════
+
+function buildWindowSummary(
+  timingWindows: TimingWindow[],
+  retrogradeInfo: PeriodAnalysisResult['retrogradeInfo'],
+  bestJupiter: JupiterTransitWindow | undefined,
+): WindowSummary {
+  const hardest   = timingWindows.find(w => w.intensity === 'hardest');
+  const easing    = timingWindows.find(w => w.intensity === 'easing');
+  const pressured = timingWindows.filter(w => w.intensity === 'pressured');
+
+  // Best window — prefer easing, then Jupiter window, then least-pressured
+  let bestLabel  = easing?.label ?? (bestJupiter ? fmtMonYear((bestJupiter as any)._rawEntryDate ?? bestJupiter.startDate) : null) ?? pressured[pressured.length - 1]?.label ?? 'Later in the period';
+  let bestReason = easing
+    ? 'Saturn pressure eases — suitable for important decisions and new initiatives'
+    : bestJupiter?.protectionStrength === 'strong'
+    ? 'Jupiter provides strong protection — most supported window of this period'
+    : 'Relatively lighter phase — lower risk for key decisions';
+
+  // Highest risk
+  const riskLabel  = hardest?.label ?? pressured[0]?.label ?? 'Mid-period';
+  const riskReason = hardest
+    ? hardest.description.split('.')[0]
+    : 'Multiple pressure factors align — highest caution window';
+
+  // Review phase — retrograde re-entry
+  let reviewWindow: WindowSummary['reviewPhase'] | undefined;
+  if (retrogradeInfo.hasRetrograde && retrogradeInfo.reviewPeriods.length > 0) {
+    const rp = retrogradeInfo.reviewPeriods[0];
+    reviewWindow = {
+      label:  `${fmtMonYear(rp.start)}–${fmtMonYear(rp.end)}`,
+      reason: 'Saturn re-enters the sign — themes resurface for review and closure',
+    };
+  }
+
+  return {
+    bestWindow:   { label: bestLabel, reason: bestReason },
+    highestRisk:  { label: riskLabel, reason: riskReason },
+    reviewPhase:  reviewWindow,
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// CONFIDENCE BASIS
+// ═══════════════════════════════════════════════════════════════════
+
+function buildConfidenceBasis(
+  moonStrength: ReturnType<typeof analyzeMoonStrength>,
+  saturnStrength: ReturnType<typeof analyzeSaturnStrength>,
+  mostActivated: DashaHierarchyWindow[],
+  bestJupiter: JupiterTransitWindow | undefined,
+  nakshatraTriggers: NakshatraTriggerWindow[],
+): string {
+  const parts: string[] = ['Moon strength', 'Saturn placement'];
+  if (mostActivated.length > 0) parts.push('Dasha overlap');
+  parts.push('transit activation');
+  if (bestJupiter) parts.push('Jupiter transit');
+  if (nakshatraTriggers.length > 0) parts.push('nakshatra trigger');
+  return `Based on ${parts.join(', ')}`;
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // MAIN ENTRY POINT
 // ═══════════════════════════════════════════════════════════════════
 
@@ -1287,6 +1486,41 @@ export async function analyzeSadeSatiPeriod(
     retrogradeInfo,
   );
 
+  // ── Dimensional intensity ──────────────────────────────────────
+  const dimensionalIntensity = buildDimensionalIntensity(
+    selectedPeriod.type,
+    moonStrength,
+    saturnStrength,
+    mostActivatedWindows,
+    bestProtectedPeriod,
+  );
+
+  // ── Phase progression ──────────────────────────────────────────
+  const phaseProgression = buildPhaseProgression(
+    selectedPeriod.startDate,
+    selectedPeriod.endDate,
+    birthDate,
+    selectedPeriod.type,
+    mostActivatedWindows,
+    retrogradeInfo,
+  );
+
+  // ── Window summary ─────────────────────────────────────────────
+  const windowSummary = buildWindowSummary(
+    timingWindows,
+    retrogradeInfo,
+    bestProtectedPeriod,
+  );
+
+  // ── Confidence basis ───────────────────────────────────────────
+  const confidenceBasis = buildConfidenceBasis(
+    moonStrength,
+    saturnStrength,
+    mostActivatedWindows,
+    bestProtectedPeriod,
+    nakshatraTriggers,
+  );
+
   return {
     period:               selectedPeriod,
     houseFromMoon:        selectedPeriod.houseFromMoon,
@@ -1305,8 +1539,12 @@ export async function analyzeSadeSatiPeriod(
     moonStrength,
     saturnStrength,
     overallIntensity,
+    dimensionalIntensity,
     summary,
     timingWindows,
     guidance,
+    phaseProgression,
+    windowSummary,
+    confidenceBasis,
   };
 }
