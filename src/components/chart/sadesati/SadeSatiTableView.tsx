@@ -159,7 +159,12 @@ function TimelineBar({ saturnCycles, birthDate, onEventClick }: {
 }) {
   const allEvents: any[] = saturnCycles
     .flatMap((c: any) => c.events ?? [])
-    .filter((ev: any) => toDate(ev.endDate).getTime() >= birthDate.getTime())
+    .filter((ev: any) => {
+      // Show only events that end after birth AND started before or after birth
+      // For events that started before birth, we still show them (e.g. ongoing at birth)
+      // but clamp the display start to birth
+      return toDate(ev.endDate).getTime() >= birthDate.getTime();
+    })
     .sort((a: any, b: any) => toDate(a.startDate).getTime() - toDate(b.startDate).getTime());
 
   if (!allEvents.length) return null;
@@ -191,12 +196,16 @@ function TimelineBar({ saturnCycles, birthDate, onEventClick }: {
       </div>
       <div className="flex gap-1 overflow-x-auto pb-0.5">
         {allEvents.map((ev: any, i: number) => {
-          const durationMs = toDate(ev.endDate).getTime() - toDate(ev.startDate).getTime();
+          const evStart    = toDate(ev.startDate);
+          const durationMs = toDate(ev.endDate).getTime() - evStart.getTime();
           const widthPct   = Math.max(6, (durationMs / totalMs) * 100);
+          // Always show age from birth — clamp start date if period began before birth
+          const displayStart = evStart < birthDate ? birthDate : evStart;
+          const a1 = ageAt(displayStart, birthDate);
           return (
             <div key={i} style={{ flexBasis: `${widthPct}%`, flexShrink: 0 }} className="text-center">
               <span className="text-[10px] text-muted-foreground/60 leading-none">
-                {ageAt(toDate(ev.startDate), birthDate)}
+                {a1}
               </span>
             </div>
           );
@@ -415,7 +424,6 @@ function SaturnCyclesTable({ analysis, birthDate, onEventClick }: {
   }
   return (
     <div className="space-y-3 pt-2">
-      <SadeSatiDescription />
       {saturnCycles.map((cycle: any) => {
         const filteredEvents = (cycle.events ?? []).filter(
           (e: any) => toDate(e.endDate).getTime() >= birthMs,
