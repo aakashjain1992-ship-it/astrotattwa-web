@@ -945,10 +945,87 @@ function buildTimingWindows(
     });
   }
 
-  // Ensure we have at least one window
+  // ── Gap filler ─────────────────────────────────────────────────
+  // Sort windows by their start date so we can find uncovered stretches
+  windows.sort((a, b) => {
+    const aStart = parseLabelDate(a.label);
+    const bStart = parseLabelDate(b.label);
+    return aStart - bStart;
+  });
+
+  // Find the latest end date covered by existing windows
+  // We do this by tracking which months are "spoken for"
+  const coveredRanges: Array<{ start: Date; end: Date }> = [];
+
+  if (vhDasha) {
+    coveredRanges.push({ start: vhDasha.pratyantar.start, end: vhDasha.pratyantar.end });
+  }
+  if (exactAW && !vhDasha) {
+    coveredRanges.push({ start: exactAW.startDate, end: exactAW.endDate });
+  }
+  if (protectedJupiter) {
+    coveredRanges.push({ start: protectedJupiter.startDate, end: protectedJupiter.exitDate });
+  }
+  if (retroAW) {
+    coveredRanges.push({ start: retroAW.startDate, end: retroAW.endDate });
+  }
+
+  // Find gaps > 6 months that aren't covered
+  const gapWindows: TimingWindow[] = [];
+
+  // Check gap before first covered range
+  if (coveredRanges.length > 0) {
+    coveredRanges.sort((a, b) => a.start.getTime() - b.start.getTime());
+
+    // Gap between period start and first window
+    const firstCoveredStart = coveredRanges[0].start;
+    const gapBeforeMs = firstCoveredStart.getTime() - periodStart.getTime();
+    if (gapBeforeMs > 6 * 30 * MS_PER_DAY) {
+      const a1 = ageAt(periodStart, birthDate);
+      const a2 = ageAt(firstCoveredStart, birthDate);
+      gapWindows.push({
+        label: `${fmtMonYear(periodStart)} – ${fmtMonYear(firstCoveredStart)} · Age ${a1 === a2 ? a1 : `${a1}–${a2}`}`,
+        intensity: 'pressured',
+        description: 'Saturn is active but without a specific peak — consistent pressure without a single sharp moment. Maintain discipline and remedies throughout.',
+      });
+    }
+
+    // Gaps between consecutive covered ranges
+    for (let i = 0; i < coveredRanges.length - 1; i++) {
+      const gapStart = coveredRanges[i].end;
+      const gapEnd   = coveredRanges[i + 1].start;
+      const gapMs    = gapEnd.getTime() - gapStart.getTime();
+      if (gapMs > 6 * 30 * MS_PER_DAY) {
+        const a1 = ageAt(gapStart, birthDate);
+        const a2 = ageAt(gapEnd, birthDate);
+        gapWindows.push({
+          label: `${fmtMonYear(gapStart)} – ${fmtMonYear(gapEnd)} · Age ${a1 === a2 ? a1 : `${a1}–${a2}`}`,
+          intensity: 'pressured',
+          description: 'Sustained Saturn pressure without a specific peak — no single hardest moment but the overall weight of the transit is present. Patience and routine practice are most useful here.',
+        });
+      }
+    }
+
+    // Gap between last covered range and period end
+    const lastCoveredEnd = coveredRanges[coveredRanges.length - 1].end;
+    const gapAfterMs = periodEnd.getTime() - lastCoveredEnd.getTime();
+    if (gapAfterMs > 6 * 30 * MS_PER_DAY) {
+      const a1 = ageAt(lastCoveredEnd, birthDate);
+      const a2 = ageAt(periodEnd, birthDate);
+      gapWindows.push({
+        label: `${fmtMonYear(lastCoveredEnd)} – ${fmtMonYear(periodEnd)} · Age ${a1 === a2 ? a1 : `${a1}–${a2}`}`,
+        intensity: 'easing',
+        description: 'The closing stretch of this period. Saturn\'s pressure gradually lifts as it approaches the sign exit — integration and preparation for what follows.',
+      });
+    }
+  }
+
+  // Merge gap windows into the main list and re-sort chronologically
+  windows.push(...gapWindows);
+  windows.sort((a, b) => parseLabelDate(a.label) - parseLabelDate(b.label));
+
+  // Ensure at least one window
   if (windows.length === 0) {
-    const midMs = periodStart.getTime() + (periodEnd.getTime() - periodStart.getTime()) / 2;
-    const midDate = new Date(midMs);
     windows.push({
       label:     `${fmtMonYear(periodStart)} – ${fmtMonYear(periodEnd)} · Age ${ageAt(periodStart, birthDate)}–${ageAt(periodEnd, birthDate)}`,
       intensity: 'pressured',
@@ -957,6 +1034,13 @@ function buildTimingWindows(
   }
 
   return windows;
+}
+
+/** Extract a comparable timestamp from a timing window label (uses the first date mentioned) */
+function parseLabelDate(label: string): number {
+  const match = label.match(/([A-Z][a-z]{2} \d{4})/);
+  if (!match) return 0;
+  return new Date(match[1]).getTime();
 }
 
 // ═══════════════════════════════════════════════════════════════════
