@@ -51,6 +51,14 @@ const SIGN_NAMES = [
   'Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces',
 ];
 
+const TRANSIT_RESULTS: Record<string, { result: string; resultClass: string; area: string }> = {
+  ss_rising:  { result: 'Mixed',       resultClass: 'text-amber-600',   area: 'Expenses & enemies' },
+  ss_peak:    { result: 'Challenging', resultClass: 'text-red-600',     area: 'Health & finances' },
+  ss_setting: { result: 'Fair',        resultClass: 'text-amber-600',   area: 'Family & stability' },
+  dhaiya_4th: { result: 'Good',        resultClass: 'text-emerald-600', area: 'Career & profession' },
+  dhaiya_8th: { result: 'Difficult',   resultClass: 'text-red-600',     area: 'Wealth & obstacles' },
+};
+
 const INTENSITY_COLORS: Record<string, string> = {
   very_intense: 'text-red-600 bg-red-50 border-red-200',
   intense:      'text-orange-600 bg-orange-50 border-orange-200',
@@ -330,6 +338,65 @@ function JupiterCard({
   );
 }
 
+function UpcomingAnalysisSection({ data, birthDate }: { data: any; birthDate: Date }) {
+  const yearsText = data.yearsFromNow < 1
+    ? `${Math.round(data.yearsFromNow * 12)} months`
+    : `${data.yearsFromNow.toFixed(1)} years`;
+ 
+  return (
+    <>
+      {/* Next Sade Sati Banner */}
+      <div className="rounded-lg border border-blue-200 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-800 p-4 mb-1">
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-sm font-bold text-blue-900 dark:text-blue-100">
+                Next Sade Sati
+              </span>
+              <IntensityPill
+                level={data.expectedIntensity}
+                label={`Expected: ${data.expectedIntensity.replace('_', ' ')}`}
+              />
+            </div>
+            <p className="text-sm mt-1 text-blue-800 dark:text-blue-200">
+              {data.phase} Phase · Saturn in {data.saturnSign}
+            </p>
+            <p className="text-xs mt-1 text-blue-700 dark:text-blue-300">
+              Starts {fmtFull(data.startDate)} · {yearsText} from now
+            </p>
+          </div>
+        </div>
+      </div>
+ 
+      {/* Planetary Strength at next SS */}
+      <Section title="Planetary Strength at Next Sade Sati" defaultOpen icon={<Star className="h-3.5 w-3.5" />}>
+        <div className="space-y-2">
+          <StrengthCard data={data.moonStrength} />
+          <StrengthCard data={data.saturnStrength} />
+        </div>
+      </Section>
+ 
+      {/* Dasha at next SS start */}
+      <Section title="Dasha at Next Sade Sati Start" defaultOpen icon={<Zap className="h-3.5 w-3.5" />}>
+        <DashaCard data={data.dashaAtStart} />
+        <p className="text-xs text-muted-foreground mt-2">
+          Dasha running when Sade Sati begins. If Saturn/Moon/Rahu Mahadasha coincides,
+          the effects are significantly amplified.
+        </p>
+      </Section>
+ 
+      {/* Jupiter Protection */}
+      <Section title="Jupiter Protection (Natal)" defaultOpen icon={<Shield className="h-3.5 w-3.5" />}>
+        <JupiterCard data={data.jupiterProtection} />
+        <p className="text-xs text-muted-foreground mt-2">
+          Based on natal Jupiter position. Jupiter's transit position at the time of
+          Sade Sati may differ.
+        </p>
+      </Section>
+    </>
+  );
+}
+
 function PhaseBlock({
   phase,
   isCurrent,
@@ -482,7 +549,7 @@ function PhaseBlock({
     </div>
   );
 }
-
+/*
 function TimelineEntry({
   label,
   sub,
@@ -548,7 +615,7 @@ function TimelineEntry({
     </div>
   );
 }
-
+*/
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 // ─── Saturn Cycles Table (Timeline Tab) ──────────────────────────────────────
@@ -572,14 +639,6 @@ const CYCLE_LABELS: Record<number, string> = {
   3: 'Third Cycle:',
 };
 
-/** Fixed display order within a cycle — matches reference image */
-const EVENT_ORDER: Record<string, number> = {
-  ss_setting:  0,
-  dhaiya_4th:  1,
-  dhaiya_8th:  2,
-  ss_rising:   3,
-  ss_peak:     4,
-};
 
 /** Map internal labels to readable display names with Rising/Peak/Setting phase */
 function displayLabel(label: string): string {
@@ -661,6 +720,12 @@ function CycleBlock({ cycle, defaultOpen }: { cycle: any; defaultOpen: boolean }
                 <th className="py-2 px-2 text-left text-xs font-medium text-muted-foreground">
                   Final Entry
                 </th>
+                <th className="py-2 px-2 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">
+                  Result
+                </th>
+                <th className="py-2 px-2 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">
+                  Life Area
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -717,6 +782,22 @@ function CycleBlock({ cycle, defaultOpen }: { cycle: any; defaultOpen: boolean }
                         {fmtPass(pass)}
                       </td>
                     ))}
+
+                     <td className="py-2.5 px-2 text-xs whitespace-nowrap">
+                      <span className={cn(
+                        'font-semibold',
+                        ev.status === 'past'
+                          ? 'text-muted-foreground/60'
+                          : TRANSIT_RESULTS[ev.type]?.resultClass ?? 'text-muted-foreground'
+                      )}>
+                        {TRANSIT_RESULTS[ev.type]?.result ?? '—'}
+                      </span>
+                    </td>
+                    {/* Life Area */}
+                    <td className="py-2.5 px-2 text-xs text-muted-foreground whitespace-nowrap">
+                      {TRANSIT_RESULTS[ev.type]?.area ?? '—'}
+                    </td>
+                    
                   </tr>
                 );
               })}
@@ -727,6 +808,81 @@ function CycleBlock({ cycle, defaultOpen }: { cycle: any; defaultOpen: boolean }
     </div>
   );
 }
+
+function SadeSatiDescription() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="rounded-lg border border-border bg-muted/30 overflow-hidden mb-3">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-muted/50 transition-colors"
+      >
+        <span className="text-sm font-semibold">What is Sade Sati?</span>
+        {open
+          ? <ChevronDown className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+          : <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />}
+      </button>
+ 
+      {open && (
+        <div className="px-4 pb-4 space-y-3 text-sm text-muted-foreground border-t border-border pt-3">
+          <p>
+            A horoscope is under <strong className="text-foreground">Sade Sati</strong> when Saturn
+            transits through the 12th, 1st, and 2nd house from the natal Moon. It is under{' '}
+            <strong className="text-foreground">Dhaiya</strong> when Saturn transits the 4th or 8th
+            house from the natal Moon.
+          </p>
+          <p>
+            Sade Sati lasts approximately <strong className="text-foreground">7½ years</strong> and
+            Dhaiya lasts <strong className="text-foreground">2½ years</strong>. These periods
+            generally influence health, mental peace, and finances.
+          </p>
+          <p>
+            Sade Sati occurs three times in a lifetime — in childhood, youth, and old age.
+            The first affects education and parents; the second affects profession and family;
+            the third affects health most significantly.
+          </p>
+ 
+          <div className="rounded-md border border-border overflow-hidden mt-2">
+            <table className="w-full text-xs border-collapse">
+              <thead>
+                <tr className="bg-muted/50 border-b border-border">
+                  {['Phase', 'House from Moon', 'Duration', 'Focus Area'].map(h => (
+                    <th key={h} className="py-2 px-3 text-left font-semibold text-foreground">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  { phase: 'Sade Sati — Rising',  house: '12th (before Moon)', dur: '~2.5 yrs', focus: 'Expenses, foreign travel, losses' },
+                  { phase: 'Sade Sati — Peak',    house: '1st (Moon sign)',    dur: '~2.5 yrs', focus: 'Health, identity, mental stress' },
+                  { phase: 'Sade Sati — Setting', house: '2nd (after Moon)',   dur: '~2.5 yrs', focus: 'Family, finances, speech' },
+                  { phase: 'Dhaiya — 4th House',  house: '4th from Moon',      dur: '~2.5 yrs', focus: 'Career, property, mother' },
+                  { phase: 'Dhaiya — 8th House',  house: '8th from Moon',      dur: '~2.5 yrs', focus: 'Wealth, sudden changes, health' },
+                ].map((row, i) => (
+                  <tr key={i} className={cn('border-t border-border/50', i % 2 === 0 ? 'bg-background' : 'bg-muted/20')}>
+                    <td className="py-2 px-3 font-medium text-foreground">{row.phase}</td>
+                    <td className="py-2 px-3">{row.house}</td>
+                    <td className="py-2 px-3 whitespace-nowrap">{row.dur}</td>
+                    <td className="py-2 px-3">{row.focus}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+ 
+          <p className="text-xs">
+            <strong className="text-foreground">1st Entry / Re-entry / Final Entry:</strong>{' '}
+            Saturn's retrograde motion can cause it to leave a sign and re-enter it — sometimes
+            twice. Each column shows a separate stay period, with re-entries often being the
+            most intense phase.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 
 // ── Full cycles table ─────────────────────────────────────────────────────────
 
@@ -751,6 +907,7 @@ function SaturnCyclesTable({
 
   return (
     <div className="pt-2 space-y-3">
+      <SadeSatiDescription />
       {saturnCycles.map((cycle: any) => {
         // Filter out events that ended before birth date
         const filteredEvents = (cycle.events ?? []).filter(
@@ -1164,6 +1321,14 @@ export function SadeSatiTableView({
                 <p className="text-sm text-muted-foreground">No active period.</p>
               )}
             </Section>
+
+             {/* Upcoming Sade Sati Analysis — shown when not in any active period */}
+            {summary.currentStatus === 'clear' && (activeAnalysis as any).upcomingAnalysis && (
+              <UpcomingAnalysisSection
+                data={(activeAnalysis as any).upcomingAnalysis}
+                birthDate={birthDate}
+              />
+            )}
 
             {/* Recommendations */}
             {summary.topRecommendations.length > 0 && (
