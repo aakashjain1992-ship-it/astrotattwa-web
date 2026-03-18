@@ -5,6 +5,9 @@
 
 set -e
 
+# Ensure node and claude are available in cron environment (nvm not loaded by default)
+export PATH="/home/deploy/.nvm/versions/node/v20.20.0/bin:$PATH"
+
 PROJECT_DIR="/var/www/astrotattwa-web"
 LOG_FILE="$PROJECT_DIR/cron-scripts/logs/test-audit.log"
 SNAPSHOT_FILE="/var/www/astrotattwa-web/cron-scripts/memory/codebase_snapshot.md"
