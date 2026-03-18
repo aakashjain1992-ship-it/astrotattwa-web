@@ -90,16 +90,9 @@ Present this gap analysis as a table to the user. Example:
 
 **PAUSE HERE** — Present the gap analysis to the user and wait for them to review before continuing.
 
-## Step 5: RE-VERIFY & RATE ACCURACY
+## Step 5: RE-VERIFY & RATE ACCURACY (with deep-dive loop)
 
-Self-audit your own gap analysis:
-
-1. For each **PHANTOM** claim: Did you search correctly? Try alternate paths/names.
-2. For each **MISSING** claim: Is it really absent from the doc? Check for alternate names.
-3. For each **STALE** claim: Double-check your numbers.
-4. Re-run targeted `grep`/`glob` for anything borderline.
-
-Rate your gap analysis accuracy out of 10 using this rubric:
+Rate your gap analysis accuracy out of 10:
 
 | Score | Meaning |
 |-------|---------|
@@ -108,7 +101,19 @@ Rate your gap analysis accuracy out of 10 using this rubric:
 | **5-6** | Mixed confidence. Some findings may have false positives/negatives. |
 | **Below 5** | Low confidence. Re-run the audit before presenting. |
 
-Fix any errors you find. Present corrections and the final accuracy rating to the user.
+**Target: reach a rating of 8 or above. If your rating is below 8, run a deeper evaluation pass:**
+
+DEEP-DIVE LOOP (repeat up to 3 times until rating ≥ 8):
+1. List every PHANTOM and MISSING finding you are not 100% certain about
+2. For each uncertain finding: open and READ the actual file directly — do not rely on grep results or snapshot
+3. For each PHANTOM: try alternate file paths, alternate component names, check index files and barrel exports
+4. For each MISSING: search more broadly — check subdirectories, re-run glob with wider patterns
+5. For any STALE claim: re-read the actual file and confirm the current value
+6. After each deep-dive pass, re-rate the document
+7. If rating still below 8, repeat (up to 3 total iterations)
+8. After 3 passes, note: "Maximum deep-dive iterations reached" and proceed with current rating
+
+Present corrections and the final rating to the user.
 
 **This rating will be included in the email report so the reviewer knows how much to trust the output.**
 

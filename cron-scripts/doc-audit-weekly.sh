@@ -86,13 +86,26 @@ Classify every claim as one of:
 - MISSING: something exists in codebase but is not mentioned in doc
 - STALE: claim was once true but is now outdated (wrong version, wrong path, etc.)
 
-**Step 3.5 — RE-VERIFY & RATE**
-Double-check each PHANTOM and MISSING finding by reading the actual file.
+**Step 3.5 — RE-VERIFY & RATE (with deep-dive loop)**
 Rate the document accuracy 1–10:
 - 9–10: High confidence, doc matches codebase well (≤5% claims wrong)
 - 7–8: Mostly accurate, minor gaps (6–15% claims wrong)
 - 5–6: Notable gaps, review recommended (16–30% claims wrong)
 - <5: Significant inaccuracies, manual review required (>30% claims wrong)
+
+**Target: reach a rating of 8 or above. If your rating is below 8, do a deeper evaluation pass:**
+
+DEEP-DIVE LOOP (repeat up to 3 times until rating ≥ 8):
+1. List every PHANTOM and MISSING finding you are not 100% certain about
+2. For each uncertain finding: open and READ the actual file directly — do not rely on grep results or the snapshot
+3. For each PHANTOM: try alternate file paths, alternate component names, check index files and barrel exports
+4. For each MISSING: search more broadly — check subdirectories, re-run glob with wider patterns
+5. For any STALE claim: re-read the actual file and confirm the current value
+6. After each deep-dive pass, re-rate the document
+7. If rating is still below 8, repeat the deep-dive pass (up to 3 total iterations)
+8. After 3 passes, proceed with whatever rating you have and note: "Maximum deep-dive iterations reached"
+
+Only proceed to Step 3.6 when rating ≥ 8 OR after 3 deep-dive iterations.
 
 **Step 3.6 — REVERSE ENGINEER**
 Deep-scan for things the doc should cover but missed entirely:
