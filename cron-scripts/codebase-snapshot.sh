@@ -17,34 +17,54 @@ cd "$PROJECT_DIR"
 
 PROMPT="You are running an automated codebase snapshot task for the astrotattwa-web project at /var/www/astrotattwa-web.
 
-Your job is to scan the entire codebase and save a detailed snapshot to memory. This snapshot will be reused by the doc-audit-weekly task at 9:00 AM to avoid duplicate scanning.
+Your job is to deeply scan the entire codebase and save a structured snapshot to memory. This snapshot will be reused by the doc-audit-weekly task at 9:00 AM to avoid duplicate scanning.
 
-## Steps
+## Step 1 — COMPONENTS
+Glob: src/components/**/*.tsx
+For each file found:
+- Record the file path
+- Count how many times the component is imported across src/ by running:
+  grep -r 'import.*ComponentName' src/ --include='*.tsx' --include='*.ts' | wc -l
+- Classify as:
+  - ACTIVE: imported in at least one page, layout, or other component
+  - DEAD: zero imports found anywhere in src/
 
-1. Scan all source files:
-   - Components: src/components/**/*.tsx
-   - Hooks: src/hooks/**/*.ts
-   - Pages/Routes: src/app/**/*.tsx
-   - Types: src/types/**/*.ts
-   - API routes: src/app/api/**/*.ts
-   - Lib/utils: src/lib/**/*.ts
+## Step 2 — HOOKS
+Glob: src/hooks/**/*.ts
+For each hook file:
+- Record the file path and hook name
+- Check if it is imported anywhere in src/
+- Classify as ACTIVE or UNUSED
 
-2. For each component file found:
-   - Record its file path
-   - Check if it is imported anywhere in the codebase (active) or not (dead code)
-   - Note its exported component names
+## Step 3 — API ROUTES
+Glob: src/app/api/**/route.ts
+For each route file:
+- Record the file path
+- Note which HTTP methods are exported (GET, POST, PUT, DELETE, PATCH)
 
-3. Record the tech stack from package.json (key dependencies and their versions)
+## Step 4 — TYPES
+Glob: src/types/**/*.ts
+List each type file path.
 
-4. Record recent git changes: run 'git log --oneline -20' to see last 20 commits
+## Step 5 — TECH STACK
+Read package.json and extract all dependencies and devDependencies with their exact versions.
 
-5. Save the complete snapshot to: $MEMORY_FILE
+## Step 6 — DIRECTORY TREE
+Run: ls src/
+Record the top-level structure of the src/ directory.
 
-Format the snapshot file as:
+## Step 7 — GIT ACTIVITY
+Run: git log --since='7 days ago' --oneline -- '*.tsx' '*.ts'
+Summarize: which files changed, what features were added or modified.
+
+## Step 8 — SAVE SNAPSHOT
+Write the complete snapshot to: $MEMORY_FILE
+
+Use this exact format:
 
 ---
 name: Codebase Snapshot
-description: Weekly scan of all components, hooks, routes, types, and git activity
+description: Weekly automated snapshot of all components, hooks, routes, types, and their usage status
 type: project
 date: $(date +%Y-%m-%d)
 ---
@@ -52,31 +72,38 @@ date: $(date +%Y-%m-%d)
 # Codebase Snapshot — $(date +%Y-%m-%d)
 
 ## Tech Stack
-[list key deps from package.json]
+[all deps from package.json with versions]
+
+## Directory Structure
+[output of ls src/]
 
 ## Components (Active)
-[list each active component with file path]
+[component name — file path — import count]
 
 ## Components (Dead Code)
-[list each unused component with file path]
+[component name — file path — 0 imports]
 
-## Hooks
-[list all hooks]
+## Hooks (Active)
+[hook name — file path]
+
+## Hooks (Unused)
+[hook name — file path]
 
 ## API Routes
-[list all API routes]
+[route path — file path — HTTP methods: GET, POST, ...]
 
 ## Types
-[list all type files]
+[file path]
 
-## Recent Git Activity (last 20 commits)
+## Git Activity (past 7 days)
 [git log output]
 
 ## Summary
 - Total components: X (active: Y, dead: Z)
-- Total hooks: X
+- Total hooks: X (active: Y, unused: Z)
 - Total API routes: X
-- Last commit: [date and message]"
+- Files changed this week: X
+- Snapshot generated: $(date +%Y-%m-%d %H:%M UTC)"
 
 /home/deploy/.nvm/versions/node/v20.20.0/bin/claude --dangerously-skip-permissions -p "$PROMPT" --model claude-sonnet-4-6 >> "$LOG_FILE" 2>&1
 

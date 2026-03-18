@@ -15,7 +15,7 @@ echo "[$(date)] Starting doc audit..." | tee -a "$LOG_FILE"
 cd "$PROJECT_DIR"
 
 # Check if there were any code changes in the past 7 days
-CHANGES=$(git log --oneline --since="7 days ago" -- src/ 2>/dev/null | wc -l)
+CHANGES=$(git log --oneline --since="7 days ago" -- '*.tsx' '*.ts' 2>/dev/null | wc -l)
 if [ "$CHANGES" -eq 0 ]; then
   echo "[$(date)] No code changes in the past week. Skipping audit." | tee -a "$LOG_FILE"
   exit 0
@@ -25,77 +25,113 @@ echo "[$(date)] Found $CHANGES commits in the past week. Proceeding with audit."
 
 # Determine current week of month (for staggered schedule)
 WEEK=$(( ($(date +%-d) - 1) / 7 + 1 ))
-MONTH_DAY=$(date +%-d)
 
-PROMPT="You are running an automated documentation audit for the astrotattwa-web project at /var/www/astrotattwa-web.
+PROMPT="You are running the weekly documentation audit for the astrotattwa-web project at /var/www/astrotattwa-web.
 
-Today is $(date +%Y-%m-%d). Week of month: $WEEK.
+Today is $(date +%Y-%m-%d). This is week $WEEK of the month.
 
-## Staggered Audit Schedule
+## STEP 0 — CHECK FOR CHANGES
+Run: git log --since='7 days ago' --oneline -- '*.tsx' '*.ts'
+If no output → print 'No code changes this week. Skipping.' and stop.
 
-Audit these files TODAY based on schedule:
-- WEEKLY (every Saturday): COMPONENT_LIBRARY.md, PROGRESS_TRACKER.md
-- BI-WEEKLY (weeks 1 & 3): PROJECT_OVERVIEW.md, DEVELOPMENT_ROADMAP.md
-- MONTHLY (week 1 only): AI_HANDOFF_GUIDE.md, CODE_REFACTORING_GUIDE.md, DELIVERY_SUMMARY.md, README.md
+## STEP 1 — DETERMINE WHICH DOCS ARE DUE
+Calculate based on week $WEEK of the month:
+- EVERY Saturday (weeks 1, 2, 3, 4): COMPONENT_LIBRARY.md, PROGRESS_TRACKER.md
+- 1st & 3rd Saturday (weeks 1, 3): also PROJECT_OVERVIEW.md, DEVELOPMENT_ROADMAP.md
+- 1st Saturday only (week 1): also AI_HANDOFF_GUIDE.md, CODE_REFACTORING_GUIDE.md, DELIVERY_SUMMARY.md, README.md
 
-Determine which files are due today (week $WEEK of the month), then audit only those files.
+List which files are due today before proceeding.
 
-## Codebase Snapshot
+## STEP 2 — READ CODEBASE SNAPSHOT
+Read the memory file at: $SNAPSHOT_FILE
+Use this as ground truth for all audits. Avoid re-scanning the codebase from scratch — only do targeted glob/grep for claims not covered by the snapshot.
 
-A codebase snapshot was saved at 8:30 AM today to: $SNAPSHOT_FILE
-Read this file first to avoid re-scanning the codebase.
+## STEP 3 — AUDIT EACH DUE DOCUMENT
+For each due file, run all 7 steps:
 
-## 7-Step Audit Process (for each file due today)
+**Step 3.1 — DISCOVER DOC**
+Read the document. Identify its doc type:
+- Entity Catalog (COMPONENT_LIBRARY) → verify component entries against snapshot import data
+- Architecture Overview (PROJECT_OVERVIEW, DELIVERY_SUMMARY, README) → verify tech stack, directory structure
+- Progress Tracker (PROGRESS_TRACKER, DEVELOPMENT_ROADMAP) → verify completed items against git log
+- Procedural Guide (AI_HANDOFF_GUIDE) → verify file paths, commands, referenced docs exist
+- Task Doc (CODE_REFACTORING_GUIDE) → verify referenced patterns still exist, completion status
 
-For each doc file that is due:
+**Step 3.2 — READ DOC**
+List every verifiable claim in the document: component names, file paths, version numbers, counts, feature statuses.
 
-**Step 1 — DISCOVER DOC**: Read the doc file and understand its purpose, structure, and doc type (Entity Catalog, Architecture Overview, Progress Tracker, Procedural Guide, or Task Doc).
+**Step 3.3 — DISCOVER CODEBASE**
+Cross-reference each claim against the codebase snapshot. For anything not in the snapshot, do a targeted Glob or Grep.
 
-**Step 2 — READ DOC**: List all claims, entries, and information stated in the doc.
+**Step 3.4 — CREATE GAP**
+Classify every claim as one of:
+- ACCURATE: claim matches codebase reality
+- PHANTOM: claim refers to something that does not exist in codebase
+- MISSING: something exists in codebase but is not mentioned in doc
+- STALE: claim was once true but is now outdated (wrong version, wrong path, etc.)
 
-**Step 3 — DISCOVER CODEBASE**: Using the codebase snapshot (already loaded), map relevant codebase facts to this doc's scope.
+**Step 3.5 — RE-VERIFY & RATE**
+Double-check each PHANTOM and MISSING finding by reading the actual file.
+Rate the document accuracy 1–10:
+- 9–10: High confidence, doc matches codebase well (≤5% claims wrong)
+- 7–8: Mostly accurate, minor gaps (6–15% claims wrong)
+- 5–6: Notable gaps, review recommended (16–30% claims wrong)
+- <5: Significant inaccuracies, manual review required (>30% claims wrong)
 
-**Step 4 — CREATE GAP**: Compare doc claims vs codebase reality. List:
-- Items in doc but NOT in codebase (phantom/outdated)
-- Items in codebase but NOT in doc (missing)
-- Items that are inaccurate (wrong counts, wrong paths, wrong descriptions)
+**Step 3.6 — REVERSE ENGINEER**
+Deep-scan for things the doc should cover but missed entirely:
+- New components added since last audit (check git log)
+- Hooks, routes, or types not mentioned anywhere in the doc
+- Import patterns that reveal active vs dead code status changes
 
-**Step 5 — RE-VERIFY & RATE**: Double-check each gap item by reading the actual file. Rate accuracy 1-10:
-- 9-10: High confidence, doc matches codebase well
-- 7-8: Mostly accurate, minor gaps
-- 5-6: Notable gaps, review recommended
-- <5: Significant inaccuracies, manual review required
+**Step 3.7 — GENERATE FINAL**
+Write the complete updated document. Preserve the existing structure and formatting. Bump the version number and update the date. Remove all PHANTOM entries. Add all MISSING entries. Fix all STALE entries.
 
-**Step 6 — REVERSE ENGINEER**: Deep-scan the codebase for anything the doc should cover but missed. Check imports, exports, and actual usage patterns.
+If a document has ZERO findings (all claims accurate, nothing missing) → skip it, do not write a new version.
 
-**Step 7 — GENERATE FINAL**: Write the complete updated document.
+## STEP 4 — CREATE BRANCH & COMMIT
+Only if at least one document was updated:
 
-## After Auditing All Due Files
+1. git checkout -b docs/audit-$(date +%Y-%m-%d)
+2. Write all updated .md files to disk
+3. git add [only the changed .md files]
+4. git commit -m 'docs: automated audit $(date +%Y-%m-%d)'
+5. git push origin docs/audit-$(date +%Y-%m-%d)
 
-1. Create a new git branch: docs/audit-$(date +%Y-%m-%d)
-2. Write each updated doc to its file
-3. Run: git add [doc files] && git commit -m 'docs: automated audit $(date +%Y-%m-%d)'
-4. Run: git push origin docs/audit-$(date +%Y-%m-%d)
+If all documents were already accurate → print 'All docs up to date. No changes.' and stop. Do not send email.
 
-5. Build a summary email body with:
-   - List of files audited
-   - Per-file accuracy rating (X/10) with key changes made
-   - Overall average confidence rating
-   - GitHub diff URL: https://github.com/aakashjain1992-ship-it/astrotattwa-web/compare/dev...docs/audit-$(date +%Y-%m-%d)
+## STEP 5 — SEND EMAIL
+Build the email summary:
+- For each file audited: filename, rating (X/10), count of phantoms removed / missing added / stale fixed
+- Overall average confidence rating (average of all per-file ratings, rounded to 1 decimal)
+- GitHub diff URL: https://github.com/aakashjain1992-ship-it/astrotattwa-web/compare/dev...docs/audit-$(date +%Y-%m-%d)
 
-6. Calculate overall rating (average of all per-file ratings, rounded to 1 decimal)
+Send using:
+cd /var/www/astrotattwa-web && npx tsx scripts/send-audit-email.ts \
+  --to 'aakashjain1992@gmail.com' \
+  --subject 'Doc Audit — $(date +%Y-%m-%d)' \
+  --summary '[your full summary here]' \
+  --diff-url 'https://github.com/aakashjain1992-ship-it/astrotattwa-web/compare/dev...docs/audit-$(date +%Y-%m-%d)' \
+  --rating '[overall average rating]'
 
-7. Send the email using:
-   cd /var/www/astrotattwa-web && npx tsx scripts/send-audit-email.ts \
-     --to 'aakashjain1992@gmail.com' \
-     --subject 'Doc Audit — $(date +%Y-%m-%d)' \
-     --summary '[your summary here]' \
-     --diff-url 'https://github.com/aakashjain1992-ship-it/astrotattwa-web/compare/dev...docs/audit-$(date +%Y-%m-%d)' \
-     --rating '[overall rating]'
+## STEP 6 — WAIT FOR APPROVAL
+Poll for email reply every 5 minutes for up to 2 hours.
+Check by reading /var/www/astrotattwa-web/cron-scripts/logs/email-reply.txt if it exists.
 
-8. Wait for email reply (check every 5 minutes for up to 2 hours):
-   - If reply contains APPROVE: run 'git checkout dev && git merge docs/audit-$(date +%Y-%m-%d) && git push origin dev && npm run build && pm2 restart astrotattwa-web'
-   - If reply contains REJECT or no reply after 2 hours: run 'git branch -d docs/audit-$(date +%Y-%m-%d) && git push origin --delete docs/audit-$(date +%Y-%m-%d)'"
+- If reply contains APPROVE:
+  git checkout dev
+  git merge docs/audit-$(date +%Y-%m-%d)
+  git push origin dev
+  npm run build
+  pm2 restart astrotattwa-web
+  git branch -d docs/audit-$(date +%Y-%m-%d)
+  Print: 'APPROVED. Changes merged to dev and deployed.'
+
+- If reply contains REJECT or no reply after 2 hours:
+  git checkout dev
+  git branch -d docs/audit-$(date +%Y-%m-%d)
+  git push origin --delete docs/audit-$(date +%Y-%m-%d)
+  Print: 'REJECTED or timed out. Branch deleted.'"
 
 /home/deploy/.nvm/versions/node/v20.20.0/bin/claude --dangerously-skip-permissions -p "$PROMPT" --model claude-sonnet-4-6 >> "$LOG_FILE" 2>&1
 
