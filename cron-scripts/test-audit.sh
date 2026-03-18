@@ -127,14 +127,21 @@ Today is $AUDIT_DATE. This is a TEST RUN auditing one file: COMPONENT_LIBRARY.md
 
 ## STEP 1 — READ CODEBASE SNAPSHOT
 Read the memory file at: $SNAPSHOT_FILE
-Use this as ground truth. Only do targeted Glob/Grep for claims not covered by the snapshot.
+Use this as a starting index only — it tells you what files exist and their rough usage status.
+Do NOT treat it as ground truth for the audit. For every claim you verify, go read the actual source file.
+The snapshot saves time on discovery; the audit quality depends on reading real code.
 
 ## STEP 2 — READ DOC
 Read /var/www/astrotattwa-web/COMPONENT_LIBRARY.md.
 List every verifiable claim: component names, file paths, counts, active/dead classifications.
 
 ## STEP 3 — DISCOVER CODEBASE
-Cross-reference each claim against the snapshot. For anything not in the snapshot, do a targeted search.
+Use the snapshot to locate files quickly, then READ the actual source files directly.
+- For each component claimed in the doc: read its actual .tsx file, check real exports, real props, real usage
+- For counts: glob and count actual files, do not rely on snapshot numbers
+- For active/dead status: grep actual imports across src/ for each entity
+- For API routes: read the actual route.ts file, check real HTTP methods and logic
+- For versions: read package.json directly
 
 ## STEP 4 — CREATE GAP
 Classify every claim as:

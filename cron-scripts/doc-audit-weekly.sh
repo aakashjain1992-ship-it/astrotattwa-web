@@ -44,7 +44,9 @@ List which files are due today before proceeding.
 
 ## STEP 2 — READ CODEBASE SNAPSHOT
 Read the memory file at: $SNAPSHOT_FILE
-Use this as ground truth for all audits. Avoid re-scanning the codebase from scratch — only do targeted glob/grep for claims not covered by the snapshot.
+Use this as a starting index only — it tells you what files exist and their rough usage status.
+Do NOT treat it as ground truth for the audit. For every claim you verify, go read the actual source file.
+The snapshot saves time on discovery; the audit quality depends on reading real code.
 
 ## STEP 3 — AUDIT EACH DUE DOCUMENT
 For each due file, run all 7 steps:
@@ -61,7 +63,12 @@ Read the document. Identify its doc type:
 List every verifiable claim in the document: component names, file paths, version numbers, counts, feature statuses.
 
 **Step 3.3 — DISCOVER CODEBASE**
-Cross-reference each claim against the codebase snapshot. For anything not in the snapshot, do a targeted Glob or Grep.
+Use the snapshot to locate files quickly, then READ the actual source files directly.
+- For each component claimed in the doc: read its actual .tsx file, check real exports, real props, real usage
+- For counts: glob and count actual files, do not rely on snapshot numbers
+- For active/dead status: grep actual imports across src/ for each entity
+- For API routes: read the actual route.ts file, check real HTTP methods and logic
+- For versions: read package.json directly
 
 **Step 3.4 — CREATE GAP**
 Classify every claim as one of:
