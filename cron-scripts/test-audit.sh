@@ -15,6 +15,11 @@ BRANCH="docs/audit-$AUDIT_DATE"
 mkdir -p "$(dirname "$LOG_FILE")"
 mkdir -p "$(dirname "$SNAPSHOT_FILE")"
 
+# Load environment variables (needed for RESEND_API_KEY used by send-audit-email.ts)
+set -a
+source "$PROJECT_DIR/.env.local" 2>/dev/null || true
+set +a
+
 echo "" | tee -a "$LOG_FILE"
 echo "========================================" | tee -a "$LOG_FILE"
 echo "[$(date)] TEST RUN STARTED" | tee -a "$LOG_FILE"

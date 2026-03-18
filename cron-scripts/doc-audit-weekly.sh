@@ -10,6 +10,11 @@ SNAPSHOT_FILE="/var/www/astrotattwa-web/cron-scripts/memory/codebase_snapshot.md
 
 mkdir -p "$(dirname "$LOG_FILE")"
 
+# Load environment variables (needed for RESEND_API_KEY used by send-audit-email.ts)
+set -a
+source "$PROJECT_DIR/.env.local" 2>/dev/null || true
+set +a
+
 echo "[$(date)] Starting doc audit..." | tee -a "$LOG_FILE"
 
 cd "$PROJECT_DIR"
@@ -53,11 +58,11 @@ For each due file, run all 7 steps:
 
 **Step 3.1 — DISCOVER DOC**
 Read the document. Identify its doc type:
-- Entity Catalog (COMPONENT_LIBRARY) → verify component entries against snapshot import data
-- Architecture Overview (PROJECT_OVERVIEW, DELIVERY_SUMMARY, README) → verify tech stack, directory structure
-- Progress Tracker (PROGRESS_TRACKER, DEVELOPMENT_ROADMAP) → verify completed items against git log
-- Procedural Guide (AI_HANDOFF_GUIDE) → verify file paths, commands, referenced docs exist
-- Task Doc (CODE_REFACTORING_GUIDE) → verify referenced patterns still exist, completion status
+- Entity Catalog (COMPONENT_LIBRARY) → read actual .tsx files, trace real imports, verify real props
+- Architecture Overview (PROJECT_OVERVIEW, DELIVERY_SUMMARY, README) → read package.json directly, run ls on directories
+- Progress Tracker (PROGRESS_TRACKER, DEVELOPMENT_ROADMAP) → run git log, check if referenced files/features exist
+- Procedural Guide (AI_HANDOFF_GUIDE) → verify each file path exists, test each command is valid
+- Task Doc (CODE_REFACTORING_GUIDE) → grep for referenced patterns in actual code, check completion status
 
 **Step 3.2 — READ DOC**
 List every verifiable claim in the document: component names, file paths, version numbers, counts, feature statuses.
