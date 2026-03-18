@@ -55,11 +55,16 @@ const htmlBody = `
 
   <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 16px; margin: 20px 0;">
     <strong>How to respond:</strong>
-    <p style="margin: 8px 0 0 0;">Reply to this email with:</p>
-    <ul style="margin: 8px 0 0 0; padding-left: 20px;">
-      <li><strong>APPROVE</strong> &rarr; changes merge to <code>dev</code> and deploy automatically</li>
-      <li><strong>REJECT</strong> &rarr; branch is discarded, nothing changes</li>
-    </ul>
+    <p style="margin: 8px 0 0 0;">After reviewing the changes on GitHub, run one of these commands on the server:</p>
+    <div style="background: #1e1e1e; border-radius: 6px; padding: 12px 16px; margin: 12px 0;">
+      <p style="color: #4caf50; font-family: monospace; font-size: 13px; margin: 0 0 4px 0;">✅ To APPROVE (merge + deploy):</p>
+      <code style="color: #e2e8f0; font-family: monospace; font-size: 13px;">echo "APPROVE" &gt; /var/www/astrotattwa-web/cron-scripts/logs/email-reply.txt</code>
+    </div>
+    <div style="background: #1e1e1e; border-radius: 6px; padding: 12px 16px; margin: 12px 0;">
+      <p style="color: #f44336; font-family: monospace; font-size: 13px; margin: 0 0 4px 0;">❌ To REJECT (discard branch):</p>
+      <code style="color: #e2e8f0; font-family: monospace; font-size: 13px;">echo "REJECT" &gt; /var/www/astrotattwa-web/cron-scripts/logs/email-reply.txt</code>
+    </div>
+    <p style="margin: 8px 0 0 0; font-size: 12px; color: #856404;">The audit task polls this file every 5 minutes for up to 2 hours. If no response, the branch is automatically discarded.</p>
   </div>
 
   <p style="color: #888; font-size: 12px; margin-top: 30px; border-top: 1px solid #eee; padding-top: 10px;">
