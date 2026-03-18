@@ -4,8 +4,9 @@
 
 set -e
 
-# Ensure node and claude are available in cron environment (nvm not loaded by default)
+# Ensure node/claude work in cron (no nvm, no HOME by default)
 export PATH="/home/deploy/.nvm/versions/node/v20.20.0/bin:$PATH"
+export HOME="/home/deploy"
 
 PROJECT_DIR="/var/www/astrotattwa-web"
 LOG_FILE="$PROJECT_DIR/cron-scripts/logs/doc-audit-weekly.log"
