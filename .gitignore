@@ -27,3 +27,4 @@ src/_restore_reference/
 ecosystem.config.*.js
 .env.local
 .env*.local
+.*.swp
