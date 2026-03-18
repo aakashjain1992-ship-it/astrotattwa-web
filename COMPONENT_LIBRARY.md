@@ -1,34 +1,40 @@
 # Component Library
 
-**Version:** 1.1  
-**Last Updated:** February 28, 2026  
-**Total Components:** 60+
+**Version:** 2.0
+**Last Updated:** March 18, 2026
+**Total Components:** 52 component files + 6 hooks + 18 API routes
 
 ---
 
-## 📋 Table of Contents
+## Table of Contents
 
 - [Overview](#overview)
 - [UI Components](#ui-components)
 - [Chart Components](#chart-components)
 - [Form Components](#form-components)
 - [Layout Components](#layout-components)
-- [Utility Components](#utility-components)
+- [Landing Components](#landing-components)
+- [Auth Components](#auth-components)
+- [Page Components](#page-components)
+- [Custom Hooks](#custom-hooks)
+- [API Routes](#api-routes)
+- [Unused Components (Dead Code)](#unused-components-dead-code)
 - [Usage Guidelines](#usage-guidelines)
 
 ---
 
-## 🎯 Overview
+## Overview
 
-This document catalogs all reusable components in the Astrotattwa codebase. Each component includes props documentation, usage examples, and best practices.
+This document catalogs all reusable components in the Astrotattwa codebase. Each component includes props documentation, usage examples, and active usage status.
 
 ### Component Categories
-- **UI Components** - shadcn/ui primitives + custom (28 components)
-- **Chart Components** - Astrology visualization (20 components)
-- **Form Components** - Input and validation (5 components)
-- **Layout Components** - Page structure (4 components)
-- **Landing Components** - Landing page features (4 components)
-- **Auth Components** - Authentication utilities (1 component)
+- **UI Components** - shadcn/ui primitives + custom (17 files: 15 shadcn/ui + 2 custom)
+- **Chart Components** - Astrology visualization (22 files; 16 active, 6 unused)
+- **Form Components** - Input and validation (5 components, all active)
+- **Layout Components** - Page structure (3 components: Header, Footer, ThemeProvider)
+- **Landing Components** - Landing page features (4 components, all active)
+- **Auth Components** - Authentication (1 component + 5 auth page forms)
+- **Custom Hooks** - Shared React hooks (6 hooks; 4 active, 2 unused)
 
 ### File Structure
 ```
@@ -36,22 +42,29 @@ src/components/
 ├── ui/              # shadcn/ui base components + custom UI
 ├── chart/           # Chart visualization
 │   ├── diamond/     # North Indian diamond chart
-│   └── divisional/  # Divisional chart components
+│   ├── divisional/  # Divisional chart components
+│   └── sadesati/    # Saturn transit analysis
 ├── forms/           # Form components
-├── layout/          # Header, Footer, Navigation
+├── layout/          # Header, Footer
 ├── landing/         # Landing page components
 └── auth/            # Authentication components
+
+src/app/
+├── (auth)/          # Auth page forms (Login, Signup, etc.)
+├── chart/           # Chart page + ChartClient orchestrator
+└── api/             # 18 API route handlers
 ```
 
 ---
 
-## 🎨 UI Components (shadcn/ui)
+## UI Components (shadcn/ui)
 
 ### Base Components from shadcn/ui
 
 #### Button
-**File:** `src/components/ui/button.tsx`  
+**File:** `src/components/ui/button.tsx`
 **Purpose:** Reusable button with variants
+**Used by:** 13 files (forms, auth, chart, admin)
 
 ```typescript
 interface ButtonProps {
@@ -72,8 +85,9 @@ import { Button } from '@/components/ui/button';
 ---
 
 #### Input
-**File:** `src/components/ui/input.tsx`  
+**File:** `src/components/ui/input.tsx`
 **Purpose:** Text input field
+**Used by:** 9 files (forms, auth, admin)
 
 ```typescript
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {}
@@ -90,8 +104,9 @@ import { Input } from '@/components/ui/input';
 ---
 
 #### Select
-**File:** `src/components/ui/select.tsx`  
+**File:** `src/components/ui/select.tsx`
 **Purpose:** Dropdown select component
+**Used by:** 5 files (ChartClient, forms, ChartSelector)
 
 **Usage:**
 ```tsx
@@ -111,8 +126,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 ---
 
 #### Card
-**File:** `src/components/ui/card.tsx`  
+**File:** `src/components/ui/card.tsx`
 **Purpose:** Container with border and padding
+**Used by:** 8 files (chart components, admin)
 
 ```typescript
 interface CardProps extends React.HTMLAttributes<HTMLDivElement> {}
@@ -138,108 +154,31 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 
 ---
 
-#### Table
-**File:** `src/components/ui/table.tsx`  
-**Purpose:** Data table display
+### Other Installed shadcn/ui Components
 
-**Usage:**
-```tsx
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+| Component | File | Used By | Import Count |
+|-----------|------|---------|-------------|
+| **Accordion** | `ui/accordion.tsx` | ChartEducation | 1 |
+| **Alert** | `ui/alert.tsx` | DivisionalChartsTab | 1 |
+| **Badge** | `ui/badge.tsx` | ChartEducation, DashaTimeline, ChartInsights, StatusBadges, admin | 5 |
+| **Calendar** | `ui/calendar.tsx` | DateTimeField | 1 |
+| **Collapsible** | `ui/collapsible.tsx` | ChartSelector | 1 |
+| **Label** | `ui/label.tsx` | Forms, auth forms, admin | 9 |
+| **Popover** | `ui/popover.tsx` | DateTimeField | 1 |
+| **Progress** | `ui/progress.tsx` | admin/tests | 1 |
+| **Toast** | `ui/toast.tsx` | Toaster, use-toast hook | 2 |
+| **Toaster** | `ui/toaster.tsx` | Root layout | 1 |
 
-<Table>
-  <TableHeader>
-    <TableRow>
-      <TableHead>Header 1</TableHead>
-      <TableHead>Header 2</TableHead>
-    </TableRow>
-  </TableHeader>
-  <TableBody>
-    <TableRow>
-      <TableCell>Cell 1</TableCell>
-      <TableCell>Cell 2</TableCell>
-    </TableRow>
-  </TableBody>
-</Table>
-```
-
----
-
-#### Tabs
-**File:** `src/components/ui/tabs.tsx`  
-**Purpose:** Tabbed interface
-
-**Usage:**
-```tsx
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-
-<Tabs defaultValue="tab1">
-  <TabsList>
-    <TabsTrigger value="tab1">Tab 1</TabsTrigger>
-    <TabsTrigger value="tab2">Tab 2</TabsTrigger>
-  </TabsList>
-  <TabsContent value="tab1">
-    Tab 1 content
-  </TabsContent>
-  <TabsContent value="tab2">
-    Tab 2 content
-  </TabsContent>
-</Tabs>
-```
-
----
-
-#### Dialog
-**File:** `src/components/ui/dialog.tsx`  
-**Purpose:** Modal dialog
-
-**Usage:**
-```tsx
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-
-<Dialog>
-  <DialogTrigger asChild>
-    <Button>Open Dialog</Button>
-  </DialogTrigger>
-  <DialogContent>
-    <DialogHeader>
-      <DialogTitle>Dialog Title</DialogTitle>
-      <DialogDescription>Dialog description</DialogDescription>
-    </DialogHeader>
-    {/* Content */}
-  </DialogContent>
-</Dialog>
-```
-
----
-
-### Other shadcn/ui Components Available
-- `Accordion` - Collapsible sections with headers
-- `Alert` - Alert messages
-- `Badge` - Status badges
-- `Checkbox` - Checkbox input
-- `Collapsible` - Collapsible sections
-- `DropdownMenu` - Dropdown menu
-- `Label` - Form labels
-- `Popover` - Popover content
-- `Progress` - Progress bar indicator
-- `RadioGroup` - Radio button group
-- `ScrollArea` - Scrollable area with custom scrollbar
-- `Separator` - Horizontal/vertical divider
-- `Sheet` - Slide-out panel
-- `Skeleton` - Loading skeleton
-- `Switch` - Toggle switch
-- `Textarea` - Multi-line text input
-- `Toast` - Toast notifications
-- `Toaster` - Toast notification container
-- `Tooltip` - Tooltip on hover
+> **Note:** `scroll-area.tsx` is installed but not imported anywhere. See [Unused Components](#unused-components-dead-code).
 
 ---
 
 ### Custom UI Components
 
 #### ChartLoader
-**File:** `src/components/ui/ChartLoader.tsx`  
+**File:** `src/components/ui/ChartLoader.tsx`
 **Purpose:** Full-screen loading overlay for chart calculations
+**Used by:** BirthDataFormWrapper
 
 ```typescript
 interface ChartLoaderProps {
@@ -265,8 +204,9 @@ import { ChartLoader } from '@/components/ui/ChartLoader';
 ---
 
 #### Logo
-**File:** `src/components/ui/Logo.tsx`  
+**File:** `src/components/ui/Logo.tsx`
 **Purpose:** App logo SVG component
+**Used by:** 7 files (Header, auth forms, ChartLoader)
 
 ```typescript
 interface LogoProps {
@@ -289,11 +229,14 @@ import { Logo } from '@/components/ui/Logo';
 
 ---
 
-## 📊 Chart Components
+## Chart Components
 
-### DiamondChart
-**File:** `src/components/chart/diamond/DiamondChart.tsx`  
+### Active Chart Components
+
+#### DiamondChart
+**File:** `src/components/chart/diamond/DiamondChart.tsx`
 **Purpose:** Main North Indian diamond chart visualization
+**Used by:** ChartFocusMode, DivisionalChartsTab
 
 ```typescript
 interface DiamondChartProps {
@@ -309,7 +252,7 @@ interface DiamondChartProps {
 ```tsx
 import { DiamondChart } from '@/components/chart/diamond/DiamondChart';
 
-<DiamondChart 
+<DiamondChart
   houses={chartData.houses}
   width={400}
   height={400}
@@ -327,9 +270,10 @@ import { DiamondChart } from '@/components/chart/diamond/DiamondChart';
 
 ---
 
-### DiamondGrid
-**File:** `src/components/chart/diamond/DiamondGrid.tsx`  
+#### DiamondGrid
+**File:** `src/components/chart/diamond/DiamondGrid.tsx`
 **Purpose:** Diamond shape grid with 12 houses
+**Used by:** DiamondChart (internal dependency)
 
 ```typescript
 interface DiamondGridProps {
@@ -340,18 +284,6 @@ interface DiamondGridProps {
 }
 ```
 
-**Usage:**
-```tsx
-import { DiamondGrid } from '@/components/chart/diamond/DiamondGrid';
-
-<DiamondGrid 
-  width={400}
-  height={400}
-  strokeColor="currentColor"
-  strokeWidth={1}
-/>
-```
-
 **Features:**
 - Perfect diamond geometry
 - 12 house divisions (4 triangles, 8 rectangles)
@@ -359,76 +291,10 @@ import { DiamondGrid } from '@/components/chart/diamond/DiamondGrid';
 
 ---
 
-### HouseBlock
-**File:** `src/components/chart/HouseBlock.tsx`  
-**Purpose:** Individual house with planets
-
-```typescript
-interface HouseBlockProps {
-  house: HouseData;
-  position: { x: number; y: number; width: number; height: number };
-  isTriangle?: boolean;
-  onPlanetClick?: (planetKey: string) => void;
-}
-```
-
-**Usage:**
-```tsx
-import { HouseBlock } from '@/components/chart/HouseBlock';
-
-<HouseBlock 
-  house={houseData}
-  position={{ x: 100, y: 100, width: 80, height: 60 }}
-  isTriangle={false}
-  onPlanetClick={handleClick}
-/>
-```
-
-**Features:**
-- Planet stacking (up to 6 planets)
-- Rashi number display
-- Status symbols
-- Click handling
-
----
-
-### PlanetDisplay
-**File:** `src/components/chart/PlanetDisplay.tsx`  
-**Purpose:** Display single planet with status
-
-```typescript
-interface PlanetDisplayProps {
-  planetKey: string;
-  degreeInSign: number;
-  retrograde?: boolean;
-  combust?: boolean;
-  exalted?: boolean;
-  debilitated?: boolean;
-  subLord?: string;
-  size?: 'sm' | 'md' | 'lg';
-}
-```
-
-**Usage:**
-```tsx
-import { PlanetDisplay } from '@/components/chart/PlanetDisplay';
-
-<PlanetDisplay 
-  planetKey="Moon"
-  degreeInSign={15.5}
-  retrograde={false}
-  combust={false}
-  size="md"
-/>
-```
-
-**Output:** `Mo 15° RC` (if retrograde & combust)
-
----
-
-### PlanetaryTable
-**File:** `src/components/chart/PlanetaryTable.tsx`  
+#### PlanetaryTable
+**File:** `src/components/chart/PlanetaryTable.tsx`
 **Purpose:** Table of all planetary positions
+**Used by:** ChartClient
 
 ```typescript
 interface PlanetaryTableProps {
@@ -443,7 +309,7 @@ interface PlanetaryTableProps {
 ```tsx
 import { PlanetaryTable } from '@/components/chart/PlanetaryTable';
 
-<PlanetaryTable 
+<PlanetaryTable
   planets={chartData.planets}
   ascendant={chartData.ascendant}
   showSubLord={true}
@@ -453,17 +319,17 @@ import { PlanetaryTable } from '@/components/chart/PlanetaryTable';
 
 **Features:**
 - Sortable columns
-- Sign names
-- Degrees
+- Sign names, Degrees
 - Nakshatra & Pada
 - Status flags
 - Sub-lord (KP)
 
 ---
 
-### UserDetailsCard
-**File:** `src/components/chart/UserDetailsCard.tsx`  
+#### UserDetailsCard
+**File:** `src/components/chart/UserDetailsCard.tsx`
 **Purpose:** Display user's birth details with edit toggle
+**Used by:** ChartClient
 
 ```typescript
 interface UserDetailsCardProps {
@@ -486,7 +352,7 @@ interface UserDetailsCardProps {
 ```tsx
 import { UserDetailsCard } from '@/components/chart/UserDetailsCard';
 
-<UserDetailsCard 
+<UserDetailsCard
   name="John Doe"
   gender="male"
   input={birthInput}
@@ -506,9 +372,10 @@ import { UserDetailsCard } from '@/components/chart/UserDetailsCard';
 
 ---
 
-### StatusBadges
-**File:** `src/components/chart/StatusBadges.tsx`  
+#### StatusBadges
+**File:** `src/components/chart/StatusBadges.tsx`
 **Purpose:** Display planet status flags as badges
+**Used by:** PlanetaryTable (internal dependency)
 
 ```typescript
 interface StatusBadgesProps {
@@ -524,7 +391,7 @@ interface StatusBadgesProps {
 ```tsx
 import { StatusBadges } from '@/components/chart/StatusBadges';
 
-<StatusBadges 
+<StatusBadges
   retrograde={true}
   combust={false}
   exalted={true}
@@ -540,9 +407,10 @@ import { StatusBadges } from '@/components/chart/StatusBadges';
 
 ---
 
-### ChartLegend
-**File:** `src/components/chart/ChartLegend.tsx`  
+#### ChartLegend
+**File:** `src/components/chart/ChartLegend.tsx`
 **Purpose:** Display chart symbol legend and status flags explanation
+**Used by:** ChartClient
 
 ```typescript
 interface ChartLegendProps {
@@ -560,7 +428,7 @@ import { ChartLegend } from '@/components/chart/ChartLegend';
 ```
 
 **Features:**
-- Planet symbols and names (☉ Surya, ☽ Chandra, etc.)
+- Planet symbols and names
 - Status flags explanation (R, C, D, S)
 - Dignity indicators (Exalted, Debilitated, etc.)
 - Two variants: sidebar (always visible) and accordion (collapsible)
@@ -568,9 +436,10 @@ import { ChartLegend } from '@/components/chart/ChartLegend';
 
 ---
 
-### AvakhadaTable
-**File:** `src/components/chart/AvakhadaTable.tsx`  
+#### AvakhadaTable
+**File:** `src/components/chart/AvakhadaTable.tsx`
 **Purpose:** Display Panchang details and matching information
+**Used by:** ChartClient
 
 ```typescript
 interface AvakhadaTableProps {
@@ -601,7 +470,7 @@ interface AvakhadaData {
 ```tsx
 import { AvakhadaTable } from '@/components/chart/AvakhadaTable';
 
-<AvakhadaTable 
+<AvakhadaTable
   data={avakhadaData}
   variant="full"
 />
@@ -612,13 +481,13 @@ import { AvakhadaTable } from '@/components/chart/AvakhadaTable';
 - Full and compact layout variants
 - Responsive grid layout
 - Dark mode support
-- Label-value pairs with proper spacing
 
 ---
 
-### DashaNavigator
-**File:** `src/components/chart/DashaNavigator.tsx`  
-**Purpose:** Interactive Vimshottari Dasha timeline
+#### DashaNavigator
+**File:** `src/components/chart/DashaNavigator.tsx`
+**Purpose:** Interactive multi-level Vimshottari Dasha navigator
+**Used by:** ChartClient
 
 ```typescript
 interface DashaNavigatorProps {
@@ -632,7 +501,7 @@ interface DashaNavigatorProps {
 ```tsx
 import { DashaNavigator } from '@/components/chart/DashaNavigator';
 
-<DashaNavigator 
+<DashaNavigator
   dashaData={chartData.dashas}
   currentDate={new Date()}
   onDashaSelect={(dasha) => console.log(dasha)}
@@ -640,16 +509,42 @@ import { DashaNavigator } from '@/components/chart/DashaNavigator';
 ```
 
 **Features:**
-- 4-level hierarchy (Maha → Antar → Pratyantar → Sookshma)
+- 4-level hierarchy (Maha > Antar > Pratyantar > Sookshma)
 - Current dasha highlighting
 - Expandable/collapsible
 - Date ranges
+- On-demand API loading of sub-periods
 
 ---
 
-### DivisionalChartsTab
-**File:** `src/components/chart/divisional/DivisionalChartsTab.tsx`  
-**Purpose:** Tab interface for divisional charts
+#### ChartFocusMode
+**File:** `src/components/chart/ChartFocusMode.tsx`
+**Purpose:** Interactive multi-chart viewer with focus/compare modes
+**Used by:** ChartClient
+
+```typescript
+interface ChartFocusModeProps {
+  isOpen: boolean;
+  onClose: () => void;
+  initialChart: DivisionalChartType;
+  chartData: ChartData;
+}
+```
+
+**Features:**
+- Swipeable navigation (framer-motion)
+- Multiple chart instances (D1, Moon, D9)
+- Focus and compare modes
+- Keyboard shortcuts
+
+---
+
+### Divisional Chart Components
+
+#### DivisionalChartsTab
+**File:** `src/components/chart/divisional/DivisionalChartsTab.tsx`
+**Purpose:** Tab interface for all 16 divisional charts with responsive layout
+**Used by:** ChartClient
 
 ```typescript
 interface DivisionalChartsTabProps {
@@ -663,7 +558,7 @@ interface DivisionalChartsTabProps {
 ```tsx
 import { DivisionalChartsTab } from '@/components/chart/divisional/DivisionalChartsTab';
 
-<DivisionalChartsTab 
+<DivisionalChartsTab
   chartData={data}
   selectedChart="D9"
   onChartChange={(type) => console.log(type)}
@@ -673,14 +568,15 @@ import { DivisionalChartsTab } from '@/components/chart/divisional/DivisionalCha
 **Features:**
 - Chart selector dropdown
 - Educational content
-- AI-powered insights
-- Chart visualization
+- Rule-based insights
+- Chart visualization via DiamondChart
 
 ---
 
-### ChartSelector
-**File:** `src/components/chart/divisional/ChartSelector.tsx`  
-**Purpose:** Dropdown to select divisional chart
+#### ChartSelector
+**File:** `src/components/chart/divisional/ChartSelector.tsx`
+**Purpose:** Dropdown/horizontal selector for divisional charts
+**Used by:** DivisionalChartsTab (internal dependency)
 
 ```typescript
 interface ChartSelectorProps {
@@ -713,9 +609,10 @@ interface ChartSelectorProps {
 
 ---
 
-### ChartEducation
-**File:** `src/components/chart/divisional/ChartEducation.tsx`  
-**Purpose:** Educational content for each chart
+#### ChartEducation
+**File:** `src/components/chart/divisional/ChartEducation.tsx`
+**Purpose:** Educational content for each divisional chart
+**Used by:** DivisionalChartsTab (internal dependency)
 
 ```typescript
 interface ChartEducationProps {
@@ -731,9 +628,10 @@ interface ChartEducationProps {
 
 ---
 
-### ChartInsights
-**File:** `src/components/chart/divisional/ChartInsights.tsx`  
-**Purpose:** AI-generated insights (future)
+#### ChartInsights
+**File:** `src/components/chart/divisional/ChartInsights.tsx`
+**Purpose:** Rule-based insights for divisional charts
+**Used by:** DivisionalChartsTab (internal dependency)
 
 ```typescript
 interface ChartInsightsProps {
@@ -743,59 +641,66 @@ interface ChartInsightsProps {
 }
 ```
 
-**Status:** Placeholder for P4 (AI Insights)
-
 ---
 
-### ChartFocusMode
-**File:** `src/components/chart/ChartFocusMode.tsx`  
-**Purpose:** Fullscreen swipeable chart view
+### Sade Sati Components
+
+#### SadeSatiTableView
+**File:** `src/components/chart/sadesati/SadeSatiTableView.tsx`
+**Purpose:** Saturn transit analysis (Sade Sati & Dhaiya periods) with timeline bar and tables
+**Used by:** ChartClient
 
 ```typescript
-interface ChartFocusModeProps {
-  isOpen: boolean;
-  onClose: () => void;
-  initialChart: DivisionalChartType;
-  chartData: ChartData;
-}
-```
-
-**Features:**
-- Swipeable navigation
-- Fullscreen overlay
-- All divisional charts
-- Keyboard shortcuts (←/→)
-
----
-
-### AscendantCard
-**File:** `src/components/chart/AscendantCard.tsx`  
-**Purpose:** Display ascendant information
-
-```typescript
-interface AscendantCardProps {
+interface SadeSatiTableViewProps {
+  analysis: SaturnTransitAnalysis;
+  birthDate: string;
+  planets: Record<string, PlanetData>;
   ascendant: AscendantData;
+  dashaInfo?: DashaData;
 }
 ```
 
+**Features:**
+- Active/Clear status cards
+- Visual timeline bar
+- Collapsible Saturn cycles table
+- Row click opens PeriodDetailView
+- Responsive layout
+
 ---
 
-### BirthDetails
-**File:** `src/components/chart/BirthDetails.tsx`  
-**Purpose:** Compact birth details display component
+#### PeriodDetailView
+**File:** `src/components/chart/sadesati/PeriodDetailView.tsx`
+**Purpose:** Deep analysis of a single Saturn transit period with recommendations
+**Used by:** SadeSatiTableView (internal dependency)
+
+```typescript
+interface PeriodDetailViewProps {
+  period: SelectedPeriod;
+}
+```
 
 **Features:**
-- Displays name, date, time, place
-- Compact format for chart pages
-- Mobile-responsive
+- Nested tables with period data
+- Formatting helpers
+- Recommendation display
+- Imports shared utilities from `./shared`
 
 ---
 
-## 📝 Form Components
+#### Shared Utilities
+**File:** `src/components/chart/sadesati/shared.tsx`
+**Purpose:** Shared helper components and utilities for Sade Sati views
+**Used by:** PeriodDetailView (internal dependency)
+
+---
+
+## Form Components
 
 ### BirthDataForm
-**File:** `src/components/forms/BirthDataForm.tsx`  
+**File:** `src/components/forms/BirthDataForm.tsx`
 **Purpose:** Main form to create birth chart
+**Used by:** BirthDataFormWrapper
 
 ```typescript
 interface BirthDataFormProps {
@@ -809,7 +714,7 @@ interface BirthDataFormProps {
 ```tsx
 import { BirthDataForm } from '@/components/forms/BirthDataForm';
 
-<BirthDataForm 
+<BirthDataForm
   onSubmit={(data) => calculateChart(data)}
   loading={isCalculating}
 />
@@ -825,8 +730,9 @@ import { BirthDataForm } from '@/components/forms/BirthDataForm';
 ---
 
 ### BirthDataFormWrapper
-**File:** `src/components/forms/BirthDataFormWrapper.tsx`  
+**File:** `src/components/forms/BirthDataFormWrapper.tsx`
 **Purpose:** Wrapper component that handles form submission with loading state
+**Used by:** Home page (`src/app/page.tsx`)
 
 ```typescript
 interface ChartFormValues {
@@ -860,8 +766,9 @@ import BirthDataFormWrapper from '@/components/forms/BirthDataFormWrapper';
 ---
 
 ### EditBirthDetailsForm
-**File:** `src/components/forms/EditBirthDetailsForm.tsx`  
-**Purpose:** Edit existing birth details  
+**File:** `src/components/forms/EditBirthDetailsForm.tsx`
+**Purpose:** Edit existing birth details
+**Used by:** ChartClient
 **Refactored:** February 14, 2026 — now uses `DateTimeField` (same as home form)
 
 ```typescript
@@ -870,7 +777,7 @@ interface EditBirthDetailsFormProps {
   currentData: {
     name: string;
     gender?: 'male' | 'female';
-    localDateTime: string;   // "YYYY-MM-DDTHH:mm" or "YYYY-MM-DD HH:mm"
+    localDateTime: string;
     latitude: number;
     longitude: number;
     timezone: string;
@@ -879,8 +786,8 @@ interface EditBirthDetailsFormProps {
   onSubmit: (data: {
     name: string;
     gender: 'male' | 'female';
-    birthDate: string;        // YYYY-MM-DD
-    birthTime: string;        // HH:MM
+    birthDate: string;
+    birthTime: string;
     timePeriod: 'AM' | 'PM';
     latitude: number;
     longitude: number;
@@ -904,7 +811,7 @@ import { EditBirthDetailsForm } from '@/components/forms/EditBirthDetailsForm';
 ```
 
 **Features:**
-- Uses `DateTimeField` (shared with home form — no duplicate calendar UI)
+- Uses `DateTimeField` (shared with home form)
 - Pre-filled from `currentData.localDateTime` via `parseDateTime` utility
 - `syncDateTimeToForm` pattern identical to BirthDataForm
 - Collapsible (hidden when `isOpen` is false)
@@ -912,8 +819,9 @@ import { EditBirthDetailsForm } from '@/components/forms/EditBirthDetailsForm';
 ---
 
 ### DateTimeField
-**File:** `src/components/forms/DateTimeField.tsx`  
+**File:** `src/components/forms/DateTimeField.tsx`
 **Purpose:** Combined date + time picker (12-hour AM/PM)
+**Used by:** BirthDataForm, EditBirthDetailsForm
 
 ```typescript
 interface DateTimeFieldProps {
@@ -928,7 +836,7 @@ interface DateTimeFieldProps {
 ```tsx
 import { DateTimeField } from '@/components/forms/DateTimeField';
 
-<DateTimeField 
+<DateTimeField
   date={birthDate}
   time="11:30 AM"
   onDateChange={setDate}
@@ -937,7 +845,7 @@ import { DateTimeField } from '@/components/forms/DateTimeField';
 ```
 
 **Features:**
-- Calendar popup
+- Calendar popup (uses Popover + Calendar UI components)
 - 12-hour format
 - AM/PM toggle
 - Validation
@@ -945,8 +853,9 @@ import { DateTimeField } from '@/components/forms/DateTimeField';
 ---
 
 ### CitySearch
-**File:** `src/components/forms/CitySearch.tsx`  
+**File:** `src/components/forms/CitySearch.tsx`
 **Purpose:** City autocomplete with coordinates
+**Used by:** BirthDataForm, EditBirthDetailsForm
 
 ```typescript
 interface CitySearchProps {
@@ -960,7 +869,7 @@ interface CitySearchProps {
 ```tsx
 import { CitySearch } from '@/components/forms/CitySearch';
 
-<CitySearch 
+<CitySearch
   value={selectedCity}
   onChange={(city) => {
     setCity(city.city_name);
@@ -977,18 +886,17 @@ import { CitySearch } from '@/components/forms/CitySearch';
 
 ---
 
-### Form Utilities (Added Feb 14, 2026)
+### Form Utilities
 
 #### parseDateTime
-**File:** `src/lib/utils/parseDateTime.ts`  
-**Purpose:** Parse `localDateTime` string → `DateTimeValue` for use with `DateTimeField`
+**File:** `src/lib/utils/parseDateTime.ts`
+**Purpose:** Parse `localDateTime` string to `DateTimeValue` for use with `DateTimeField`
 
 ```typescript
 import { parseDateTime } from '@/lib/utils/parseDateTime'
 
-// Handles ISO, "YYYY-MM-DD HH:mm", date-only
 const dtValue = parseDateTime('1992-03-25T11:55:00')
-// → { date: Date, hour: '11', minute: '55', period: 'AM' }
+// { date: Date, hour: '11', minute: '55', period: 'AM' }
 ```
 
 **Handles:**
@@ -999,7 +907,7 @@ const dtValue = parseDateTime('1992-03-25T11:55:00')
 ---
 
 #### formConstants
-**File:** `src/lib/constants/formConstants.ts`  
+**File:** `src/lib/constants/formConstants.ts`
 **Purpose:** Shared time/date arrays — single source of truth for all forms
 
 ```typescript
@@ -1010,11 +918,12 @@ import { HOURS, MINUTES, MONTHS, YEARS } from '@/lib/constants/formConstants'
 
 ---
 
-## 🏗️ Layout Components
+## Layout Components
 
 ### Header
-**File:** `src/components/layout/Header.tsx`  
+**File:** `src/components/layout/Header.tsx`
 **Purpose:** Site header with navigation
+**Used by:** 5 pages (Home, Chart, Privacy, Terms, Settings)
 
 ```typescript
 interface HeaderProps {
@@ -1026,13 +935,14 @@ interface HeaderProps {
 - Logo
 - Navigation links
 - Login/Signup buttons
-- Theme toggle
+- Theme toggle (inline, not a separate component)
 
 ---
 
 ### Footer
-**File:** `src/components/layout/Footer.tsx`  
+**File:** `src/components/layout/Footer.tsx`
 **Purpose:** Site footer
+**Used by:** 5 pages (Home, Chart, Privacy, Terms, Settings)
 
 **Content:**
 - Links (About, Privacy, Terms)
@@ -1041,21 +951,10 @@ interface HeaderProps {
 
 ---
 
-### ThemeToggle
-**File:** `src/components/layout/ThemeToggle.tsx`  
-**Purpose:** Dark/Light mode toggle
-
-```tsx
-import { ThemeToggle } from '@/components/layout/ThemeToggle';
-
-<ThemeToggle />
-```
-
----
-
 ### ThemeProvider
-**File:** `src/components/theme-provider.tsx`  
+**File:** `src/components/theme-provider.tsx`
 **Purpose:** Context provider for dark/light mode theme
+**Used by:** Root layout (`src/app/layout.tsx`)
 
 ```typescript
 interface ThemeProviderProps {
@@ -1082,45 +981,17 @@ import { ThemeProvider } from '@/components/theme-provider';
 
 ---
 
-## 🔐 Auth Components
-
-### SessionWatcher
-**File:** `src/components/auth/SessionWatcher.tsx`  
-**Purpose:** Monitor authentication state and handle session changes
-
-```typescript
-interface SessionWatcherProps {
-  // No props - automatically handles auth state
-}
-```
-
-**Usage:**
-```tsx
-import { SessionWatcher } from '@/components/auth/SessionWatcher';
-
-// In protected pages or layouts
-<SessionWatcher />
-```
-
-**Features:**
-- Listens to Supabase auth state changes
-- Redirects to login when session expires
-- Handles SIGNED_OUT events
-- Tab synchronization (signs out across tabs)
-- Automatic cleanup on unmount
-
----
-
-## 🎨 Landing Components
+## Landing Components
 
 ### NavagrahaSection
-**File:** `src/components/landing/NavagrahaSection.tsx`  
+**File:** `src/components/landing/NavagrahaSection.tsx`
 **Purpose:** Interactive section displaying 9 planetary deities
+**Used by:** Home page
 
 **Features:**
-- Animated planet cards with Unicode symbols (☉, ☽, ♂, ☿, ♃, ♀, ♄, ☊, ☋)
+- Animated planet cards with Unicode symbols
 - Detailed descriptions for each planet
-- Key points and tags for each planet
+- Key points and tags
 - Smooth hover animations
 - Dark mode support
 - Mobile-responsive layout
@@ -1128,20 +999,21 @@ import { SessionWatcher } from '@/components/auth/SessionWatcher';
 ---
 
 ### Yantra
-**File:** `src/components/landing/Yantra.tsx`  
+**File:** `src/components/landing/Yantra.tsx`
 **Purpose:** Animated sacred geometry visualization
+**Used by:** Home page
 
 **Features:**
 - SVG-based yantra illustration
 - Rotation and glow animations
-- Geometric patterns
-- Uses framer-motion for animations
+- Uses framer-motion
 
 ---
 
 ### Particles
-**File:** `src/components/landing/Particles.tsx`  
+**File:** `src/components/landing/Particles.tsx`
 **Purpose:** Animated particle background effect
+**Used by:** Home page
 
 **Features:**
 - Canvas-based particle animation
@@ -1152,8 +1024,9 @@ import { SessionWatcher } from '@/components/auth/SessionWatcher';
 ---
 
 ### Glyphs
-**File:** `src/components/landing/Glyphs.tsx`  
+**File:** `src/components/landing/Glyphs.tsx`
 **Purpose:** Decorative astrological glyphs
+**Used by:** Home page
 
 **Features:**
 - Zodiac and planetary symbols
@@ -1162,30 +1035,221 @@ import { SessionWatcher } from '@/components/auth/SessionWatcher';
 
 ---
 
-## 🛠️ Utility Components
+## Auth Components
 
-### ChartLoader
-See [Custom UI Components](#chartloader) section above.
+### SessionWatcher
+**File:** `src/components/auth/SessionWatcher.tsx`
+**Purpose:** Monitor authentication state and handle session changes
+**Status:** DEFINED BUT NOT MOUNTED - See [Unused Components](#unused-components-dead-code)
 
-### LoadingSpinner
-**Status:** Can be created using shadcn/ui Skeleton or custom spinner
-
----
-
-### ErrorMessage
-**Status:** Can be created using shadcn/ui Alert component
-
-```tsx
-<ErrorMessage message="Something went wrong" />
+```typescript
+// No props - automatically handles auth state
 ```
 
+**Usage (intended):**
+```tsx
+import { SessionWatcher } from '@/components/auth/SessionWatcher';
+
+// In protected pages or layouts
+<SessionWatcher />
+```
+
+**Features:**
+- Listens to Supabase auth state changes
+- Redirects to login when session expires
+- Tab synchronization
+- Automatic cleanup on unmount
+
 ---
 
-## 📖 Usage Guidelines
+### Auth Page Forms
+
+These forms live alongside their pages (co-located pattern):
+
+| Form | File | Used By |
+|------|------|---------|
+| **LoginForm** | `src/app/(auth)/login/LoginForm.tsx` | Login page |
+| **SignupForm** | `src/app/(auth)/signup/SignupForm.tsx` | Signup page |
+| **ForgotPasswordForm** | `src/app/(auth)/forgot-password/ForgotPasswordForm.tsx` | Forgot password page |
+| **ResetPasswordForm** | `src/app/(auth)/reset-password/ResetPasswordForm.tsx` | Reset password page |
+| **VerifyEmailForm** | `src/app/(auth)/verify-email/VerifyEmailForm.tsx` | Verify email page |
+
+All auth forms use: Button, Input, Label, Logo from `@/components/ui/`
+
+---
+
+## Page Components
+
+### ChartClient
+**File:** `src/app/chart/ChartClient.tsx`
+**Purpose:** Main chart page orchestrator — the central hub that composes all chart components
+**Used by:** `src/app/chart/page.tsx` (server component entry point)
+
+**Imports these components:**
+- Header, Footer (layout)
+- EditBirthDetailsForm (forms)
+- ChartFocusMode, PlanetaryTable, AvakhadaTable, UserDetailsCard, ChartLegend, DashaNavigator (chart)
+- DivisionalChartsTab (chart/divisional)
+- SadeSatiTableView (chart/sadesati)
+
+**Imports these hooks:**
+- useSavedCharts, useIdleLogout
+
+**Tab structure:**
+- `?tab=overview` — Planets + Avakahada tables + ChartFocusMode + ChartLegend
+- `?tab=dasha` — DashaNavigator
+- `?tab=divisional` — DivisionalChartsTab
+- `?tab=sadesati` — SadeSatiTableView
+
+---
+
+## Custom Hooks
+
+### Active Hooks
+
+#### useSavedCharts
+**File:** `src/hooks/useSavedCharts.ts`
+**Purpose:** Fetch, create, update, delete saved charts from Supabase
+**Used by:** ChartClient
+
+**Returns:** `{ charts[], isLoggedIn, loading, error, saveChart(), updateChart(), deleteChart(), refresh() }`
+
+---
+
+#### useDateTimeSync
+**File:** `src/hooks/useDateTimeSync.ts`
+**Purpose:** Sync date/time picker state with React Hook Form values
+**Used by:** BirthDataForm, EditBirthDetailsForm
+
+---
+
+#### useIdleLogout
+**File:** `src/hooks/useIdleLogout.ts`
+**Purpose:** Auto-logout on user inactivity
+**Used by:** ChartClient, Settings page
+
+---
+
+#### use-toast
+**File:** `src/hooks/use-toast.ts`
+**Purpose:** Toast notification trigger
+**Used by:** Toaster component
+
+**Returns:** `{ toast() }`
+
+---
+
+### Unused Hooks
+
+#### useAuth
+**File:** `src/hooks/useAuth.ts`
+**Purpose:** Session management, user info, sign out
+**Status:** Only the `AuthUser` TYPE is imported (by Header.tsx). The hook function itself is never called.
+
+**Returns:** `{ user: AuthUser | null, loading, signOut, updateProfile }`
+
+---
+
+#### useVargottama
+**File:** `src/hooks/useVargottama.ts`
+**Purpose:** Detect vargottama planets (same sign in D1 & D9)
+**Status:** Never imported anywhere
+
+**Returns:** `{ vargottamaPlanets, getVargottamaInsights() }`
+
+---
+
+## API Routes
+
+### Chart Calculation
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| POST | `/api/calculate` | Main chart calculation (birth details to full ephemeris) |
+
+### Dasha (Planetary Periods)
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| POST | `/api/dasha/mahadashas` | All mahadashas in 120-year cycle |
+| POST | `/api/dasha/current` | Current mahadasha + balance |
+| POST | `/api/dasha/antardasha` | Antardashas for a specific mahadasha |
+| POST | `/api/dasha/pratyantar` | Pratyantar dashas |
+| POST | `/api/dasha/sookshma` | Sookshma dashas |
+
+### Saturn Transits
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| POST | `/api/transits/saturn/sadesati` | Sade Sati analysis (7.5-year Saturn transit) |
+| POST | `/api/transits/saturn/period-analysis` | Detailed period analysis |
+
+### Other Calculations
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| POST | `/api/avakahada` | Auspicious timing (nakshatra, yoga, karan) |
+| GET | `/api/cities/search` | City lookup with timezone |
+
+### Chart Persistence (Authenticated)
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| GET | `/api/SaveChart` | List user's saved charts |
+| POST | `/api/SaveChart` | Create new saved chart |
+| PATCH | `/api/SaveChart/[id]` | Update saved chart |
+| DELETE | `/api/SaveChart/[id]` | Delete saved chart |
+
+### Authentication
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| POST | `/api/auth/login` | Email/password login |
+| POST | `/api/auth/logout` | Logout |
+| GET | `/api/auth/me` | Current user info |
+
+### Testing (Admin Only)
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| GET | `/api/test/history` | Test run history |
+| POST | `/api/test/run-calculations` | Run calculation tests |
+| DELETE | `/api/test/delete-runs` | Clear test runs |
+
+---
+
+## Unused Components (Dead Code)
+
+These files exist in the codebase but are **not imported or rendered anywhere**:
+
+### UI Components
+| Component | File | Notes |
+|-----------|------|-------|
+| **ScrollArea** | `src/components/ui/scroll-area.tsx` | Installed shadcn/ui component, never imported |
+
+### Chart Components
+| Component | File | Notes |
+|-----------|------|-------|
+| **BirthDetails** | `src/components/chart/BirthDetails.tsx` | Likely replaced by UserDetailsCard |
+| **AscendantCard** | `src/components/chart/AscendantCard.tsx` | Never imported |
+| **DashaTimeline** | `src/components/chart/DashaTimeline.tsx` | Likely replaced by DashaNavigator |
+| **NorthIndianChart** | `src/components/chart/NorthIndianChart.tsx` | Never imported; DiamondChart is used instead |
+| **HouseBlock** | `src/components/chart/HouseBlock.tsx` | Imports PlanetDisplay, but HouseBlock itself is never used |
+| **PlanetDisplay** | `src/components/chart/PlanetDisplay.tsx` | Only imported by HouseBlock (which is also unused) |
+
+### Auth Components
+| Component | File | Notes |
+|-----------|------|-------|
+| **SessionWatcher** | `src/components/auth/SessionWatcher.tsx` | Defined with JSDoc but never mounted in any layout or page |
+
+### Hooks
+| Hook | File | Notes |
+|------|------|-------|
+| **useAuth** | `src/hooks/useAuth.ts` | Only the `AuthUser` type is imported; hook function never called |
+| **useVargottama** | `src/hooks/useVargottama.ts` | Never imported anywhere |
+
+> **Recommendation:** Consider removing dead code or integrating these components where intended (e.g., mounting SessionWatcher in a layout, using useAuth in Header).
+
+---
+
+## Usage Guidelines
 
 ### Component Best Practices
 
-#### 1. **Always Use TypeScript**
+#### 1. Always Use TypeScript
 ```tsx
 // Good
 interface MyComponentProps {
@@ -1205,7 +1269,7 @@ export const MyComponent = ({ title, onClick }) => {
 
 ---
 
-#### 2. **Use Server Components by Default**
+#### 2. Use Server Components by Default
 ```tsx
 // app/page.tsx (Server Component by default)
 export default async function Page() {
@@ -1223,21 +1287,12 @@ export const InteractiveChart = () => {
 
 ---
 
-#### 3. **Memoize Expensive Calculations**
+#### 3. Memoize Expensive Calculations
 ```tsx
 const houses = useMemo(
   () => buildLagnaHouses(planets, ascendant),
   [planets, ascendant]
 );
-```
-
----
-
-#### 4. **Use Proper Error Boundaries**
-```tsx
-<ChartErrorBoundary>
-  <DiamondChart houses={houses} />
-</ChartErrorBoundary>
 ```
 
 ---
@@ -1257,28 +1312,27 @@ const houses = useMemo(
 src/components/
 ├── ui/                    # Generic UI (shadcn/ui)
 ├── chart/                 # Domain-specific (astrology)
-│   ├── diamond/           # Grouped by feature
-│   └── divisional/
-├── forms/                 # Grouped by purpose
-└── layout/                # Site structure
+│   ├── diamond/           # Diamond chart rendering
+│   ├── divisional/        # Divisional chart features
+│   └── sadesati/          # Saturn transit analysis
+├── forms/                 # Form components
+├── layout/                # Site structure (Header, Footer)
+├── landing/               # Landing page features
+└── auth/                  # Auth utilities
 ```
 
 ---
 
-## 🔄 Component Lifecycle
+## Component Lifecycle
 
 ### Creating New Components
 
 1. **Determine Category**
-   - UI component → `src/components/ui/`
-   - Chart component → `src/components/chart/`
-   - Form component → `src/components/forms/`
+   - UI component > `src/components/ui/`
+   - Chart component > `src/components/chart/`
+   - Form component > `src/components/forms/`
 
-2. **Create File**
-   ```bash
-   # PascalCase filename
-   touch src/components/chart/NewChart.tsx
-   ```
+2. **Create File** (PascalCase filename)
 
 3. **Define Props Interface**
    ```tsx
@@ -1295,49 +1349,35 @@ src/components/
    };
    ```
 
-5. **Export from Index** (optional)
-   ```tsx
-   // src/components/chart/index.ts
-   export { NewChart } from './NewChart';
-   ```
-
-6. **Document in This File**
+5. **Document in This File**
    - Add to appropriate category
    - Include props documentation
    - Add usage example
 
 ---
 
-## 📊 Component Stats
+## Component Stats
 
-### By Category
-- **UI Components:** 28 (19 shadcn/ui + 9 custom including ChartLoader, Logo, etc.)
-- **Chart Components:** 20 (DiamondChart, PlanetaryTable, DashaNavigator, UserDetailsCard, StatusBadges, ChartLegend, AvakhadaTable, AscendantCard, BirthDetails, ChartFocusMode, NorthIndianChart, PlanetDisplay, HouseBlock, DiamondGrid + 6 divisional components)
-- **Form Components:** 5 (BirthDataForm, BirthDataFormWrapper, EditBirthDetailsForm, DateTimeField, CitySearch)
-- **Layout Components:** 4 (Header, Footer, ThemeToggle, ThemeProvider)
-- **Landing Components:** 4 (NavagrahaSection, Yantra, Particles, Glyphs)
-- **Auth Components:** 1 (SessionWatcher)
+### By Category (Active Only)
+- **UI Components:** 16 active (of 17 installed)
+- **Chart Components:** 16 active (of 22 files)
+- **Form Components:** 5 active (of 5)
+- **Layout Components:** 3 active (of 3)
+- **Landing Components:** 4 active (of 4)
+- **Auth Components:** 5 auth page forms active; SessionWatcher unused
+- **Custom Hooks:** 4 active (of 6)
 
-**Total:** 62 components
+**Active Total:** 53 components + 4 hooks
+**Dead Code:** 7 components + 2 hooks
 
-### By Type
-- **Server Components:** ~35
-- **Client Components:** ~25
-- **Hybrid:** ~2
-
-### Bundle Size Contribution (Estimated)
-- shadcn/ui: ~90 KB
-- Chart components: ~80 KB
-- Form components: ~35 KB
-- Landing components: ~25 KB
-- Other: ~20 KB
-- **Total:** ~250 KB
+### Dead Code Summary
+9 files exist but are never imported: ScrollArea, BirthDetails, AscendantCard, DashaTimeline, NorthIndianChart, HouseBlock, PlanetDisplay, SessionWatcher, useAuth (function), useVargottama
 
 ---
 
-## 🚀 Next Steps
+## Next Steps
 
-### Recently Completed ✅
+### Recently Completed
 - [x] ChartLoader component (Feb 2026)
 - [x] Logo component (Feb 2026)
 - [x] Landing page components (Feb 2026)
@@ -1349,22 +1389,19 @@ src/components/
 - [x] Full divisional chart set (D1-D60) (Feb 2026)
 - [x] Toast notification system (Feb 2026)
 - [x] BirthDataFormWrapper (Feb 2026)
+- [x] Sade Sati / Dhaiya analysis (SadeSatiTableView + PeriodDetailView) (Mar 2026)
+- [x] DashaNavigator multi-level navigator (Mar 2026)
 
-### To Add
+### To Do
+- [ ] Mount SessionWatcher in a protected layout or remove
+- [ ] Integrate useAuth hook in Header (currently only type import)
+- [ ] Integrate useVargottama hook in DivisionalChartsTab or remove
+- [ ] Clean up dead chart components (BirthDetails, AscendantCard, DashaTimeline, NorthIndianChart, HouseBlock, PlanetDisplay) or integrate them
+- [ ] Remove unused scroll-area.tsx or use it
 - [ ] ErrorBoundary wrapper for charts
-- [ ] SkeletonLoader variations for different components
-- [ ] Modal/Dialog wrappers for common patterns
 - [ ] Chart export (PNG/PDF) functionality
-- [ ] Print-friendly chart layouts
-
-### To Refactor
-- [ ] Extract common HOC for loading/error states
-- [ ] Consolidate duplicate chart styling logic
-- [ ] Create shared hooks for chart interactions
-- [ ] Optimize bundle size (lazy loading improvements)
 
 ---
 
-**Last Updated:** February 28, 2026  
-**Next Review:** March 7, 2026  
+**Last Updated:** March 18, 2026
 **Maintainer:** Aakash + AI Assistants
