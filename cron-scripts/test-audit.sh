@@ -7,7 +7,7 @@ set -e
 
 PROJECT_DIR="/var/www/astrotattwa-web"
 LOG_FILE="$PROJECT_DIR/cron-scripts/logs/test-audit.log"
-SNAPSHOT_FILE="/home/deploy/.claude/projects/-var-www-astrotattwa-web/memory/codebase_snapshot.md"
+SNAPSHOT_FILE="/var/www/astrotattwa-web/cron-scripts/memory/codebase_snapshot.md"
 CLAUDE="/home/deploy/.nvm/versions/node/v20.20.0/bin/claude"
 AUDIT_DATE=$(date +%Y-%m-%d)
 BRANCH="docs/audit-$AUDIT_DATE"

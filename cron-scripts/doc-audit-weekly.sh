@@ -6,7 +6,7 @@ set -e
 
 PROJECT_DIR="/var/www/astrotattwa-web"
 LOG_FILE="$PROJECT_DIR/cron-scripts/logs/doc-audit-weekly.log"
-SNAPSHOT_FILE="/home/deploy/.claude/projects/-var-www-astrotattwa-web/memory/codebase_snapshot.md"
+SNAPSHOT_FILE="/var/www/astrotattwa-web/cron-scripts/memory/codebase_snapshot.md"
 
 mkdir -p "$(dirname "$LOG_FILE")"
 
