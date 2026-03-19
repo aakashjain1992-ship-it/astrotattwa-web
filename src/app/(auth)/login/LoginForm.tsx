@@ -17,7 +17,7 @@ function safeReturnUrl(value: string | null): string {
       const raw = localStorage.getItem('lastChart')
       if (raw) {
         const parsed = JSON.parse(raw)
-        if (parsed?.input && parsed?.planets && parsed?.ascendant) {
+        if (parsed?.input && parsed?.planets && parsed?.planets?.Ascendant) {
           return '/chart'
         }
       }
