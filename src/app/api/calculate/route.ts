@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { calculateKpChart } from "@/lib/astrology/kp/calculate";
 import { chartCalculationSchema } from "@/lib/validation/chart-calculation";
-import { roundAllPlanets, roundAscendantDecimals } from "@/lib/utils";
+import { roundAllPlanets } from "@/lib/utils";
 import { convert12to24 } from "@/lib/astrology/time";
 import { successResponse, withErrorHandling, calculationError } from "@/lib/api/errorHandling";
 import { rateLimit, RateLimitPresets } from "@/lib/api/rateLimit";
@@ -83,7 +83,6 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
     createdAt: new Date().toISOString(),
     ...chart,
     planets: chart.planets ? roundAllPlanets(chart.planets) : chart.planets,
-    ascendant: chart.ascendant ? roundAscendantDecimals(chart.ascendant) : chart.ascendant,
     rahuKetuModes: chart.rahuKetuModes,
   };
 

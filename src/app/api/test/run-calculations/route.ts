@@ -166,7 +166,7 @@ export async function GET(request: NextRequest) {
               },
               {
                 planets: actualData.planets,
-                ascendant: actualData.ascendant,
+                ascendant: actualData.planets?.Ascendant,
                 dasha: { mahadasha: actualData.dasa?.balance?.classical360?.mahadashaLord || "Unknown" },
                 rahuKetuModes: actualData.rahuKetuModes,
               },
@@ -184,7 +184,7 @@ export async function GET(request: NextRequest) {
               test_case_id: testCase.id,
               status: comparison.status,
               actual_planets: actualData.planets,
-              actual_ascendant: actualData.ascendant,
+              actual_ascendant: actualData.planets?.Ascendant,
               actual_dasha: actualData.dasa,
               differences: {
                 planets: comparison.planets,

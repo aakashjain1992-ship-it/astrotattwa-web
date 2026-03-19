@@ -260,7 +260,7 @@ export default function ChartClient() {
     }
 
     // ✅ minimal guard to prevent crashes from bad cache
-     const ascendantCheck = data.planets?.Ascendant ?? data.ascendant;
+     const ascendantCheck = data.planets?.Ascendant;
     if (!ascendantCheck || typeof (ascendantCheck as any).signNumber !== 'number')
  {
       try { localStorage.removeItem(STORAGE_KEY); } catch {}
@@ -464,7 +464,7 @@ export default function ChartClient() {
     {
       id: 'lagna',
       title: 'D1 - Lagna',
-      subtitle: `Ascendant: ${chartData.ascendant.sign} ${chartData.ascendant.degreeInSign.toFixed(2)}°`,
+      subtitle: `Ascendant: ${ascendant.sign} ${ascendant.degreeInSign.toFixed(2)}°`,
       houses: houses,
       insights: [
         ...vargottamaInsights,  // ⭐ Vargottama first!
@@ -641,7 +641,7 @@ export default function ChartClient() {
       analysis={chartData.saturnTransits}
       birthDate={new Date(chartData.calculated.localDateTime)}
       planets={chartData.planets}
-      ascendant={chartData.ascendant}
+      ascendant={chartData.planets.Ascendant as AscendantData}
       dashaInfo={chartData.dasa}
       moonLongitude={chartData.planets.Moon?.longitude}
       elapsedFractionOfNakshatra={chartData.planets.Moon?.kp?.elapsedFractionOfNakshatra}
