@@ -25,7 +25,7 @@ import { SadeSatiTableView } from '@/components/chart/sadesati/SadeSatiTableView
 
 
 // Import proper types from astrology module
-import type { PlanetData, AscendantData as AstroAscendantData } from '@/types/astrology';
+import type {  PlanetData, AscendantData, ChartData, } from '@/types/astrology';
 import { useIdleLogout } from '@/hooks/useIdleLogout';
 
 import { useSavedCharts } from '@/hooks/useSavedCharts';
@@ -38,84 +38,6 @@ import {
 } from '@/components/ui/select';
 
 
-
-// ============================================
-// TYPE DEFINITIONS
-// ============================================
-
-// Local types for page-specific data structures
-interface ChartInput {
-  name: string;
-  gender: string;
-  birthDate: string;
-  birthTime: string;
-  birthPlace: string;
-  timePeriod: string;
-  latitude: number;
-  longitude: number;
-  timezone: string;
-}
-
-interface CalculatedData {
-  tzOffsetMinutes: number;
-  localDateTime: string;
-  utcDateTime: string;
-  julianDayUT: number;
-}
-// Minimal ascendant type for page logic (compatible with AstroAscendantData)
-interface AscendantData {
-  sign: string;
-  signNumber: number;
-  degreeInSign: number;
-}
-
-interface DashaData {
-  balance?: {
-    planet: string;
-    years: number;
-    months: number;
-    days: number;
-  };
-  currentMahadasha?: string;
-  allMahadashas?: Array<{
-    planet: string;
-    startUtc: string;
-    endUtc: string;
-    duration?: { years: number; months: number; days: number };
-  }>;
-}
-
-interface AvakhadaData {
-  rasiSign?: string;
-  rasiLord?: string;
-  nakshatraCharan?: string;
-  nakshatra?: string;
-  nakshatraPada?: number;
-  nakshatraLord?: string;
-  yoga?: string;
-  karan?: string;
-  gana?: string;
-  yoni?: string;
-  nadi?: string;
-  varan?: string;
-  vashya?: string;
-  nameAlphabet?: string;
-  sunSignWestern?: string;
-}
-
-interface ChartData {
-  id: string;
-  createdAt: string;
-  input: ChartInput;
-  calculated: CalculatedData;
-  planets: Record<string, PlanetData>;
-  ascendant: AscendantData;
-  dasa: DashaData;
-  avakahada: AvakhadaData;
-  ayanamsha?: string;
-  rahuKetuModes?: any;
-  saturnTransits?: any;  
-}
 
 type TabType = 'overview' | 'dasha'| 'divisional' | 'sadesati';
 type MobileSubTab = 'planets' | 'avakahada';
@@ -338,7 +260,9 @@ export default function ChartClient() {
     }
 
     // ✅ minimal guard to prevent crashes from bad cache
-    if (!data.ascendant || typeof (data.ascendant as any).signNumber !== 'number') {
+     const ascendantCheck = data.planets?.Ascendant ?? data.ascendant;
+    if (!ascendantCheck || typeof (ascendantCheck as any).signNumber !== 'number')
+ {
       try { localStorage.removeItem(STORAGE_KEY); } catch {}
       router.push('/');
       return;
@@ -524,7 +448,7 @@ export default function ChartClient() {
   }
 
   // Cast ascendant to proper type
-  const ascendant = chartData.ascendant as AstroAscendantData;
+  const ascendant = chartData.planets.Ascendant as AscendantData;
 
   // Build houses
   const houses = buildLagnaHouses(chartData.planets, ascendant);

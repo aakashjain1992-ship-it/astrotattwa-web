@@ -1,0 +1,13 @@
+[Wed Mar 18 12:00:01 PM UTC 2026] Starting codebase snapshot...
+[Wed Mar 18 12:08:56 PM UTC 2026] Starting codebase snapshot...
+[Wed Mar 18 12:17:01 PM UTC 2026] Starting codebase snapshot...
+[Wed Mar 18 12:28:01 PM UTC 2026] Starting codebase snapshot...
+Snapshot written to `/var/www/astrotattwa-web/cron-scripts/memory/codebase_snapshot.md`.
+
+**Summary:**
+- **51 components** — 47 active, 4 dead (`AscendantCard`, `HouseBlock`, `DashaTimeline`, `NorthIndianChart`)
+- **6 hooks** — 5 active, 1 unused (`useVargottama`)
+- **18 API routes** — mix of GET/POST/PATCH/DELETE across auth, dasha, transit, chart, city search, and test endpoints
+- **5 type files** — astrology, chart-calculation, index, sadesati, supabase
+- **~31 commits this week** — primary focus: Saturn transit period-analysis feature (new route + components + logic), heavy SadeSatiTableView iteration, and automated doc audit pipeline setup
+[Wed Mar 18 12:29:49 PM UTC 2026] Codebase snapshot complete.
