@@ -260,7 +260,9 @@ export default function ChartClient() {
     }
 
     // ✅ minimal guard to prevent crashes from bad cache
-    if (!data.ascendant || typeof (data.ascendant as any).signNumber !== 'number') {
+     const ascendantCheck = data.planets?.Ascendant ?? data.ascendant;
+    if (!ascendantCheck || typeof (ascendantCheck as any).signNumber !== 'number')
+ {
       try { localStorage.removeItem(STORAGE_KEY); } catch {}
       router.push('/');
       return;
@@ -446,7 +448,7 @@ export default function ChartClient() {
   }
 
   // Cast ascendant to proper type
-  const ascendant = chartData.ascendant as AstroAscendantData;
+  const ascendant = chartData.planets.Ascendant as AscendantData;
 
   // Build houses
   const houses = buildLagnaHouses(chartData.planets, ascendant);
