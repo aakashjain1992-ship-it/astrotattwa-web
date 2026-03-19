@@ -28,7 +28,7 @@ const securityHeaders = [
 ];
 
 const corsHeaders = [
-  { key: 'Access-Control-Allow-Origin', value: 'https://astrotattwa.com' },
+  { key: 'Access-Control-Allow-Origin', value:  process.env.NEXT_PUBLIC_APP_URL || 'https://astrotattwa.com' },
   { key: 'Access-Control-Allow-Methods', value: 'GET, POST, PUT, DELETE, OPTIONS' },
   { key: 'Access-Control-Allow-Headers', value: 'Content-Type, Authorization' },
 /**  { key: 'Access-Control-Max-Age', value: '86400' },   ## this is disabled now, since we are testing on production only. When we launch the product and have QA set up, then we will enable this for production */
