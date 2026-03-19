@@ -15,7 +15,7 @@
  */
 
 
-import type { SaturnTransitAnalysis } from './sadesati';
+import type { EnhancedSaturnTransitAnalysis } from '@/lib/astrology/sadesati/types-enhanced';
 
 
 export type PlanetKey = 
@@ -354,42 +354,100 @@ export interface AvakahaddaChakra {
   sunSignWestern: string;
 }
 
-// ===== COMPLETE CHART DATA =====
+// ===== CHART DATA — API RESPONSE SHAPE =====
 
 /**
- * Complete birth chart data
+ * Birth input data from the form — passed into POST /api/calculate
+ */
+export interface ChartInput {
+  name: string;
+  gender: string;
+  birthDate: string;
+  birthTime: string;
+  birthPlace: string;
+  timePeriod: string;
+  latitude: number;
+  longitude: number;
+  timezone: string;
+}
+
+/**
+ * Calculated metadata produced by the API alongside the chart
+ */
+export interface CalculatedData {
+  tzOffsetMinutes: number;
+  localDateTime: string;
+  utcDateTime: string;
+  julianDayUT: number;
+}
+
+/**
+ * Dasha data as stored in chart data.
+ * allMahadashas is intentionally absent — fetched lazily by DashaNavigator
+ * via GET /api/dasha/mahadashas when the Dasha tab opens.
+ */
+export interface ChartDashaData {
+  balance?: {
+    planet: string;
+    years: number;
+    months: number;
+    days: number;
+  };
+  currentMahadasha?: string;
+  allMahadashas?: Array<{
+    planet: string;
+    startUtc: string;
+    endUtc: string;
+    duration?: { years: number; months: number; days: number };
+  }>;
+}
+
+/**
+ * Avakahada data as returned from the API (flat shape from kp/avakahada.ts).
+ * Distinct from AvakahaddaChakra which is the full 21-attribute shape.
+ */
+export interface ChartAvakhadaData {
+  rasiSign?: string;
+  rasiLord?: string;
+  nakshatraCharan?: string;
+  nakshatra?: string;
+  nakshatraPada?: number;
+  nakshatraLord?: string;
+  yoga?: string;
+  karan?: string;
+  gana?: string;
+  yoni?: string;
+  nadi?: string;
+  varan?: string;
+  vashya?: string;
+  nameAlphabet?: string;
+  sunSignWestern?: string;
+}
+
+/**
+ * Complete chart data as stored in localStorage and used by ChartClient.
+ * Matches the actual shape returned by POST /api/calculate.
+ *
+ * Note: ascendant is also present as planets.Ascendant (duplicate for backward
+ * compatibility — the top-level field will be removed in a future cleanup).
  */
 export interface ChartData {
-  /** All planet positions */
-  planets: Record<PlanetKey, PlanetData>;
-  
-  /** Ascendant data */
+  id: string;
+  createdAt: string;
+  input: ChartInput;
+  calculated: CalculatedData;
+  /** All 9 planets + Ascendant key */
+  planets: Record<string, PlanetData>;
   ascendant: AscendantData;
-  
-  /** Moon's Nakshatra */
-  nakshatra: NakshatraInfo;
-  
-  /** Vimshottari Dasha system */
-  dasa: DashaInfo;
-  
-  /** Avakahada Chakra - 21 attributes */
-  avakahada: AvakahaddaChakra;
-  
-  /** Person's name */
-  name: string;
-  
-  /** Gender */
-  gender: 'male' | 'female';
-  
-  /** Time period (AM/PM) */
-  timePeriod: 'AM' | 'PM';
-  
-  /** City ID from database */
-  cityId: string;
-
-  /** Sade Sati analysis */ 
-  saturnTransits?: SaturnTransitAnalysis;
-
+  dasa: ChartDashaData;
+  avakahada: ChartAvakhadaData;
+  ayanamsha?: string;
+  rahuKetuModes?: {
+    trueNode: { Rahu: number | null; Ketu: number | null };
+    meanNode: { Rahu: number | null; Ketu: number | null };
+  };
+  /** Saturn transit analysis — populated when Sade Sati tab opens */
+  saturnTransits?: EnhancedSaturnTransitAnalysis;
 }
 
 // ===== CONSTANTS =====
