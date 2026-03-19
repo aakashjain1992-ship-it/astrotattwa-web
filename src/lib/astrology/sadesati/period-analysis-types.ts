@@ -123,8 +123,28 @@ export interface NakshatraTriggerWindow {
 export interface JupiterTransitWindow {
   jupiterSign: number;
   jupiterSignName: string;
+  /**
+   * Clamped entry date — Jupiter's entry into this sign, clamped to the
+   * selected period's start/end window for display purposes.
+   */
   startDate: Date;
+  /**
+   * Clamped exit date — Jupiter's exit from this sign, clamped to the
+   * selected period's start/end window for display purposes.
+   */
   exitDate: Date;
+  /**
+   * Unclamped entry date — Jupiter's actual sign entry regardless of the
+   * selected period's boundaries. Used in summary sentences so the date
+   * range shown reflects Jupiter's real tenure in the sign.
+   */
+  rawEntryDate: Date;
+  /**
+   * Unclamped exit date — Jupiter's actual sign exit regardless of the
+   * selected period's boundaries. Used in summary sentences so the date
+   * range shown reflects Jupiter's real tenure in the sign.
+   */
+  rawExitDate: Date;
   /** Jupiter's 5th/7th/9th aspect reaches natal Moon sign */
   aspectsMoon: boolean;
   /** Jupiter's 5th/7th/9th aspect reaches Saturn's current transit sign */
