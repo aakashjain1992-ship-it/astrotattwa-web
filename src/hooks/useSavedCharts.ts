@@ -77,7 +77,7 @@ export function useSavedCharts() {
       setIsAdmin(Boolean(u?.isAdmin)); // from DB /me
 
       // 2) list saved charts
-      const listRes = await fetch('/api/SaveChart', { credentials: 'include' });
+      const listRes = await fetch('/api/save-chart', { credentials: 'include' });
       if (!listRes.ok) {
         const j = await safeJson(listRes);
         throw new Error(j?.error || 'Failed to load saved charts.');
@@ -98,7 +98,7 @@ export function useSavedCharts() {
   const hasSavedCharts = useMemo(() => charts.length > 0, [charts.length]);
 
   const saveChart = useCallback(async (payload: any): Promise<SavedChart> => {
-    const res = await fetch('/api/SaveChart', {
+    const res = await fetch('/api/save-chart', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -115,7 +115,7 @@ export function useSavedCharts() {
   }, []);
 
   const updateChart = useCallback(async (id: string, payload: any): Promise<SavedChart> => {
-    const res = await fetch(`/api/SaveChart/${id}`, {
+    const res = await fetch(`/api/save-chart/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -132,7 +132,7 @@ export function useSavedCharts() {
   }, []);
 
   const deleteChart = useCallback(async (id: string): Promise<void> => {
-    const res = await fetch(`/api/SaveChart/${id}`, {
+    const res = await fetch(`/api/save-chart/${id}`, {
       method: 'DELETE',
       credentials: 'include',
     });
