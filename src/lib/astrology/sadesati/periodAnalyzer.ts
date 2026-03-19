@@ -520,14 +520,14 @@ async function getJupiterWindowsForPeriod(
       exitDate,
       // Store unclamped dates for use in summary sentences
       // so "Jupiter in X from [actual entry] to [actual exit]" is always meaningful
-      _rawEntryDate:        row.entryDate,
-      _rawExitDate:         row.exitDate,
+      rawEntryDate:         row.entryDate,
+      rawExitDate:          row.exitDate,
       aspectsMoon,
       aspectsSaturnTransit,
       aspectsNatalSaturn,
       protectionStrength,
       description,
-    } as any);
+    });
   }
 
   return windows;
@@ -847,9 +847,8 @@ function generateSummary(
   } else if (bestJupiter && bestJupiter.protectionStrength === 'strong') {
     // Use raw (unclamped) dates so we show the full Jupiter sign tenure,
     // not just the slice that overlaps the period start/end
-    const raw = bestJupiter as any;
-    const from = fmtMonYear(raw._rawEntryDate ?? bestJupiter.startDate);
-    const to   = fmtMonYear(raw._rawExitDate  ?? bestJupiter.exitDate);
+    const from = fmtMonYear(bestJupiter.rawEntryDate ?? bestJupiter.startDate);
+    const to   = fmtMonYear(bestJupiter.rawExitDate  ?? bestJupiter.exitDate);
     // Only show the sentence if the dates are meaningfully different
     if (from !== to) {
       sentences.push(`Jupiter provides strong protection from ${from} to ${to}, creating a notably more supported window within this period.`);
@@ -902,9 +901,8 @@ function buildTimingWindows(
   // Find the relief window: strong Jupiter protection
   const protectedJupiter = jupiterWindows.find(w => w.protectionStrength === 'strong' || w.protectionStrength === 'moderate');
   if (protectedJupiter) {
-    const rawJ = protectedJupiter as any;
-    const start = (rawJ._rawEntryDate ?? protectedJupiter.startDate) as Date;
-    const end   = (rawJ._rawExitDate  ?? protectedJupiter.exitDate)  as Date;
+    const start = protectedJupiter.rawEntryDate ?? protectedJupiter.startDate;
+    const end   = protectedJupiter.rawExitDate  ?? protectedJupiter.exitDate;
     const age1  = ageAt(protectedJupiter.startDate, birthDate);
     const age2  = ageAt(protectedJupiter.exitDate,  birthDate);
     const ageLabel = age1 === age2 ? `Age ${age1}` : `Age ${age1}–${age2}`;
@@ -1087,9 +1085,8 @@ function buildGuidance(
     build.push('Saturn is Yogakaraka for your chart — consistent effort converts to lasting results more reliably than for others');
   }
   if (bestJupiter) {
-    const raw = bestJupiter as any;
-    const from = fmtMonYear(raw._rawEntryDate ?? bestJupiter.startDate);
-    const to   = fmtMonYear(raw._rawExitDate  ?? bestJupiter.exitDate);
+    const from = fmtMonYear(bestJupiter.rawEntryDate ?? bestJupiter.startDate);
+    const to   = fmtMonYear(bestJupiter.rawExitDate  ?? bestJupiter.exitDate);
     const rangeStr = from !== to ? `${from}–${to}` : from;
     build.push(`The ${rangeStr} window has Jupiter's protection — use it for decisions with long-term consequences`);
   }
@@ -1108,9 +1105,8 @@ function buildGuidance(
 
   const buildWindow = bestJupiter
     ? (() => {
-        const raw = bestJupiter as any;
-        const from = fmtMonYear(raw._rawEntryDate ?? bestJupiter.startDate);
-        const to   = fmtMonYear(raw._rawExitDate  ?? bestJupiter.exitDate);
+        const from = fmtMonYear(bestJupiter.rawEntryDate ?? bestJupiter.startDate);
+        const to   = fmtMonYear(bestJupiter.rawExitDate  ?? bestJupiter.exitDate);
         return from !== to ? `${from}–${to}` : from;
       })()
     : 'throughout the period';
@@ -1175,9 +1171,8 @@ function buildDimensionalIntensity(
   else if (mostActivated.some(w => w.activationLevel === 'moderate')) extScore += 1;
   if (bestJupiter?.protectionStrength === 'strong')   extScore -= 2;
   else if (bestJupiter?.protectionStrength === 'moderate') extScore -= 1;
-  const raw = bestJupiter as any;
-  const jupFrom = raw?._rawEntryDate ? fmtMonYear(raw._rawEntryDate) : bestJupiter ? fmtMonYear(bestJupiter.startDate) : null;
-  const jupTo   = raw?._rawExitDate  ? fmtMonYear(raw._rawExitDate)  : bestJupiter ? fmtMonYear(bestJupiter.exitDate)  : null;
+  const jupFrom = bestJupiter?.rawEntryDate ? fmtMonYear(bestJupiter.rawEntryDate) : bestJupiter ? fmtMonYear(bestJupiter.startDate) : null;
+  const jupTo   = bestJupiter?.rawExitDate  ? fmtMonYear(bestJupiter.rawExitDate)  : bestJupiter ? fmtMonYear(bestJupiter.exitDate)  : null;
   const externalReason = bestJupiter?.protectionStrength === 'strong' && jupFrom && jupTo && jupFrom !== jupTo
     ? `Jupiter protection present ${jupFrom}–${jupTo} — reduces external impact`
     : mostActivated.some(w => w.activationLevel === 'very_high')
@@ -1265,7 +1260,7 @@ function buildWindowSummary(
   const pressured = timingWindows.filter(w => w.intensity === 'pressured');
 
   // Best window — prefer easing, then Jupiter window, then least-pressured
-  let bestLabel  = easing?.label ?? (bestJupiter ? fmtMonYear((bestJupiter as any)._rawEntryDate ?? bestJupiter.startDate) : null) ?? pressured[pressured.length - 1]?.label ?? 'Later in the period';
+  let bestLabel  = easing?.label ?? (bestJupiter ? fmtMonYear(bestJupiter.rawEntryDate ?? bestJupiter.startDate) : null) ?? pressured[pressured.length - 1]?.label ?? 'Later in the period';
   let bestReason = easing
     ? 'Saturn pressure eases — suitable for important decisions and new initiatives'
     : bestJupiter?.protectionStrength === 'strong'
