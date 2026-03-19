@@ -438,7 +438,6 @@ export interface ChartData {
   calculated: CalculatedData;
   /** All 9 planets + Ascendant key */
   planets: Record<string, PlanetData>;
-  ascendant: AscendantData;
   dasa: ChartDashaData;
   avakahada: ChartAvakhadaData;
   ayanamsha?: string;
