@@ -125,7 +125,6 @@ export async function calculateKpChart(input: {
         ...ascendant,
         key: "Ascendant",}
     },
-    ascendant, // ⚠️ BACKWARD COMPATIBILITY: Keep old ascendant field , later delete this.
     avakahada,
     rahuKetuModes, 
     dasa: {
@@ -134,4 +133,3 @@ export async function calculateKpChart(input: {
     },
   };
 }
-
