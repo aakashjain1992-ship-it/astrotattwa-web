@@ -626,6 +626,8 @@ export default function ChartClient() {
             <PlanetsTab
               planets={chartData.planets}
               ascendant={ascendant}
+              dashaInfo={chartData.dasa}
+              birthDate={chartData.calculated?.utcDateTime}
             />
           </div>
         )}

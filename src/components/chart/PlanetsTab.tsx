@@ -116,11 +116,11 @@ function buildCardSummary(r: PlanetStrengthResult, pd: PlanetData): string {
 
 function StrengthChip({ grade }: { grade: StructuralGrade }) {
   const s: Record<StructuralGrade, string> = {
-    very_strong: 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/40 dark:text-green-300 dark:border-green-800',
-    strong:      'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-800',
-    moderate:    'bg-slate-100 text-slate-600 border-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600',
-    weak:        'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-700',
-    very_weak:   'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/40 dark:text-red-300 dark:border-red-800',
+    very_strong: 'bg-green-100 text-green-800 border-green-300 dark:bg-transparent dark:text-green-400 dark:border-green-600',
+    strong:      'bg-blue-100 text-blue-800 border-blue-300 dark:bg-transparent dark:text-blue-400 dark:border-blue-600',
+    moderate:    'bg-slate-100 text-slate-700 border-slate-300 dark:bg-transparent dark:text-slate-400 dark:border-slate-500',
+    weak:        'bg-amber-100 text-amber-800 border-amber-300 dark:bg-transparent dark:text-amber-400 dark:border-amber-600',
+    very_weak:   'bg-red-100 text-red-800 border-red-300 dark:bg-transparent dark:text-red-400 dark:border-red-600',
   };
   return (
     <span className={cn('inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium border', s[grade])}>
@@ -134,18 +134,18 @@ function FnChip({ fn, lean, isMaraka, short = false }: {
 }) {
   // Lean only changes colour, not the label text
   const s: Record<FunctionalNature, string> = {
-    yogakaraka:    'bg-violet-100 text-violet-800 border-violet-300 dark:bg-violet-900/40 dark:text-violet-300 dark:border-violet-700',
-    strong_benefic:'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/40 dark:text-green-300 dark:border-green-800',
-    benefic:       'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-700',
+    yogakaraka:    'bg-violet-100 text-violet-800 border-violet-300 dark:bg-transparent dark:text-violet-400 dark:border-violet-600',
+    strong_benefic:'bg-green-100 text-green-800 border-green-300 dark:bg-transparent dark:text-green-400 dark:border-green-600',
+    benefic:       'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-transparent dark:text-emerald-400 dark:border-emerald-600',
     mixed:         lean === 'malefic_lean'
-                     ? 'bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-900/40 dark:text-orange-300 dark:border-orange-700'
+                     ? 'bg-orange-100 text-orange-800 border-orange-300 dark:bg-transparent dark:text-orange-400 dark:border-orange-600'
                    : lean === 'benefic_lean'
-                     ? 'bg-teal-100 text-teal-800 border-teal-200 dark:bg-teal-900/40 dark:text-teal-300 dark:border-teal-700'
+                     ? 'bg-teal-100 text-teal-800 border-teal-300 dark:bg-transparent dark:text-teal-400 dark:border-teal-600'
                    : lean === 'maraka_driven'
-                     ? 'bg-rose-100 text-rose-800 border-rose-200 dark:bg-rose-900/40 dark:text-rose-300 dark:border-rose-700'
-                   : 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-700',
-    neutral:       'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600',
-    malefic:       'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/40 dark:text-red-300 dark:border-red-800',
+                     ? 'bg-rose-100 text-rose-800 border-rose-300 dark:bg-transparent dark:text-rose-400 dark:border-rose-600'
+                   : 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-transparent dark:text-amber-400 dark:border-amber-600',
+    neutral:       'bg-slate-100 text-slate-700 border-slate-300 dark:bg-transparent dark:text-slate-400 dark:border-slate-500',
+    malefic:       'bg-red-100 text-red-800 border-red-300 dark:bg-transparent dark:text-red-400 dark:border-red-600',
   };
 
   // Lean dot for mixed — small coloured indicator instead of verbose text
@@ -215,7 +215,7 @@ function ConflictBadge({ flag }: { flag: ConflictFlag }) {
     weak_afflicted:'Double weakness',
   };
   return (
-    <span className="inline-flex text-[10px] px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800">
+    <span className="inline-flex text-[10px] px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200 dark:bg-transparent dark:text-amber-400 dark:border-amber-600">
       {LABELS[flag]}
     </span>
   );
@@ -223,9 +223,9 @@ function ConflictBadge({ flag }: { flag: ConflictFlag }) {
 
 function DomainTag({ domain, type }: { domain: Domain; type: 'strong'|'mixed'|'weak' }) {
   const s = {
-    strong:'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400',
-    mixed: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400',
-    weak:  'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400',
+    strong:'bg-green-50 text-green-700 border-green-200 dark:bg-transparent dark:text-green-400 dark:border-green-700',
+    mixed: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-transparent dark:text-amber-400 dark:border-amber-700',
+    weak:  'bg-red-50 text-red-700 border-red-200 dark:bg-transparent dark:text-red-400 dark:border-red-700',
   };
   return <span className={cn('text-[10px] px-2 py-0.5 rounded-full border', s[type])}>{domain}</span>;
 }
@@ -420,8 +420,8 @@ function ExploreDetail({ r, pd, onClose }: {
           <p className="text-[12px] text-muted-foreground">{r.vargaAssessment.note}</p>
           <div className="flex flex-wrap gap-1.5 mt-2">
             <span className={cn('text-[10px] px-2 py-0.5 rounded-full border',
-              r.vargaAssessment.d9Confirms  ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400' :
-              r.vargaAssessment.d9Contradicts ? 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400' :
+              r.vargaAssessment.d9Confirms  ? 'bg-green-50 text-green-700 border-green-200 dark:bg-transparent dark:text-green-400 dark:border-green-700' :
+              r.vargaAssessment.d9Contradicts ? 'bg-red-50 text-red-700 border-red-200 dark:bg-transparent dark:text-red-400 dark:border-red-700' :
               'bg-muted text-muted-foreground border-border')}>
               D9: {dignityShort(r.vargaAssessment.d9DignityLevel)}
             </span>
@@ -568,7 +568,7 @@ function AnalystTable({ results, planets, ascendant }: {
     <div>
       <div className="mb-3 px-3 py-2 text-[11px] text-muted-foreground bg-muted rounded-lg border border-border flex items-center gap-2">
         <Info className="h-3 w-3 flex-shrink-0" />
-        <span><span className="font-medium">{ascendant.sign} lagna</span>  Click row to expand</span>
+        <span><span className="font-medium">{ascendant.sign} lagna</span> · Lahiri · Swiss Ephemeris · 14-layer engine · Click row to expand</span>
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-border">
@@ -766,7 +766,7 @@ export function PlanetsTab({ planets, ascendant, dashaContext }: PlanetsTabProps
         <div>
           <h2 className="text-base font-semibold">Planetary Strength</h2>
           <p className="text-[11px] text-muted-foreground mt-0.5">
-            {ascendant.sign} lagna
+            {ascendant.sign} lagna · 14-layer practitioner-grade assessment
           </p>
         </div>
         <ModeToggle mode={mode} onChange={m => { setMode(m); setSelected(null); }} />
