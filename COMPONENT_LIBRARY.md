@@ -1224,11 +1224,7 @@ These files exist in the codebase but are **not imported or rendered anywhere**:
 | Component | File | Notes |
 |-----------|------|-------|
 | **BirthDetails** | `src/components/chart/BirthDetails.tsx` | Likely replaced by UserDetailsCard |
-| **AscendantCard** | `src/components/chart/AscendantCard.tsx` | Never imported |
-| **DashaTimeline** | `src/components/chart/DashaTimeline.tsx` | Likely replaced by DashaNavigator |
-| **NorthIndianChart** | `src/components/chart/NorthIndianChart.tsx` | Never imported; DiamondChart is used instead |
-| **HouseBlock** | `src/components/chart/HouseBlock.tsx` | Imports PlanetDisplay, but HouseBlock itself is never used |
-| **PlanetDisplay** | `src/components/chart/PlanetDisplay.tsx` | Only imported by HouseBlock (which is also unused) |
+| **PlanetDisplay** | `src/components/chart/PlanetDisplay.tsx` | Only imported by HouseBlock (which is also unused)  |
 
 ### Auth Components
 | Component | File | Notes |
@@ -1239,7 +1235,7 @@ These files exist in the codebase but are **not imported or rendered anywhere**:
 | Hook | File | Notes |
 |------|------|-------|
 | **useAuth** | `src/hooks/useAuth.ts` | Only the `AuthUser` type is imported; hook function never called |
-| **useVargottama** | `src/hooks/useVargottama.ts` | Never imported anywhere |
+| **useVargottama** | `src/hooks/useVargottama.ts` | Never imported anywhere (Deleted)  |
 
 > **Recommendation:** Consider removing dead code or integrating these components where intended (e.g., mounting SessionWatcher in a layout, using useAuth in Header).
 
@@ -1371,7 +1367,7 @@ src/components/
 **Dead Code:** 7 components + 2 hooks
 
 ### Dead Code Summary
-9 files exist but are never imported: ScrollArea, BirthDetails, AscendantCard, DashaTimeline, NorthIndianChart, HouseBlock, PlanetDisplay, SessionWatcher, useAuth (function), useVargottama
+9 files exist but are never imported: ScrollArea, BirthDetails, PlanetDisplay, SessionWatcher, useAuth (function),
 
 ---
 
@@ -1395,8 +1391,6 @@ src/components/
 ### To Do
 - [ ] Mount SessionWatcher in a protected layout or remove
 - [ ] Integrate useAuth hook in Header (currently only type import)
-- [ ] Integrate useVargottama hook in DivisionalChartsTab or remove
-- [ ] Clean up dead chart components (BirthDetails, AscendantCard, DashaTimeline, NorthIndianChart, HouseBlock, PlanetDisplay) or integrate them
 - [ ] Remove unused scroll-area.tsx or use it
 - [ ] ErrorBoundary wrapper for charts
 - [ ] Chart export (PNG/PDF) functionality

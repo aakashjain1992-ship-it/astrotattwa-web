@@ -124,7 +124,7 @@ types/
 - SadeSatiTableView — src/components/chart/sadesati/SadeSatiTableView.tsx — 1 import
 - UserDetailsCard — src/components/chart/UserDetailsCard.tsx — 1 import
 
-## Components (Dead Code)
+## Components (Dead Code) - All deleted. 
 - AscendantCard — src/components/chart/AscendantCard.tsx — 0 imports
 - HouseBlock — src/components/chart/HouseBlock.tsx — 0 imports
 - DashaTimeline — src/components/chart/DashaTimeline.tsx — 0 imports
@@ -137,7 +137,7 @@ types/
 - useDateTimeSync — src/hooks/useDateTimeSync.ts — 2 imports
 - useSavedCharts — src/hooks/useSavedCharts.ts — 1 import
 
-## Hooks (Unused)
+## Hooks (Unused) - All deleted. 
 - useVargottama — src/hooks/useVargottama.ts — 0 imports
 
 ## API Routes
