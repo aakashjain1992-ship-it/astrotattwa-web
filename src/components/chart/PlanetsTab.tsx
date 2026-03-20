@@ -1,740 +1,936 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { ChevronDown, ChevronUp, AlertCircle, Info } from 'lucide-react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { assessAllPlanets } from '@/lib/astrology/strength';
-import type {
-  PlanetStrengthResult, StructuralGrade, FunctionalNature,
-  FunctionalLean, ConditionGrade, DeliveryGrade, ConflictFlag,
-  DignityLevel, Domain, ConfidenceGrade,
-} from '@/lib/astrology/strength';
-import type { PlanetData, AscendantData } from '@/types/astrology';
+import { assessAllPlanets, getNaturalRelationship } from '@/lib/astrology/strength';
+import type { PlanetStrengthResult, StructuralGrade, DeliveryGrade, Domain, FunctionalNature, FunctionalLean } from '@/lib/astrology/strength';
+import type { PlanetData, AscendantData, ChartDashaData } from '@/types/astrology';
+import { calculateAntardashas, calculatePratyantars, calculateSookshmas } from '@/lib/astrology/kp/dasa';
+import { DASHA_ORDER, DASHA_YEARS } from '@/lib/astrology/kp/constants';
+
+// ─── Props ────────────────────────────────────────────────────────────────────
 
 interface PlanetsTabProps {
   planets: Record<string, PlanetData>;
   ascendant: AscendantData;
-  dashaContext?: { currentMahadasha?: string; currentAntardasha?: string; currentPratyantar?: string };
+  dashaInfo?: ChartDashaData;
+  birthDate?: string; // ISO UTC
 }
+
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 const PLANET_ORDER = ['Sun','Moon','Mars','Mercury','Jupiter','Venus','Saturn','Rahu','Ketu'];
 
-const GLYPH: Record<string, string> = {
+const GLYPH: Record<string,string> = {
   Sun:'☉', Moon:'☽', Mars:'♂', Mercury:'☿',
   Jupiter:'♃', Venus:'♀', Saturn:'♄', Rahu:'☊', Ketu:'☋',
 };
 
-// Soft planet avatar colours — light bg, dark text — works in both modes
-const PLANET_AVATAR: Record<string, string> = {
-  Sun:     'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300',
-  Moon:    'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
-  Mars:    'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300',
-  Mercury: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300',
-  Jupiter: 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300',
-  Venus:   'bg-pink-100 text-pink-800 dark:bg-pink-900/40 dark:text-pink-300',
-  Saturn:  'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300',
-  Rahu:    'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300',
-  Ketu:    'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300',
+// Natural karaka domains — what each planet naturally signifies
+const PLANET_KARAKAS: Record<string, string[]> = {
+  Sun:     ['soul','authority','father','career','health'],
+  Moon:    ['mind','emotions','mother','home','belonging'],
+  Mars:    ['energy','courage','siblings','property','competition'],
+  Mercury: ['intellect','communication','skills','business','adaptability'],
+  Jupiter: ['wisdom','children','wealth','fortune','spirituality'],
+  Venus:   ['relationships','beauty','pleasure','comfort','creativity'],
+  Saturn:  ['discipline','karma','longevity','career','perseverance'],
+  Rahu:    ['ambition','foreign','unconventional paths','obsession','disruption'],
+  Ketu:    ['spirituality','detachment','past-life karma','moksha','insight'],
 };
 
-// ─── Label maps ───────────────────────────────────────────────────────────────
-
-const STR_LABELS: Record<StructuralGrade, string> = {
-  very_strong:'Very strong', strong:'Strong', moderate:'Moderate',
-  weak:'Weak', very_weak:'Very weak',
-};
-const COND_LABELS: Record<ConditionGrade, string> = {
-  supported:'Supported', clean:'Clean', afflicted:'Afflicted',
-  heavily_afflicted:'Heavy affliction', distorted:'Distorted',
-};
-const DELIV_LABELS: Record<DeliveryGrade, string> = {
-  reliable:'Reliable', delayed:'Delayed', inconsistent:'Inconsistent',
-  obstructed:'Obstructed', distorted_delivery:'Distorted',
+// Domain → readable label
+const DOMAIN_LABELS: Record<Domain, string> = {
+  self:'Self & identity', wealth:'Wealth', siblings:'Siblings',
+  home:'Home & family', children:'Children', health:'Health',
+  marriage:'Relationships', longevity:'Longevity', fortune:'Fortune',
+  career:'Career', gains:'Income & gains', liberation:'Spirituality',
+  father:'Father', mother:'Mother', intellect:'Intellect',
+  spirituality:'Spiritual life', communication:'Communication', foreign:'Foreign & travel',
 };
 
-function dignityShort(l: DignityLevel): string {
-  return {
-    exalted:'Exalted', moolatrikona:'Moolatrikona', own_sign:'Own sign',
-    great_friend:'Gr. friend', friend:'Friendly', neutral:'Neutral',
-    enemy:'Enemy', great_enemy:'Gr. enemy', debilitated:'Debilitated',
-  }[l];
+// Domain → emoji icon
+const DOMAIN_ICONS: Record<Domain, string> = {
+  self:'✦', wealth:'◈', siblings:'◉', home:'⌂', children:'❋',
+  health:'♥', marriage:'◎', longevity:'◇', fortune:'★',
+  career:'▲', gains:'◆', liberation:'☽', father:'☀', mother:'◑',
+  intellect:'✧', spirituality:'☸', communication:'◐', foreign:'◈',
+};
+
+// ─── Language helpers ─────────────────────────────────────────────────────────
+
+function strGradeToWord(g: StructuralGrade): string {
+  return { very_strong:'Very strong', strong:'Strong', moderate:'Average',
+           weak:'Struggling', very_weak:'Very weak' }[g];
 }
 
-// Short functional label — no lean in the label text; lean is shown by colour
-function fnShort(fn: FunctionalNature): string {
-  return {
-    yogakaraka:'Yogakaraka', strong_benefic:'Benefic+',
-    benefic:'Benefic', mixed:'Mixed',
-    neutral:'Neutral', malefic:'Challenging',
-  }[fn];
+function strGradeToWidth(g: StructuralGrade): number {
+  return { very_strong:92, strong:74, moderate:55, weak:32, very_weak:14 }[g];
 }
 
-// ─── Card summary — SHORT, human-readable, not the analyst note ───────────────
-function buildCardSummary(r: PlanetStrengthResult, pd: PlanetData): string {
-  const fn   = r.functionalNature;
+function delivGradeToWord(g: DeliveryGrade): string {
+  return { reliable:'Flows well', delayed:'Steady but slow',
+           inconsistent:'Comes and goes', distorted_delivery:'Hard to work with',
+           obstructed:'Mostly blocked' }[g];
+}
+
+function strGradeToColor(g: StructuralGrade): string {
+  return { very_strong:'#059669', strong:'#0891b2', moderate:'#d97706',
+           weak:'#ea580c', very_weak:'#dc2626' }[g];
+}
+
+function delivGradeToColor(g: DeliveryGrade): string {
+  return { reliable:'#059669', delayed:'#0891b2', inconsistent:'#d97706',
+           distorted_delivery:'#ea580c', obstructed:'#dc2626' }[g];
+}
+
+function fnToGroupKey(fn: FunctionalNature, lean: FunctionalLean): 'working'|'mixed'|'struggling' {
+  if (fn === 'yogakaraka' || fn === 'strong_benefic' || fn === 'benefic') return 'working';
+  if (fn === 'malefic') return 'struggling';
+  if (fn === 'mixed') {
+    if (lean === 'benefic_lean' || lean === 'protective_with_complication') return 'working';
+    if (lean === 'malefic_lean') return 'struggling';
+    return 'mixed';
+  }
+  return 'mixed';
+}
+
+// ─── "In your chart" — 2-3 paragraph human story ─────────────────────────────
+
+function buildInYourChart(r: PlanetStrengthResult, pd: PlanetData, lagnaSign: number): string[] {
+  const p = r.planet;
+  const fn = r.functionalNature;
   const lean = r.functionalLean;
-  const sg   = r.structuralGrade;
-  const cg   = r.conditionGrade;
-  const dg   = r.deliveryGrade;
-  const dig  = dignityShort(r.dignityLevel);
+  const sg = r.structuralGrade;
+  const cg = r.conditionGrade;
+  const dg = r.deliveryGrade;
   const house = r.housePosition;
+  const sign = pd.sign;
+  const isRetro = r.isRetrograde;
+  const isCombust = r.isCombust;
+  const isNB = r.neechaBhanga.isApplied;
+  const dignityLevel = r.dignityLevel;
+  const isNode = p === 'Rahu' || p === 'Ketu';
 
-  // Build one clear sentence: placement + functional role + key modifier
-  const placementStr = `${dig} in ${pd.sign} (${house}${ord(house)} house)`;
+  // Paragraph 1 — role in this chart
+  let p1 = '';
+  const housesStr = r.housesRuled.length > 0
+    ? `${r.housesRuled.map(h => `${h}${ord(h)}`).join(' and ')} ${r.housesRuled.length === 1 ? 'house' : 'houses'}`
+    : 'no houses specifically';
 
-  const roleStr: string =
-    fn === 'yogakaraka'     ? 'Yogakaraka — rules both kendra and trikona. Best planet for this chart.' :
-    fn === 'strong_benefic' ? 'Primary benefic — lagna lord or trikona lord.' :
-    fn === 'benefic'        ? 'Kendra lord — stabilises key life areas.' :
-    fn === 'malefic'        ? 'Functional malefic — rules difficult houses for this lagna.' :
-    fn === 'mixed' && lean === 'benefic_lean'  ? 'Mixed — trikona lordship dominant, leans constructive.' :
-    fn === 'mixed' && lean === 'malefic_lean'  ? 'Mixed — dusthana lordship dominant, leans difficult.' :
-    fn === 'mixed' && lean === 'maraka_driven' ? 'Mixed — maraka (2nd/7th) houses dominate.' :
-    'Neutral — no dominant house coloring.';
-
-  // Pick the most important modifier
-  const modifiers: string[] = [];
-  if (r.neechaBhanga.isApplied) modifiers.push('Neecha Bhanga applies.');
-  if (r.isCombust && r.planet !== 'Sun') modifiers.push('Combust — overshadowed by Sun.');
-  if (r.isRetrograde && r.planet !== 'Rahu' && r.planet !== 'Ketu') modifiers.push('Retrograde.');
-  if (cg === 'heavily_afflicted' || cg === 'distorted') modifiers.push('Heavily afflicted.');
-  else if (cg === 'supported') modifiers.push('Well supported.');
-  if (dg === 'obstructed') modifiers.push('Delivery blocked.');
-  else if (dg === 'reliable' && fn !== 'malefic') modifiers.push('Delivers reliably.');
-
-  // Node-specific
-  if ((r.planet === 'Rahu' || r.planet === 'Ketu') && r.nodeInheritance) {
-    const disp = r.nodeInheritance.dispositorName;
-    const dispDel = r.nodeInheritance.dispositorDeliveryGrade;
-    modifiers.push(`Dispositor ${disp} ${dispDel === 'reliable' ? '(strong)' : dispDel === 'obstructed' ? '(weak)' : '(moderate)'}.`);
+  if (fn === 'yogakaraka') {
+    p1 = `${p} is the most powerful planet in your chart — a yogakaraka, meaning it rules both a kendra (angular house) and a trikona (house of fortune) simultaneously. Very few charts have this, and when they do, that planet becomes a natural ally for achievement, success, and growth.`;
+  } else if (fn === 'strong_benefic') {
+    if (r.housesRuled.includes(1)) {
+      p1 = `${p} is your lagna lord — the ruler of your entire chart, your body, and your self-expression. Whatever house your lagna lord is placed in and how it is doing in your chart shapes how you show up in the world.`;
+    } else {
+      p1 = `${p} plays a primary beneficial role in your chart, ruling the ${housesStr}. This makes it one of the planets that tends to support your life.`;
+    }
+  } else if (fn === 'benefic') {
+    p1 = `${p} rules the ${housesStr} — kendra houses that stabilise the chart. Its job is to bring structure and strength to your life areas.`;
+  } else if (fn === 'malefic') {
+    p1 = `${p} rules the ${housesStr} in your chart — houses that create friction, service demands, and challenges. This makes it a functional malefic for your lagna, meaning its natural energy tends to create more difficulty than ease when it is activated.`;
+  } else if (fn === 'mixed') {
+    const leanNote = lean === 'benefic_lean' ? 'the positive side tends to outweigh the difficult'
+                   : lean === 'malefic_lean' ? 'the challenging side tends to outweigh the positive'
+                   : lean === 'maraka_driven' ? 'it carries maraka (life-sensitive) responsibility through 2nd and 7th lordship'
+                   : 'it has roughly balanced ownership';
+    p1 = `${p} has a mixed role in your chart, ruling the ${housesStr}. In mixed planets, context matters a great deal — ${leanNote}.`;
+  } else {
+    p1 = `${p} has a neutral role in your chart — it doesn't carry strong positive or negative house lordship for your lagna. Its impact comes primarily from where it is placed and what it touches.`;
   }
 
-  return `${placementStr}. ${roleStr}${modifiers.length ? ' ' + modifiers[0] : ''}`;
+  // Paragraph 2 — placement and structural quality
+  let p2 = '';
+  const signDesc = {
+    exalted: `exalted in ${sign} — one of the strongest positions in the zodiac`,
+    moolatrikona: `in its moolatrikona portion of ${sign} — near its own sign, with extra strength`,
+    own_sign: `in its own sign ${sign} — comfortable and in full control`,
+    great_friend: `in a great friend's sign (${sign}) — well received and supported`,
+    friend: `in a friendly sign (${sign}) — comfortable placement`,
+    neutral: `in a neutral sign (${sign}) — neither especially helped nor hindered`,
+    enemy: `in an enemy sign (${sign}) — somewhat uncomfortable, works harder for results`,
+    great_enemy: `in a great enemy's sign (${sign}) — very uncomfortable placement`,
+    debilitated: `debilitated in ${sign} — the sign where ${p} is at its weakest structurally`,
+  }[r.dignityLevel] ?? `in ${sign}`;
+
+  const houseNote = house === 1 ? 'in your lagna itself — very visible in your personality'
+    : house === 4 ? 'in the 4th house — home, mother, and inner peace'
+    : house === 7 ? 'in the 7th house — relationships and partnerships'
+    : house === 10 ? 'in the 10th house — career and public life'
+    : house === 5 ? 'in the 5th house — creativity, children, and intelligence'
+    : house === 9 ? 'in the 9th house — fortune, dharma, and father'
+    : house === 8 ? 'in the 8th house — transformation, depth, and hidden matters'
+    : house === 12 ? 'in the 12th house — liberation, foreign lands, and what lies beneath'
+    : `in the ${house}${ord(house)} house`;
+
+  p2 = `In your chart, ${p} is ${signDesc}, placed ${houseNote}.`;
+
+  if (isRetro && !isNode) {
+    p2 += ` It is retrograde — which means its energy turns inward. Results through ${p} tend to come through internal processing, revisiting, or unconventional paths rather than straightforward expression.`;
+  }
+  if (isCombust && p !== 'Sun') {
+    p2 += ` It is also combust — too close to the Sun — which overshadows it and reduces its independent expression.`;
+  }
+  if (isNB) {
+    p2 += ` Interestingly, Neecha Bhanga (a classical cancellation) applies here — the debilitation is at least partially cancelled, which gives ${p} some recovery capacity that it would not otherwise have.`;
+  }
+
+  // Paragraph 3 — condition and delivery
+  let p3 = '';
+  const topAffliction = r.afflictions[0];
+  const topProtection = r.protections[0];
+
+  if (cg === 'supported' || cg === 'clean') {
+    if (topProtection) {
+      p3 = `Its condition is ${cg === 'supported' ? 'well supported' : 'clean'} — ${topProtection.toLowerCase().replace(/\.$/, '')}. This means ${p}'s energy can express itself without major interference.`;
+    } else {
+      p3 = `Its condition is ${cg === 'supported' ? 'well supported' : 'clean'} — no major afflictions. ${p} can express itself relatively freely.`;
+    }
+  } else if (cg === 'afflicted') {
+    if (topAffliction) {
+      p3 = `Its condition is afflicted — ${topAffliction.toLowerCase().replace(/\.$/, '')}. This creates some disturbance in how ${p} expresses itself, though not severe enough to block it completely.`;
+    } else {
+      p3 = `Its condition is afflicted — there are planetary influences that create friction in how ${p} operates.`;
+    }
+  } else if (cg === 'heavily_afflicted' || cg === 'distorted') {
+    if (topAffliction) {
+      p3 = `Its condition is ${cg === 'distorted' ? 'severely distorted' : 'heavily afflicted'} — ${topAffliction.toLowerCase().replace(/\.$/, '')}. This significantly alters how ${p}'s energy comes through — results in its domains tend to arrive in a distorted or intensified form.`;
+    } else {
+      p3 = `Its condition is ${cg === 'distorted' ? 'severely distorted' : 'heavily afflicted'}, which significantly impacts how its energy reaches you.`;
+    }
+  }
+
+  // Node-specific addendum
+  if (isNode && r.nodeInheritance) {
+    const disp = r.nodeInheritance.dispositorName;
+    const dispDel = r.nodeInheritance.dispositorDeliveryGrade;
+    const dispFn = r.nodeInheritance.dispositorFunctionalNature;
+    const quality = dispDel === 'reliable' ? 'strong and reliable' : dispDel === 'obstructed' || dispDel === 'distorted_delivery' ? 'weak and compromised' : 'moderate';
+    p3 += ` ${p} doesn't rule houses directly — its character is inherited from ${disp} (${quality} in your chart). ${dispDel === 'reliable' || dispDel === 'delayed' ? `This gives ${p} a relatively organised channel to work through.` : `This means ${p}'s energy has a fragile foundation — it amplifies without direction.`}`;
+  }
+
+  return [p1, p2, p3].filter(Boolean);
 }
 
-// ─── Chips ────────────────────────────────────────────────────────────────────
+// ─── "What this means" — per life area ───────────────────────────────────────
 
-function StrengthChip({ grade }: { grade: StructuralGrade }) {
-  const s: Record<StructuralGrade, string> = {
-    very_strong: 'bg-green-100 text-green-800 border-green-300 dark:bg-transparent dark:text-green-400 dark:border-green-600',
-    strong:      'bg-blue-100 text-blue-800 border-blue-300 dark:bg-transparent dark:text-blue-400 dark:border-blue-600',
-    moderate:    'bg-slate-100 text-slate-700 border-slate-300 dark:bg-transparent dark:text-slate-400 dark:border-slate-500',
-    weak:        'bg-amber-100 text-amber-800 border-amber-300 dark:bg-transparent dark:text-amber-400 dark:border-amber-600',
-    very_weak:   'bg-red-100 text-red-800 border-red-300 dark:bg-transparent dark:text-red-400 dark:border-red-600',
+interface AreaMeaning {
+  area: string;
+  icon: string;
+  signal: string;
+  signalType: 'good' | 'mixed' | 'hard';
+  what: string;
+  why: string;
+}
+
+function buildWhatThisMeans(r: PlanetStrengthResult, pd: PlanetData): AreaMeaning[] {
+  const p = r.planet;
+  const fn = r.functionalNature;
+  const lean = r.functionalLean;
+  const cg = r.conditionGrade;
+  const dg = r.deliveryGrade;
+  const sg = r.structuralGrade;
+  const result: AreaMeaning[] = [];
+
+  const isDeliveryGood = dg === 'reliable' || dg === 'delayed';
+  const isDeliveryBad  = dg === 'obstructed' || dg === 'distorted_delivery';
+  const isStrong       = sg === 'very_strong' || sg === 'strong';
+  const isWeak         = sg === 'weak' || sg === 'very_weak';
+  const isAfflicted    = cg === 'afflicted' || cg === 'heavily_afflicted' || cg === 'distorted';
+
+  // Pick the 3 most relevant domains
+  const dominated = [
+    ...r.strongDomains.slice(0, 2),
+    ...r.mixedDomains.slice(0, 1),
+    ...r.weakDomains.slice(0, 1),
+  ];
+  // Ensure unique and capped at 3–4
+  const seen = new Set<string>();
+  const picked: Array<{ domain: Domain; type: 'strong'|'mixed'|'weak' }> = [];
+  for (const d of r.strongDomains.slice(0,2))  { if (!seen.has(d)) { seen.add(d); picked.push({domain:d,type:'strong'}); } }
+  for (const d of r.mixedDomains.slice(0,2))   { if (!seen.has(d)) { seen.add(d); picked.push({domain:d,type:'mixed'}); } }
+  for (const d of r.weakDomains.slice(0,1))    { if (!seen.has(d)) { seen.add(d); picked.push({domain:d,type:'weak'}); } }
+
+  const finalPicked = picked.slice(0, 4);
+
+  for (const { domain, type } of finalPicked) {
+    const label = DOMAIN_LABELS[domain] ?? domain;
+    const icon  = DOMAIN_ICONS[domain] ?? '◎';
+
+    const signal = type === 'strong' ? 'Works in your favour'
+                 : type === 'mixed'  ? 'Mixed'
+                 : 'Needs attention';
+    const signalType: 'good'|'mixed'|'hard' = type === 'strong' ? 'good' : type === 'mixed' ? 'mixed' : 'hard';
+
+    const what = buildDomainWhat(p, domain, type, fn, lean, cg, dg, sg, r);
+    const why  = buildDomainWhy(p, domain, type, fn, lean, cg, dg, sg, r, pd);
+
+    result.push({ area: label, icon, signal, signalType, what, why });
+  }
+
+  return result;
+}
+
+function buildDomainWhat(
+  planet: string, domain: Domain, type: 'strong'|'mixed'|'weak',
+  fn: FunctionalNature, lean: FunctionalLean, cg: ConditionGrade,
+  dg: DeliveryGrade, sg: StructuralGrade, r: PlanetStrengthResult
+): string {
+  const isStrong = type === 'strong';
+  const isMixed  = type === 'mixed';
+
+  // Domain-specific human descriptions
+  const DESC: Partial<Record<Domain, [string, string, string]>> = {
+    self:         ['Your sense of identity and self-expression tend to flow naturally.', 'Your self-expression is a work in progress — confidence can be built but takes effort.', 'You may struggle with a clear sense of self or find it hard to be fully seen.'],
+    wealth:       ['Financial matters tend to work in your favour — income, savings, and resources accumulate.', 'Finances are up and down — not in crisis, but not stable either.', 'Wealth requires more effort and attention than it does for most — there can be instability or unexpected losses.'],
+    career:       ['Career tends to reward your efforts. Recognition and advancement are likely with consistent work.', 'Career has its moments — good periods followed by plateaus or changes of direction.', 'Career can feel like pushing against resistance — success is possible but slower and harder.'],
+    marriage:     ['Long-term partnership and close relationships tend to be fulfilling and supportive.', 'Relationships are meaningful but complex — they bring both deep connection and genuine challenges.', 'Close partnerships carry weight in your chart — this is an area that deserves conscious attention and patience.'],
+    children:     ['Children and creativity tend to bring joy and fulfilment — this area is supported.', 'Children and creative expression are mixed — rewarding but not without complications.', 'This area requires patience — timing and circumstances around children or creative projects can be challenging.'],
+    health:       ['Your physical vitality is supported — resilience and energy tend to be present.', 'Health is generally okay but benefits from attention — there may be recurring minor issues.', 'Health deserves ongoing attention — this planet\'s influence can create recurring physical strain or vulnerability.'],
+    home:         ['Home and domestic life tend to feel stable and nourishing — a genuine sanctuary.', 'Home life is meaningful but can require repeated effort to maintain peace.', 'Home and family matters may carry recurring friction — domestic peace takes conscious effort to maintain.'],
+    fortune:      ['Fortune and good luck are genuine features of your chart — opportunity tends to arrive.', 'Fortune is there but comes through effort — not luck alone.', 'Fortune comes through depth and patience rather than ease — it arrives, but usually not without a journey.'],
+    intellect:    ['Your mind is sharp and works in your favour — learning and analysis come naturally.', 'Intellectually capable but inconsistent — some areas sharp, others foggy.', 'Mental clarity can be challenging — the mind works hard but output is harder to access.'],
+    spirituality: ['Spiritual practice and inner life are genuinely supported in your chart.', 'Spirituality is meaningful but complex — the path involves real questioning.', 'Deep spiritual themes run through your chart — they demand attention whether you seek them or not.'],
+    gains:        ['Income, networks, and gains from effort tend to come through.', 'Gains are possible but require significant effort and sometimes competition.', 'Gains face resistance — what you earn may come with strings attached or feel inconsistent.'],
+    longevity:    ['Longevity and physical resilience are real strengths.', 'Physical health and longevity need ongoing attention.', 'The body may carry more demands than usual — pacing and rest matter here.'],
+    foreign:      ['Foreign connections, travel, and cross-cultural experiences tend to bring opportunity.', 'Foreign matters are a mixed chapter — opportunity exists but the path has obstacles.', 'Foreign matters are a source of disruption or complication in this chart.'],
+    communication:['Communication is a strength — words and ideas reach people effectively.', 'Communication is functional but can be inconsistent or misread.', 'Communication is an area of real effort — what you mean and what\'s received don\'t always match.'],
+    liberation:   ['Spiritual liberation and depth are supported — this is a genuine strength.', 'Liberation themes run through your life but the path is complex.', 'Liberation-related themes are intense — there is depth here, but it requires conscious engagement.'],
+    siblings:     ['Sibling relationships and close networks tend to be supportive.', 'Sibling relationships are meaningful but complex.', 'Sibling and close network dynamics carry friction in this chart.'],
+    father:       ['The father figure and authority relationships tend to be positive.', 'The father relationship is meaningful but complicated.', 'Authority figures and the father relationship carry weight and complexity.'],
+    mother:       ['The mother figure and home base tend to be nourishing.', 'The mother relationship is meaningful but carries some complexity.', 'The mother and domestic roots may carry emotional complexity.'],
   };
-  return (
-    <span className={cn('inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium border', s[grade])}>
-      {STR_LABELS[grade]}
-    </span>
-  );
+
+  const [goodTxt, mixedTxt, hardTxt] = DESC[domain] ?? [
+    `${domain} tends to work in your favour with this planet's support.`,
+    `${domain} is a mixed area — sometimes supported, sometimes challenging.`,
+    `${domain} requires extra attention and patience in your chart.`,
+  ];
+
+  // Adjust for delivery
+  if (type === 'strong' && dg === 'delayed') {
+    return goodTxt + ' Results come — but usually after patience and effort rather than quickly.';
+  }
+  if (type === 'strong' && (dg === 'inconsistent')) {
+    return goodTxt + ' The timing can be inconsistent — good periods followed by quieter spells.';
+  }
+  return type === 'strong' ? goodTxt : type === 'mixed' ? mixedTxt : hardTxt;
 }
 
-function FnChip({ fn, lean, isMaraka, short = false }: {
-  fn: FunctionalNature; lean: FunctionalLean; isMaraka?: boolean; short?: boolean;
-}) {
-  // Lean only changes colour, not the label text
-  const s: Record<FunctionalNature, string> = {
-    yogakaraka:    'bg-violet-100 text-violet-800 border-violet-300 dark:bg-transparent dark:text-violet-400 dark:border-violet-600',
-    strong_benefic:'bg-green-100 text-green-800 border-green-300 dark:bg-transparent dark:text-green-400 dark:border-green-600',
-    benefic:       'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-transparent dark:text-emerald-400 dark:border-emerald-600',
-    mixed:         lean === 'malefic_lean'
-                     ? 'bg-orange-100 text-orange-800 border-orange-300 dark:bg-transparent dark:text-orange-400 dark:border-orange-600'
-                   : lean === 'benefic_lean'
-                     ? 'bg-teal-100 text-teal-800 border-teal-300 dark:bg-transparent dark:text-teal-400 dark:border-teal-600'
-                   : lean === 'maraka_driven'
-                     ? 'bg-rose-100 text-rose-800 border-rose-300 dark:bg-transparent dark:text-rose-400 dark:border-rose-600'
-                   : 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-transparent dark:text-amber-400 dark:border-amber-600',
-    neutral:       'bg-slate-100 text-slate-700 border-slate-300 dark:bg-transparent dark:text-slate-400 dark:border-slate-500',
-    malefic:       'bg-red-100 text-red-800 border-red-300 dark:bg-transparent dark:text-red-400 dark:border-red-600',
+function buildDomainWhy(
+  planet: string, domain: Domain, type: 'strong'|'mixed'|'weak',
+  fn: FunctionalNature, lean: FunctionalLean, cg: ConditionGrade,
+  dg: DeliveryGrade, sg: StructuralGrade, r: PlanetStrengthResult, pd: PlanetData
+): string {
+  const parts: string[] = [];
+
+  // Why based on ownership
+  if (r.housesRuled.some(h => h === domainToHouse(domain))) {
+    parts.push(`${planet} directly rules the house governing ${(DOMAIN_LABELS[domain] ?? domain).toLowerCase()}`);
+  } else if (r.housePosition === domainToHouse(domain)) {
+    parts.push(`${planet} is placed in the house of ${(DOMAIN_LABELS[domain] ?? domain).toLowerCase()}`);
+  } else {
+    const karaka = PLANET_KARAKAS[planet]?.find(k => k.includes(domain) || domain.includes(k));
+    if (karaka) parts.push(`${planet} is the natural significator of ${karaka}`);
+  }
+
+  // Why based on condition
+  if (cg === 'supported' || cg === 'clean') {
+    parts.push(`it is in ${cg === 'supported' ? 'supported' : 'clean'} condition — no major planetary interference`);
+  } else if (cg === 'afflicted') {
+    const topAffliction = r.afflictions[0];
+    if (topAffliction) parts.push(`it is afflicted (${topAffliction.split('—')[0].trim().toLowerCase().replace(/\.$/, '')})`);
+  } else if (cg === 'heavily_afflicted' || cg === 'distorted') {
+    parts.push(`it carries significant affliction that distorts its natural expression`);
+  }
+
+  // Why based on delivery
+  if (dg === 'obstructed' || dg === 'distorted_delivery') {
+    parts.push(`its delivery is blocked or distorted, limiting what it can pass through to your life`);
+  } else if (dg === 'reliable') {
+    parts.push(`it delivers its results reliably`);
+  } else if (dg === 'delayed') {
+    parts.push(`its results come with delay — patience is required`);
+  }
+
+  // D9 note for marriage-sensitive
+  if (domain === 'marriage' && r.vargaAssessment.hasD9SecondPass && r.vargaAssessment.d9Contradicts) {
+    parts.push(`the Navamsa (D9) specifically weakens this planet for relationship matters`);
+  }
+
+  if (parts.length === 0) return `${planet}'s placement and condition shape this area of your life.`;
+  return parts.map((p, i) => i === 0 ? cap(p) : p).join(', and ') + '.';
+}
+
+function domainToHouse(domain: Domain): number {
+  const map: Partial<Record<Domain, number>> = {
+    self:1, wealth:2, siblings:3, home:4, children:5, health:6,
+    marriage:7, longevity:8, fortune:9, career:10, gains:11, liberation:12,
   };
-
-  // Lean dot for mixed — small coloured indicator instead of verbose text
-  const leanDot = fn === 'mixed' ? (
-    lean === 'benefic_lean'  ? <span className="w-1.5 h-1.5 rounded-full bg-teal-500 ml-1 flex-shrink-0"/>  :
-    lean === 'malefic_lean'  ? <span className="w-1.5 h-1.5 rounded-full bg-orange-500 ml-1 flex-shrink-0"/> :
-    lean === 'maraka_driven' ? <span className="w-1.5 h-1.5 rounded-full bg-rose-500 ml-1 flex-shrink-0"/>  :
-    null
-  ) : null;
-
-  return (
-    <span className={cn('inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[11px] font-medium border', s[fn])}>
-      {fnShort(fn)}
-      {leanDot}
-      {isMaraka && <span className="text-[9px] opacity-50 ml-0.5 font-normal">M</span>}
-    </span>
-  );
+  return map[domain] ?? 0;
 }
 
-function CondText({ grade }: { grade: ConditionGrade }) {
-  const s: Record<ConditionGrade, string> = {
-    supported:        'text-blue-600 dark:text-blue-400',
-    clean:            'text-green-600 dark:text-green-400',
-    afflicted:        'text-amber-600 dark:text-amber-400',
-    heavily_afflicted:'text-red-600 dark:text-red-400',
-    distorted:        'text-red-700 dark:text-red-300',
-  };
-  return <span className={cn('text-[11px] font-medium', s[grade])}>{COND_LABELS[grade]}</span>;
+// ─── Dasha Timeline ───────────────────────────────────────────────────────────
+
+interface DashaWindowItem {
+  mahaLord: string;
+  antarLord: string | null;
+  pratyLord: string | null;
+  sookshmaLord: string | null;
+  level: 'maha' | 'antar' | 'pratyantar' | 'sookshma';
+  dateRange: string;
+  isActive: boolean;
+  quality: 'great' | 'good' | 'moderate' | 'difficult';
+  reason: string;
 }
 
-function DelivText({ grade, score }: { grade: DeliveryGrade; score?: number }) {
-  const s: Record<DeliveryGrade, string> = {
-    reliable:          'text-green-600 dark:text-green-400',
-    delayed:           'text-amber-600 dark:text-amber-400',
-    inconsistent:      'text-amber-500 dark:text-amber-400',
-    obstructed:        'text-red-600 dark:text-red-400',
-    distorted_delivery:'text-orange-600 dark:text-orange-400',
-  };
-  return (
-    <div>
-      <span className={cn('text-[11px] font-medium', s[grade])}>{DELIV_LABELS[grade]}</span>
-      {score !== undefined && <div className="text-[10px] text-muted-foreground">{score}/100</div>}
-    </div>
-  );
+/**
+ * Quality score for a dasha combination.
+ * Weighs relationship between ALL active lords and the planet being assessed,
+ * plus the planet's own delivery grade.
+ */
+function dashaQuality(
+  planet: string,
+  r: PlanetStrengthResult,
+  lords: string[]            // [mahaLord, antarLord?, pratyLord?, sookshmaLord?]
+): DashaWindowItem['quality'] {
+  // Planet's own delivery grade sets the ceiling
+  const deliveryCeiling: DashaWindowItem['quality'] =
+    r.deliveryGrade === 'reliable'    ? 'great'
+    : r.deliveryGrade === 'delayed'   ? 'good'
+    : r.deliveryGrade === 'inconsistent' ? 'moderate'
+    : 'difficult';
+
+  // Count friendly / enemy relationships with all enclosing lords
+  let friendCount = 0, enemyCount = 0;
+  for (const lord of lords) {
+    if (lord === planet) continue; // own period — neutral for relationship calc
+    const rel = getNaturalRelationship(lord, planet);
+    if (rel === 'friend') friendCount++;
+    if (rel === 'enemy')  enemyCount++;
+  }
+
+  const relScore: DashaWindowItem['quality'] =
+    enemyCount > 0     ? 'difficult'
+    : friendCount >= 2 ? 'great'
+    : friendCount === 1 ? 'good'
+    : 'moderate';
+
+  // Take the worse of delivery ceiling and relationship score
+  const ORDER = { great:0, good:1, moderate:2, difficult:3 };
+  return ORDER[deliveryCeiling] >= ORDER[relScore] ? deliveryCeiling : relScore;
 }
 
-function ConfText({ grade }: { grade: ConfidenceGrade }) {
-  const s: Record<ConfidenceGrade, string> = {
-    high:'text-green-600 dark:text-green-400',
-    moderate:'text-amber-500 dark:text-amber-400',
-    low:'text-red-500 dark:text-red-400',
-  };
-  return <span className={cn('text-[10px] font-medium', s[grade])}>
-    {({ high:'High', moderate:'Moderate', low:'Low' })[grade]} confidence
-  </span>;
+function dashaReason(
+  planet: string,
+  level: DashaWindowItem['level'],
+  mahaLord: string,
+  antarLord: string | null,
+  pratyLord: string | null,
+  sookshmaLord: string | null,
+  quality: DashaWindowItem['quality'],
+  r: PlanetStrengthResult
+): string {
+  const enclosing = [mahaLord, antarLord, pratyLord, sookshmaLord].filter(Boolean) as string[];
+  const otherLords = enclosing.filter(l => l !== planet);
+
+  if (level === 'maha') {
+    if (quality === 'great') return `${planet}'s own major period — its themes fully dominate. ${planet} delivers well in your chart, so this is a genuinely productive stretch.`;
+    if (quality === 'good')  return `${planet}'s own major period. Results arrive, though with characteristic slowness or a non-linear path.`;
+    if (quality === 'moderate') return `${planet}'s own major period. Its results are inconsistent — some things work, others follow unexpected patterns.`;
+    return `${planet}'s own major period. Because ${planet} faces real challenges in your chart, this period is intense and can feel demanding.`;
+  }
+
+  const enclosingStr = otherLords.length > 1
+    ? `${otherLords.slice(0,-1).join(', ')} and ${otherLords[otherLords.length-1]}`
+    : otherLords[0] ?? mahaLord;
+
+  const levelLabel = level === 'antar' ? 'sub-period'
+                   : level === 'pratyantar' ? 'minor sub-period'
+                   : 'fine-grain window';
+
+  // Relationship notes
+  const rels = otherLords.map(l => {
+    const rel = getNaturalRelationship(l, planet);
+    return rel === 'friend' ? `${l} is a friend` : rel === 'enemy' ? `${l} is an enemy` : null;
+  }).filter(Boolean);
+
+  let relNote = rels.length > 0 ? rels.join('; ') + '.' : '';
+
+  if (quality === 'great' || quality === 'good') {
+    return `${planet} activates as a ${levelLabel} within ${enclosingStr}'s period. ${relNote} Good window for ${planet}-related themes — watch for movement in ${(r.strongDomains[0] ? (DOMAIN_LABELS[r.strongDomains[0]] ?? r.strongDomains[0]).toLowerCase() : 'your key life areas')}.`;
+  }
+  if (quality === 'difficult') {
+    return `${planet} activates as a ${levelLabel} within ${enclosingStr}'s period. ${relNote} This combination creates friction — ${planet}'s areas may feel more pressured or blocked during this window.`;
+  }
+  return `${planet} activates as a ${levelLabel} within ${enclosingStr}'s period. ${relNote} Mixed results — some things move, others stall.`;
 }
 
-function ConflictBadge({ flag }: { flag: ConflictFlag }) {
-  const LABELS: Record<ConflictFlag, string> = {
-    strong_afflicted:'Strong+afflicted', weak_protected:'Weak+protected',
-    strong_but_malefic:'Strong malefic', benefic_but_weak:'Benefic+weak',
-    strong_d1_weak_d9:'D9 contradicts', weak_d1_strong_d9:'Matures later',
-    strong_general_weak_domain:'Delivery issue', weak_general_strong_domain:'Domain OK',
-    powerful_maraka:'Powerful maraka', node_dominated:'Node dominated',
-    saturn_dominated:'Saturn dominated', mars_dominated:'Mars dominated',
-    combust_but_supported:'Combust+guided', retrograde_internalized:'Retrograde',
-    weak_afflicted:'Double weakness',
-  };
-  return (
-    <span className="inline-flex text-[10px] px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200 dark:bg-transparent dark:text-amber-400 dark:border-amber-600">
-      {LABELS[flag]}
-    </span>
-  );
+function buildDashaTimeline(
+  planet: string,
+  r: PlanetStrengthResult,
+  dashaInfo?: ChartDashaData
+): DashaWindowItem[] {
+  const items: DashaWindowItem[] = [];
+  if (!dashaInfo?.allMahadashas?.length) return items;
+
+  const now = new Date();
+
+  for (const maha of dashaInfo.allMahadashas) {
+    const mahaStart  = new Date(maha.startUtc);
+    const mahaEnd    = new Date(maha.endUtc);
+    const mahaActive = now >= mahaStart && now <= mahaEnd;
+
+    // ── Level 1: Planet IS the Mahadasha ─────────────────────────────────────
+    if (maha.planet === planet) {
+      const quality = dashaQuality(planet, r, [planet]);
+      items.push({
+        mahaLord: planet, antarLord: null, pratyLord: null, sookshmaLord: null,
+        level: 'maha', dateRange: fmtRange(mahaStart, mahaEnd),
+        isActive: mahaActive, quality,
+        reason: dashaReason(planet, 'maha', planet, null, null, null, quality, r),
+      });
+      // Also drill into ALL antars within this Maha to find supportive sub-periods
+      try {
+        const antars = calculateAntardashas(maha.planet as any, maha.startUtc, maha.endUtc);
+        for (const antar of antars) {
+          const aStart  = new Date(antar.startUtc);
+          const aEnd    = new Date(antar.endUtc);
+          const aActive = now >= aStart && now <= aEnd;
+          const aQual   = dashaQuality(planet, r, [maha.planet, antar.lord]);
+          // Only surface notable antars inside own Maha (good/great or currently active)
+          if (aActive || aQual === 'great' || aQual === 'good') {
+            items.push({
+              mahaLord: maha.planet, antarLord: antar.lord, pratyLord: null, sookshmaLord: null,
+              level: 'antar', dateRange: fmtRange(aStart, aEnd),
+              isActive: aActive, quality: aQual,
+              reason: dashaReason(planet, 'antar', maha.planet, antar.lord, null, null, aQual, r),
+            });
+          }
+        }
+      } catch { /* skip */ }
+      continue;
+    }
+
+    // ── Level 2: Planet appears as Antardasha ─────────────────────────────────
+    try {
+      const antars = calculateAntardashas(maha.planet as any, maha.startUtc, maha.endUtc);
+      for (const antar of antars) {
+        if (antar.lord !== planet) continue;
+        const aStart  = new Date(antar.startUtc);
+        const aEnd    = new Date(antar.endUtc);
+        const aActive = now >= aStart && now <= aEnd;
+        const aQual   = dashaQuality(planet, r, [maha.planet, planet]);
+
+        items.push({
+          mahaLord: maha.planet, antarLord: planet, pratyLord: null, sookshmaLord: null,
+          level: 'antar', dateRange: fmtRange(aStart, aEnd),
+          isActive: aActive, quality: aQual,
+          reason: dashaReason(planet, 'antar', maha.planet, planet, null, null, aQual, r),
+        });
+
+        // ── Level 3: Planet appears as Pratyantar within this Antar ──────────
+        try {
+          const pratys = calculatePratyantars(
+            maha.planet as any, antar.lord as any, antar.startUtc, antar.endUtc
+          );
+          for (const praty of pratys) {
+            if (praty.lord !== planet) continue;
+            const pStart  = new Date(praty.startUtc);
+            const pEnd    = new Date(praty.endUtc);
+            const pActive = now >= pStart && now <= pEnd;
+            const pQual   = dashaQuality(planet, r, [maha.planet, antar.lord, planet]);
+
+            items.push({
+              mahaLord: maha.planet, antarLord: antar.lord, pratyLord: planet, sookshmaLord: null,
+              level: 'pratyantar', dateRange: fmtRange(pStart, pEnd),
+              isActive: pActive, quality: pQual,
+              reason: dashaReason(planet, 'pratyantar', maha.planet, antar.lord, planet, null, pQual, r),
+            });
+
+            // ── Level 4: Planet appears as Sookshma within this Pratyantar ──
+            try {
+              const sooks = calculateSookshmas(
+                maha.planet as any, antar.lord as any, praty.lord as any, praty.startUtc, praty.endUtc
+              );
+              for (const sook of sooks) {
+                if (sook.lord !== planet) continue;
+                const sStart  = new Date(sook.startUtc);
+                const sEnd    = new Date(sook.endUtc);
+                const sActive = now >= sStart && now <= sEnd;
+                const sQual   = dashaQuality(planet, r, [maha.planet, antar.lord, praty.lord, planet]);
+
+                items.push({
+                  mahaLord: maha.planet, antarLord: antar.lord, pratyLord: praty.lord,
+                  sookshmaLord: planet, level: 'sookshma',
+                  dateRange: fmtRange(sStart, sEnd),
+                  isActive: sActive, quality: sQual,
+                  reason: dashaReason(planet, 'sookshma', maha.planet, antar.lord, praty.lord, planet, sQual, r),
+                });
+              }
+            } catch { /* skip */ }
+          }
+        } catch { /* skip */ }
+      }
+    } catch { /* skip */ }
+  }
+
+  // Sort: active first → quality → level depth (broader first)
+  const LEVEL_ORDER = { maha:0, antar:1, pratyantar:2, sookshma:3 };
+  const QUAL_ORDER  = { great:0, good:1, moderate:2, difficult:3 };
+  return items.sort((a, b) => {
+    if (a.isActive && !b.isActive) return -1;
+    if (!a.isActive && b.isActive) return 1;
+    const qDiff = QUAL_ORDER[a.quality] - QUAL_ORDER[b.quality];
+    if (qDiff !== 0) return qDiff;
+    return LEVEL_ORDER[a.level] - LEVEL_ORDER[b.level];
+  }).slice(0, 12); // show up to 12 windows across all 4 levels
 }
 
-function DomainTag({ domain, type }: { domain: Domain; type: 'strong'|'mixed'|'weak' }) {
-  const s = {
-    strong:'bg-green-50 text-green-700 border-green-200 dark:bg-transparent dark:text-green-400 dark:border-green-700',
-    mixed: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-transparent dark:text-amber-400 dark:border-amber-700',
-    weak:  'bg-red-50 text-red-700 border-red-200 dark:bg-transparent dark:text-red-400 dark:border-red-700',
-  };
-  return <span className={cn('text-[10px] px-2 py-0.5 rounded-full border', s[type])}>{domain}</span>;
+function fmtRange(start: Date, end: Date): string {
+  const fmtYear = (d: Date) => d.getFullYear().toString();
+  const fmtMon  = (d: Date) => d.toLocaleString('en',{month:'short'});
+  if (end.getFullYear() - start.getFullYear() <= 2) {
+    return `${fmtMon(start)} ${fmtYear(start)} – ${fmtMon(end)} ${fmtYear(end)}`;
+  }
+  return `${fmtYear(start)} – ${fmtYear(end)}`;
 }
 
-function StarRow({ count }: { count: number }) {
-  return (
-    <div className="flex gap-0.5">
-      {[1,2,3,4,5].map(i => (
-        <span key={i} className={cn('text-[12px] leading-none', i <= count ? 'text-amber-400' : 'text-muted-foreground/20')}>★</span>
-      ))}
-    </div>
-  );
-}
-
-function strGradeStars(g: StructuralGrade): number {
-  return { very_strong:5, strong:4, moderate:3, weak:2, very_weak:1 }[g];
-}
-
-// ─── Collapsible section ──────────────────────────────────────────────────────
+// ─── UI Components ────────────────────────────────────────────────────────────
 
 function Section({ title, children, defaultOpen = false }: {
   title: string; children: React.ReactNode; defaultOpen?: boolean;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="border border-border rounded-lg overflow-hidden">
+    <div className="border-t border-border pt-4 mt-4">
       <button type="button" onClick={() => setOpen(p => !p)}
-        className="w-full flex items-center justify-between px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground bg-muted/40 hover:bg-muted/60 transition-colors">
+        className="w-full flex items-center justify-between text-[11px] font-medium uppercase tracking-wide text-muted-foreground hover:text-foreground transition-colors mb-1">
         {title}
-        {open ? <ChevronUp className="h-3 w-3"/> : <ChevronDown className="h-3 w-3"/>}
+        {open ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
       </button>
-      {open && <div className="px-3 py-3 space-y-1.5">{children}</div>}
+      {open && <div className="mt-3">{children}</div>}
     </div>
   );
 }
 
-// ─── Mode toggle ──────────────────────────────────────────────────────────────
-
-type Mode = 'explore' | 'analyst';
-
-function ModeToggle({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => void }) {
+function SignalBadge({ type, label }: { type: 'good'|'mixed'|'hard'; label: string }) {
+  const s = {
+    good:  'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800',
+    mixed: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-700',
+    hard:  'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800',
+  };
   return (
-    <div className="flex items-center gap-1 bg-muted rounded-full p-1 border border-border">
-      {(['explore','analyst'] as Mode[]).map(m => (
-        <button key={m} onClick={() => onChange(m)}
-          className={cn('px-3 py-1 rounded-full text-xs font-medium transition-all capitalize',
-            mode === m
-              ? 'bg-background text-foreground shadow-sm border border-border'
-              : 'text-muted-foreground hover:text-foreground')}>
-          {m}
-        </button>
-      ))}
+    <span className={cn('text-[10px] px-2 py-0.5 rounded-full border font-medium', s[type])}>
+      {label}
+    </span>
+  );
+}
+
+function AreaTag({ domain, type }: { domain: Domain; type: 'strong'|'mixed'|'weak' }) {
+  const s = {
+    strong:'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400',
+    mixed: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300',
+    weak:  'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400',
+  };
+  return (
+    <span className={cn('text-[10px] px-2 py-0.5 rounded-full border', s[type])}>
+      {DOMAIN_LABELS[domain] ?? domain}
+    </span>
+  );
+}
+
+function DashaPill({ item }: { item: DashaWindowItem }) {
+  const border = item.isActive
+    ? 'border-blue-300 bg-blue-50 dark:border-blue-700 dark:bg-blue-900/30'
+    : item.quality === 'great' || item.quality === 'good'
+    ? 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20'
+    : item.quality === 'difficult'
+    ? 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20'
+    : 'border-border bg-muted/40';
+
+  const LEVEL_LABELS: Record<DashaWindowItem['level'], string> = {
+    maha:       'Mahadasha — major period',
+    antar:      'Antardasha — sub-period',
+    pratyantar: 'Pratyantar — minor period',
+    sookshma:   'Sookshma — fine-grain window',
+  };
+
+  // Full chain: Maha › Antar › Praty › Sookshma (only non-null)
+  const chain = [item.mahaLord, item.antarLord, item.pratyLord, item.sookshmaLord]
+    .filter(Boolean).join(' › ');
+
+  return (
+    <div className={cn('rounded-lg border p-3', border)}>
+      <div className="flex items-start justify-between gap-2 mb-1">
+        <div className="min-w-0 flex-1">
+          <div className={cn('text-[11px] font-medium leading-snug',
+            item.isActive ? 'text-blue-700 dark:text-blue-300'
+            : item.quality === 'great' || item.quality === 'good' ? 'text-green-700 dark:text-green-400'
+            : item.quality === 'difficult' ? 'text-red-700 dark:text-red-400'
+            : 'text-foreground')}>
+            {chain}
+            {item.isActive && (
+              <span className="ml-1.5 text-[9px] px-1.5 py-0.5 rounded bg-blue-500 text-white font-semibold align-middle">NOW</span>
+            )}
+          </div>
+          <div className="text-[9px] text-muted-foreground mt-0.5">{LEVEL_LABELS[item.level]}</div>
+        </div>
+        <span className="text-[10px] text-muted-foreground whitespace-nowrap shrink-0 mt-0.5">{item.dateRange}</span>
+      </div>
+      <p className="text-[11px] text-muted-foreground leading-relaxed mt-1.5">{item.reason}</p>
     </div>
   );
 }
 
-// ─── Explore: planet card ─────────────────────────────────────────────────────
+// ─── Planet Card ──────────────────────────────────────────────────────────────
 
 function PlanetCard({ r, pd, isSelected, onSelect }: {
   r: PlanetStrengthResult; pd: PlanetData; isSelected: boolean; onSelect: () => void;
 }) {
-  const avatar = PLANET_AVATAR[r.planet] ?? 'bg-muted text-foreground';
-  const isDasha = r.temporalActivation.dashaBoostApplied;
+  const strColor  = strGradeToColor(r.structuralGrade);
+  const strWord   = strGradeToWord(r.structuralGrade);
+  const strWidth  = strGradeToWidth(r.structuralGrade);
+  const delivWord = delivGradeToWord(r.deliveryGrade);
+  const isDasha   = r.temporalActivation.dashaBoostApplied;
+
+  // Short card desc — 1 line only
+  const fn = r.functionalNature;
+  const lean = r.functionalLean;
+  let cardLine: string;
+  if (fn === 'yogakaraka') cardLine = 'Your most powerful planet — rules both career and fortune houses.';
+  else if (fn === 'strong_benefic' && r.housesRuled.includes(1)) cardLine = `Your chart ruler — shapes how you show up in the world.`;
+  else if (fn === 'strong_benefic') cardLine = `Primary benefic — rules ${r.housesRuled.map(h => `${h}${ord(h)}`).join(' and ')} house${r.housesRuled.length > 1 ? 's' : ''}.`;
+  else if (fn === 'malefic') cardLine = `Challenging role — rules the ${r.housesRuled.map(h => `${h}${ord(h)}`).join(' and ')} house${r.housesRuled.length > 1 ? 's' : ''}.`;
+  else if (fn === 'mixed' && lean === 'benefic_lean') cardLine = `Mixed but leans positive — ${r.strongDomains[0] ? DOMAIN_LABELS[r.strongDomains[0]] : 'some areas'} supported.`;
+  else if (fn === 'mixed' && lean === 'malefic_lean') cardLine = `Mixed but leans challenging — requires attention.`;
+  else cardLine = `Neutral role — impact depends on placement and activation.`;
+
+  // Top 3 relevant areas for the card
+  const cardAreas = [
+    ...r.strongDomains.slice(0,2).map(d => ({d, t: 'strong' as const})),
+    ...r.mixedDomains.slice(0,1).map(d => ({d, t: 'mixed' as const})),
+  ].slice(0, 3);
 
   return (
     <button type="button" onClick={onSelect}
-      className={cn(
-        'w-full text-left p-4 rounded-xl border transition-all bg-card',
-        isSelected
-          ? 'border-primary/50 shadow-sm ring-1 ring-primary/20'
-          : 'border-border hover:border-border/80 hover:shadow-sm',
-      )}>
+      className={cn('w-full text-left rounded-xl border overflow-hidden bg-card transition-all',
+        isSelected ? 'border-blue-400 shadow-sm ring-1 ring-blue-400/20 dark:border-blue-600'
+                   : 'border-border hover:border-border/80 hover:shadow-sm')}>
 
-      {/* Header */}
-      <div className="flex items-start gap-3 mb-3">
-        <div className={cn('w-9 h-9 rounded-full flex items-center justify-center text-base flex-shrink-0', avatar)}>
-          {GLYPH[r.planet] ?? '?'}
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-sm font-medium">{r.planet}</span>
-            {isDasha && (
-              <span className="text-[9px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-semibold border border-primary/20 leading-tight">DASHA</span>
-            )}
+      {/* Top stripe = delivery colour */}
+      <div className="h-[3px]" style={{ background: delivGradeToColor(r.deliveryGrade) }} />
+
+      <div className="p-4">
+        {/* Header */}
+        <div className="flex items-start gap-3 mb-3">
+          <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center text-base flex-shrink-0">
+            {GLYPH[r.planet] ?? '?'}
           </div>
-          <div className="text-[11px] text-muted-foreground mt-0.5">{pd.sign} {pd.degreeInSign.toFixed(1)}° · H{r.housePosition}</div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-sm font-medium">{r.planet}</span>
+              {isDasha && (
+                <span className="inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 font-semibold">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500 dark:bg-blue-400" />
+                  Active now
+                </span>
+              )}
+            </div>
+            <div className="text-[11px] text-muted-foreground mt-0.5">
+              {pd.sign} {pd.degreeInSign.toFixed(1)}° · {r.housePosition}{ord(r.housePosition)} house
+            </div>
+          </div>
         </div>
+
+        {/* Strength bar */}
+        <div className="mb-3">
+          <div className="h-1 rounded-full bg-muted overflow-hidden mb-1.5">
+            <div className="h-full rounded-full transition-all" style={{ width: `${strWidth}%`, background: strColor }} />
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-medium" style={{ color: strColor }}>{strWord}</span>
+            <span className="text-[11px] text-muted-foreground">{delivWord}</span>
+          </div>
+        </div>
+
+        {/* Card line */}
+        <p className="text-[12px] text-muted-foreground leading-relaxed mb-3">{cardLine}</p>
+
+        {/* Area tags */}
+        {cardAreas.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {cardAreas.map(({ d, t }) => <AreaTag key={d} domain={d} type={t} />)}
+          </div>
+        )}
       </div>
-
-      {/* Stars */}
-      <StarRow count={strGradeStars(r.structuralGrade)} />
-
-      {/* Chips */}
-      <div className="flex flex-wrap gap-1.5 mt-2 mb-3">
-        <FnChip fn={r.functionalNature} lean={r.functionalLean} isMaraka={r.isMarakaCapable} />
-        <StrengthChip grade={r.structuralGrade} />
-      </div>
-
-      {/* SHORT summary — not the analyst note */}
-      <p className="text-[12px] text-muted-foreground leading-relaxed line-clamp-2">
-        {buildCardSummary(r, pd)}
-      </p>
-
-      {/* Conflict badges */}
-      {r.conflictFlags.length > 0 && (
-        <div className="flex flex-wrap gap-1 mt-2">
-          {r.conflictFlags.slice(0, 2).map(f => <ConflictBadge key={f} flag={f} />)}
-          {r.conflictFlags.length > 2 && (
-            <span className="text-[10px] text-muted-foreground self-center">+{r.conflictFlags.length - 2}</span>
-          )}
-        </div>
-      )}
-
-      {/* Top domains */}
-      {r.strongDomains.length > 0 && (
-        <div className="flex flex-wrap gap-1 mt-2">
-          {r.strongDomains.slice(0, 3).map(d => <DomainTag key={d} domain={d} type="strong" />)}
-        </div>
-      )}
     </button>
   );
 }
 
-// ─── Explore: detail panel ────────────────────────────────────────────────────
+// ─── Detail Panel ─────────────────────────────────────────────────────────────
 
-function ExploreDetail({ r, pd, onClose }: {
-  r: PlanetStrengthResult; pd: PlanetData; onClose: () => void;
+function DetailPanel({ r, pd, dashaInfo, onClose }: {
+  r: PlanetStrengthResult; pd: PlanetData; dashaInfo?: ChartDashaData; onClose: () => void;
 }) {
+  const [showTech, setShowTech] = useState(false);
+  const story    = useMemo(() => buildInYourChart(r, pd, pd.signNumber), [r, pd]);
+  const meanings = useMemo(() => buildWhatThisMeans(r, pd), [r, pd]);
+  const timeline = useMemo(() => buildDashaTimeline(r.planet, r, dashaInfo), [r, dashaInfo]);
+
+  const strColor  = strGradeToColor(r.structuralGrade);
+  const isDasha   = r.temporalActivation.dashaBoostApplied;
+
   return (
-    <div className="col-span-full border border-primary/30 rounded-xl bg-card p-5 space-y-4">
+    <div className="col-span-full border border-blue-400/40 dark:border-blue-600/40 rounded-xl bg-card p-5 mt-1">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-lg">{GLYPH[r.planet]}</span>
           <span className="font-medium text-base">{r.planet}</span>
-          <ConfText grade={r.assessmentConfidence} />
-          {r.temporalActivation.dashaBoostApplied && (
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold border border-primary/20">DASHA ACTIVE</span>
+          {isDasha && (
+            <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 font-semibold border border-blue-200 dark:border-blue-700">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+              Active in your life right now
+            </span>
           )}
         </div>
-        <button onClick={onClose} className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded border border-border">close ×</button>
+        <button onClick={onClose} className="text-xs text-muted-foreground hover:text-foreground px-2.5 py-1.5 rounded-lg border border-border hover:bg-muted transition-colors">
+          Close
+        </button>
       </div>
 
-      {/* 4 metric cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        {[
-          { label:'Structural', value:<StrengthChip grade={r.structuralGrade}/> },
-          { label:'Functional', value:<FnChip fn={r.functionalNature} lean={r.functionalLean} isMaraka={r.isMarakaCapable}/> },
-          { label:'Condition',  value:<CondText grade={r.conditionGrade}/> },
-          { label:'Delivery',   value:<DelivText grade={r.deliveryGrade} score={r.deliveryScore}/> },
-        ].map(({ label, value }) => (
-          <div key={label} className="bg-muted/40 rounded-lg border border-border p-3">
-            <div className="text-[9px] text-muted-foreground mb-1.5 uppercase tracking-wide">{label}</div>
-            {value}
+      {/* 3-block summary */}
+      <div className="grid grid-cols-3 gap-3 mb-5">
+        <div className="bg-muted/40 rounded-lg p-3">
+          <div className="text-[9px] text-muted-foreground uppercase tracking-wide mb-1.5">In your chart</div>
+          <div className="text-[13px] font-medium" style={{ color: strColor }}>{strGradeToWord(r.structuralGrade)}</div>
+          <div className="text-[10px] text-muted-foreground mt-0.5">{dignityShort(r.dignityLevel)}</div>
+        </div>
+        <div className="bg-muted/40 rounded-lg p-3">
+          <div className="text-[9px] text-muted-foreground uppercase tracking-wide mb-1.5">How it delivers</div>
+          <div className="text-[13px] font-medium" style={{ color: delivGradeToColor(r.deliveryGrade) }}>{delivGradeToWord(r.deliveryGrade)}</div>
+          <div className="text-[10px] text-muted-foreground mt-0.5">{pd.kp?.nakshatraName ?? pd.sign}</div>
+        </div>
+        <div className="bg-muted/40 rounded-lg p-3">
+          <div className="text-[9px] text-muted-foreground uppercase tracking-wide mb-1.5">Main areas</div>
+          <div className="text-[12px] font-medium leading-tight">
+            {[...r.strongDomains, ...r.mixedDomains].slice(0, 2).map(d => DOMAIN_LABELS[d]).join(', ') || 'General influence'}
           </div>
-        ))}
+        </div>
       </div>
 
-      {/* Full analyst note */}
-      <div className="bg-muted/30 rounded-lg border border-border px-4 py-3">
-        <div className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1.5 font-medium">Full assessment</div>
-        <p className="text-[12px] leading-relaxed">{r.analystNote}</p>
+      {/* Active dasha banner */}
+      {isDasha && (
+        <div className="bg-blue-50 border border-blue-200 dark:bg-blue-900/20 dark:border-blue-700 rounded-lg px-4 py-3 mb-5">
+          <div className="text-[10px] font-medium text-blue-700 dark:text-blue-300 uppercase tracking-wide mb-1">Currently shaping your life</div>
+          <p className="text-[12px] text-blue-900 dark:text-blue-200 leading-relaxed">
+            {r.planet}'s period is active right now. The themes below are not just astrological background — they are describing what is happening in your life at this moment.
+          </p>
+        </div>
+      )}
+
+      {/* In your chart story */}
+      <div className="mb-5">
+        <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-3">In your chart</div>
+        <div className="space-y-3">
+          {story.map((para, i) => (
+            <p key={i} className="text-[13px] leading-relaxed text-foreground">{para}</p>
+          ))}
+        </div>
       </div>
 
-      {/* Key reasons */}
-      <div>
-        <div className="text-[10px] text-muted-foreground uppercase tracking-wide mb-2 font-medium">Key reasons</div>
-        <div className="space-y-1.5">
-          {r.keyReasons.map((kr, i) => (
-            <div key={i} className="flex gap-2.5 text-[12px] leading-relaxed">
-              <span className={cn('mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0',
-                kr.sentiment === 'positive' ? 'bg-green-500' :
-                kr.sentiment === 'negative' ? 'bg-red-400' : 'bg-slate-400')} />
-              <span>{kr.text}</span>
+      {/* What this means */}
+      <div className="mb-5">
+        <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-3">What this means for you</div>
+        <div className="space-y-3">
+          {meanings.map((m, i) => (
+            <div key={i} className="border border-border rounded-xl overflow-hidden">
+              <div className="flex items-center gap-3 px-4 py-3 bg-muted/30">
+                <span className="text-base leading-none">{m.icon}</span>
+                <span className="text-[12px] font-medium flex-1">{m.area}</span>
+                <SignalBadge type={m.signalType} label={m.signal} />
+              </div>
+              <div className="px-4 py-3 border-t border-border">
+                <p className="text-[13px] leading-relaxed font-medium mb-1.5">{m.what}</p>
+                <p className="text-[12px] text-muted-foreground leading-relaxed">{m.why}</p>
+              </div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Conflicts */}
-      {r.conflictFlags.length > 0 && (
-        <div>
-          <div className="text-[10px] text-muted-foreground uppercase tracking-wide mb-2 font-medium">Contradictions</div>
-          <div className="flex flex-wrap gap-1.5">
-            {r.conflictFlags.map(f => <ConflictBadge key={f} flag={f} />)}
+      {/* Dasha timeline */}
+      {timeline.length > 0 && (
+        <div className="mb-5">
+          <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1.5">When does {r.planet} give results?</div>
+          <p className="text-[12px] text-muted-foreground mb-3 leading-relaxed">
+            Planets deliver results most strongly during their own periods and sub-periods. Here are the times in your dasha sequence when {r.planet}'s themes activate most directly.
+          </p>
+          <div className="space-y-2">
+            {timeline.map((item, i) => <DashaPill key={i} item={item} />)}
           </div>
         </div>
       )}
 
-      {/* Varga + Nakshatra */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <Section title="Varga validation">
-          <p className="text-[12px] text-muted-foreground">{r.vargaAssessment.note}</p>
-          <div className="flex flex-wrap gap-1.5 mt-2">
-            <span className={cn('text-[10px] px-2 py-0.5 rounded-full border',
-              r.vargaAssessment.d9Confirms  ? 'bg-green-50 text-green-700 border-green-200 dark:bg-transparent dark:text-green-400 dark:border-green-700' :
-              r.vargaAssessment.d9Contradicts ? 'bg-red-50 text-red-700 border-red-200 dark:bg-transparent dark:text-red-400 dark:border-red-700' :
-              'bg-muted text-muted-foreground border-border')}>
-              D9: {dignityShort(r.vargaAssessment.d9DignityLevel)}
-            </span>
-            {r.vargaAssessment.d9SignNumber === pd.signNumber && (
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-200">Vargottama ✓</span>
-            )}
-            {r.vargaAssessment.hasD9SecondPass && (
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-50 text-violet-700 border border-violet-200">D9 extra weight</span>
-            )}
-          </div>
-        </Section>
-
-        <Section title="Nakshatra">
-          <div className="text-[12px] space-y-1 text-muted-foreground">
-            <div>Star lord: <span className="font-medium text-foreground">{r.nakshatraInfluence.starLordName}</span> ({r.nakshatraInfluence.starLordStructuralScore}/100)</div>
-            <div>Sub lord: <span className="font-medium text-foreground">{r.nakshatraInfluence.subLordName}</span> ({r.nakshatraInfluence.subLordStructuralScore}/100)</div>
-            <div className="mt-1">{r.nakshatraInfluence.nakshatraNotes}</div>
-          </div>
-        </Section>
-      </div>
-
-      {/* Agenda */}
-      <Section title="Agenda & character">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <div className="text-[10px] text-muted-foreground mb-1">Themes</div>
-            <div className="flex flex-wrap gap-1">
-              {r.agendaThemes.slice(0, 6).map(t => (
-                <span key={t} className="text-[10px] px-2 py-0.5 rounded-full bg-secondary text-muted-foreground border border-border">{t}</span>
-              ))}
-            </div>
-          </div>
-          <div className="text-[12px] text-muted-foreground space-y-1">
-            <div><span className="text-muted-foreground/70">Style: </span>{r.deliveryStyle.replace(/_/g, ' ')}</div>
-            <div><span className="text-muted-foreground/70">Tone: </span>{r.psychologicalTone}</div>
-          </div>
-        </div>
-      </Section>
-
-      {/* Domains */}
-      <Section title="Domain assessment" defaultOpen={true}>
-        <div className="flex items-center gap-1.5 mb-2">
-          <AlertCircle className="h-3 w-3 text-amber-500 flex-shrink-0" />
-          <span className="text-[10px] text-amber-600 dark:text-amber-400">Preliminary — topic-specific vargas applied where available</span>
-        </div>
+      {/* All life areas */}
+      <Section title={`All life areas — ${r.planet}`}>
         <div className="space-y-2">
           {r.strongDomains.length > 0 && (
-            <div className="flex flex-wrap items-center gap-1">
-              <span className="text-[10px] text-muted-foreground w-12 flex-shrink-0">Strong</span>
-              {r.strongDomains.map(d => <DomainTag key={d} domain={d} type="strong" />)}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[10px] text-muted-foreground min-w-[56px]">Works well</span>
+              {r.strongDomains.map(d => <AreaTag key={d} domain={d} type="strong" />)}
             </div>
           )}
           {r.mixedDomains.length > 0 && (
-            <div className="flex flex-wrap items-center gap-1">
-              <span className="text-[10px] text-muted-foreground w-12 flex-shrink-0">Mixed</span>
-              {r.mixedDomains.map(d => <DomainTag key={d} domain={d} type="mixed" />)}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[10px] text-muted-foreground min-w-[56px]">Mixed</span>
+              {r.mixedDomains.map(d => <AreaTag key={d} domain={d} type="mixed" />)}
             </div>
           )}
           {r.weakDomains.length > 0 && (
-            <div className="flex flex-wrap items-center gap-1">
-              <span className="text-[10px] text-muted-foreground w-12 flex-shrink-0">Difficult</span>
-              {r.weakDomains.map(d => <DomainTag key={d} domain={d} type="weak" />)}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[10px] text-muted-foreground min-w-[56px]">Difficult</span>
+              {r.weakDomains.map(d => <AreaTag key={d} domain={d} type="weak" />)}
             </div>
           )}
         </div>
       </Section>
 
-      {/* Node inheritance */}
-      {r.nodeInheritance && (
-        <Section title="Node inheritance">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
-            {[
-              ['Dispositor', r.nodeInheritance.dispositorName, r.nodeInheritance.dispositorStructuralScore],
-              ['Nakshatra lord', r.nodeInheritance.nakshatraLordName, r.nodeInheritance.nakshatraLordScore],
-              ['House context', `H${r.housePosition}`, r.nodeInheritance.houseContextScore],
-              ['Inherited', 'support', r.nodeInheritance.inheritedSupportScore],
-            ].map(([label, name, score]) => (
-              <div key={String(label)} className="bg-muted/40 rounded-lg p-2 border border-border">
-                <div className="text-[9px] text-muted-foreground mb-0.5">{label}</div>
-                <div className="text-[11px] font-medium">{name}</div>
-                <div className="text-[10px] text-muted-foreground">{score}/100</div>
-              </div>
-            ))}
-          </div>
-        </Section>
-      )}
-
-      {/* Dominant overrides */}
-      {r.dominantOverrideApplied && r.overrideImpactNotes.length > 0 && (
-        <Section title="Dominant overrides">
-          {r.overrideImpactNotes.map((n, i) => (
-            <div key={i} className="text-[12px] text-muted-foreground">⚑ {n}</div>
-          ))}
-        </Section>
-      )}
-
-      {/* Delivery breakdown */}
-      <Section title="Delivery score breakdown">
-        <div className="space-y-0.5 text-[11px]">
-          {r.deliveryReasons.map((dr, i) => (
-            <div key={i} className={cn('text-muted-foreground', i === r.deliveryReasons.length - 1 && 'font-medium text-foreground mt-1')}>
-              {dr}
-            </div>
-          ))}
-        </div>
-      </Section>
-
-      {/* Priority row */}
-      <div className="flex items-center justify-between text-[11px] bg-muted/30 rounded-lg px-3 py-2 border border-border">
-        <div className="flex flex-col items-center gap-0.5">
-          <span className="text-[9px] text-muted-foreground">Natal rank</span>
-          <span className="font-semibold">#{r.natalPriorityRank}</span>
-        </div>
-        <div className="flex flex-col items-center gap-0.5">
-          <span className="text-[9px] text-muted-foreground">Current rank</span>
-          <span className={cn('font-semibold', r.temporalActivation.dashaBoostApplied && 'text-primary')}>#{r.currentPriorityRank}</span>
-        </div>
-        <div className="flex flex-col items-center gap-0.5">
-          <span className="text-[9px] text-muted-foreground">Importance</span>
-          <span className="font-semibold">{r.importanceWeight}</span>
-        </div>
-        <div className="flex flex-col items-center gap-0.5">
-          <span className="text-[9px] text-muted-foreground">Delivery score</span>
-          <span className="font-semibold">{r.deliveryScore}/100</span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Analyst table ────────────────────────────────────────────────────────────
-
-function AnalystTable({ results, planets, ascendant }: {
-  results: Record<string, PlanetStrengthResult>;
-  planets: Record<string, PlanetData>;
-  ascendant: AscendantData;
-}) {
-  const [expanded, setExpanded] = useState<string | null>(null);
-  const toggle = (n: string) => setExpanded(p => p === n ? null : n);
-
-  const SIGN_NAMES = ['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'];
-
-  return (
-    <div>
-      <div className="mb-3 px-3 py-2 text-[11px] text-muted-foreground bg-muted rounded-lg border border-border flex items-center gap-2">
-        <Info className="h-3 w-3 flex-shrink-0" />
-        <span><span className="font-medium">{ascendant.sign} lagna</span> · Lahiri · Swiss Ephemeris · 14-layer engine · Click row to expand</span>
-      </div>
-
-      <div className="overflow-x-auto rounded-xl border border-border">
-        <table className="w-full text-[11px] border-collapse">
-          <thead>
-            <tr className="bg-muted/60 border-b border-border">
-              {['Planet','Position','Dignity','Structural','Functional','Condition','Delivery','D9','Rank','Flags'].map(h => (
-                <th key={h} className="text-left px-3 py-2 font-medium text-muted-foreground text-[9px] uppercase tracking-wide whitespace-nowrap">{h}</th>
+      {/* For astrologers */}
+      <div className="mt-4">
+        <button type="button" onClick={() => setShowTech(p => !p)}
+          className="text-[11px] text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors">
+          {showTech ? 'Hide technical details' : 'For astrologers — technical details'}
+        </button>
+        {showTech && (
+          <div className="mt-3 bg-muted/30 rounded-lg border border-border p-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {([
+                ['Dignity', dignityShort(r.dignityLevel)],
+                ['House', `${r.housePosition}${ord(r.housePosition)}`],
+                ['Functional role', r.functionalNature.replace('_',' ')],
+                ['Condition', r.conditionGrade.replace('_',' ')],
+                ['D9', dignityShort(r.vargaAssessment.d9DignityLevel)],
+                ['Delivery', r.deliveryGrade.replace('_',' ')],
+                ['Natal rank', `#${r.natalPriorityRank}`],
+                ['Confidence', r.assessmentConfidence],
+              ] as [string,string][]).map(([k, v]) => (
+                <div key={k}>
+                  <div className="text-[9px] text-muted-foreground mb-0.5">{k}</div>
+                  <div className="text-[11px] font-medium">{v}</div>
+                </div>
               ))}
-            </tr>
-          </thead>
-          <tbody>
-            {PLANET_ORDER.map(name => {
-              const r  = results[name];
-              const pd = planets[name] as PlanetData | undefined;
-              if (!r || !pd) return null;
-              const isExp   = expanded === name;
-              const d9Name  = SIGN_NAMES[r.vargaAssessment.d9SignNumber - 1] ?? '?';
-              const isVarg  = r.vargaAssessment.d9SignNumber === pd.signNumber;
-              const isDasha = r.temporalActivation.dashaBoostApplied;
-              const avatar  = PLANET_AVATAR[name] ?? 'bg-muted text-foreground';
-
-              return [
-                <tr key={name} onClick={() => toggle(name)}
-                  className={cn('border-b border-border cursor-pointer transition-colors',
-                    isExp ? 'bg-muted/40' : 'hover:bg-muted/20')}>
-                  <td className="px-3 py-2.5">
-                    <div className="flex items-center gap-2">
-                      <div className={cn('w-6 h-6 rounded-full flex items-center justify-center text-sm flex-shrink-0', avatar)}>
-                        {GLYPH[name]}
-                      </div>
-                      <span className="font-medium">{name}</span>
-                      {isDasha && <span className="text-[8px] w-1.5 h-1.5 rounded-full bg-primary inline-block" title="Dasha active"/>}
-                      {isExp
-                        ? <ChevronUp className="h-3 w-3 text-muted-foreground ml-auto"/>
-                        : <ChevronDown className="h-3 w-3 text-muted-foreground ml-auto"/>}
-                    </div>
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <div className="font-mono text-[10px]">{pd.sign} {pd.degreeInSign.toFixed(1)}°</div>
-                    <div className="text-[9px] text-muted-foreground">{pd.kp.nakshatraName} P{pd.kp.nakshatraPada}</div>
-                  </td>
-                  <td className="px-3 py-2.5 text-[10px] text-muted-foreground whitespace-nowrap">{dignityShort(r.dignityLevel)}</td>
-                  <td className="px-3 py-2.5"><StrengthChip grade={r.structuralGrade}/></td>
-                  <td className="px-3 py-2.5"><FnChip fn={r.functionalNature} lean={r.functionalLean} isMaraka={r.isMarakaCapable}/></td>
-                  <td className="px-3 py-2.5"><CondText grade={r.conditionGrade}/></td>
-                  <td className="px-3 py-2.5"><DelivText grade={r.deliveryGrade} score={r.deliveryScore}/></td>
-                  <td className="px-3 py-2.5 text-[10px] text-muted-foreground whitespace-nowrap">
-                    {d9Name}{isVarg ? ' ★' : ''}{r.vargaAssessment.hasD9SecondPass ? ' ✦' : ''}
-                  </td>
-                  <td className="px-3 py-2.5 text-[11px] font-medium">
-                    <span className="text-muted-foreground">#{r.natalPriorityRank}</span>
-                    {isDasha && <span className="text-primary ml-1">→#{r.currentPriorityRank}</span>}
-                  </td>
-                  <td className="px-3 py-2.5">
-                    {r.conflictFlags.length > 0
-                      ? <span className="text-[10px] text-amber-600 dark:text-amber-400">⚑ {r.conflictFlags.length}</span>
-                      : <span className="text-muted-foreground">—</span>}
-                  </td>
-                </tr>,
-
-                isExp && (
-                  <tr key={`${name}-exp`} className="bg-muted/20 border-b border-border">
-                    <td colSpan={10} className="px-4 py-4">
-                      {/* Analyst note */}
-                      <div className="mb-3 px-3 py-2.5 bg-card rounded-lg border border-border text-[12px] leading-relaxed">
-                        {r.analystNote}
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        {/* Col 1: Key reasons */}
-                        <div>
-                          <div className="text-[9px] font-medium text-muted-foreground uppercase tracking-wide mb-2">Key reasons</div>
-                          <div className="space-y-1.5">
-                            {r.keyReasons.map((kr, i) => (
-                              <div key={i} className="flex gap-2 text-[11px] leading-relaxed">
-                                <span className={cn('mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0',
-                                  kr.sentiment === 'positive' ? 'bg-green-500' :
-                                  kr.sentiment === 'negative' ? 'bg-red-400' : 'bg-slate-400')} />
-                                <span>{kr.text}</span>
-                              </div>
-                            ))}
-                          </div>
-                          {r.conflictFlags.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-3">
-                              {r.conflictFlags.map(f => <ConflictBadge key={f} flag={f} />)}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Col 2: Technical */}
-                        <div>
-                          <div className="text-[9px] font-medium text-muted-foreground uppercase tracking-wide mb-2">Technical</div>
-                          <div className="space-y-0.5">
-                            {([
-                              ['Houses ruled',    r.housesRuled.join(', ')],
-                              ['H from lagna',    `${r.housePosition}${ord(r.housePosition)}`],
-                              ['Structural',      `${r.structuralScore}/100`],
-                              ['Delivery score',  `${r.deliveryScore}/100`],
-                              ['Condition score', String(r.conditionScore)],
-                              ['Varga status',    r.vargaAssessment.vargaStatus],
-                              ['D9 confidence',   r.vargaAssessment.vargaConfidence],
-                              ['Star lord',       `${r.nakshatraInfluence.starLordName} (${r.nakshatraInfluence.starLordStructuralScore})`],
-                              ['Importance',      String(r.importanceWeight)],
-                              ['Retrograde',      r.isRetrograde ? 'Yes' : 'No'],
-                              ['Combust',         r.isCombust ? 'Yes' : 'No'],
-                              ['Maraka',          r.isMarakaCapable ? 'Yes' : 'No'],
-                              ...(r.isPakshaBala !== undefined ? [['Paksha Bala', r.isPakshaBala ? 'Waxing' : 'Waning'] as [string,string]] : []),
-                              ...(r.neechaBhanga.isApplied ? [['Neecha Bhanga', r.neechaBhanga.rule ?? 'Applied'] as [string,string]] : []),
-                            ] as [string, string][]).map(([k, v]) => (
-                              <div key={k} className="flex justify-between text-[11px] py-0.5 border-b border-border/40 last:border-0">
-                                <span className="text-muted-foreground">{k}</span>
-                                <span className="font-medium text-right ml-2 max-w-[140px] truncate">{v}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Col 3: Domains + node */}
-                        <div>
-                          <div className="text-[9px] font-medium text-muted-foreground uppercase tracking-wide mb-2">Domains</div>
-                          <div className="space-y-1.5 mb-3">
-                            {r.strongDomains.length > 0 && (
-                              <div className="flex flex-wrap gap-1 items-center">
-                                <span className="text-[9px] text-muted-foreground w-10">Strong</span>
-                                {r.strongDomains.map(d => <DomainTag key={d} domain={d} type="strong"/>)}
-                              </div>
-                            )}
-                            {r.mixedDomains.length > 0 && (
-                              <div className="flex flex-wrap gap-1 items-center">
-                                <span className="text-[9px] text-muted-foreground w-10">Mixed</span>
-                                {r.mixedDomains.map(d => <DomainTag key={d} domain={d} type="mixed"/>)}
-                              </div>
-                            )}
-                            {r.weakDomains.length > 0 && (
-                              <div className="flex flex-wrap gap-1 items-center">
-                                <span className="text-[9px] text-muted-foreground w-10">Hard</span>
-                                {r.weakDomains.map(d => <DomainTag key={d} domain={d} type="weak"/>)}
-                              </div>
-                            )}
-                          </div>
-                          {r.nodeInheritance && (
-                            <div className="mt-2 pt-2 border-t border-border">
-                              <div className="text-[9px] text-muted-foreground mb-1">Node inheritance</div>
-                              <div className="text-[11px] text-muted-foreground space-y-0.5">
-                                <div>Dispositor: <span className="font-medium text-foreground">{r.nodeInheritance.dispositorName}</span> ({r.nodeInheritance.dispositorDeliveryGrade})</div>
-                                <div>Inherited: <span className="font-medium text-foreground">{r.nodeInheritance.inheritedSupportScore}/100</span></div>
-                                <div>House ctx: <span className="font-medium text-foreground">{r.nodeInheritance.houseContextScore}/100</span></div>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Delivery trail */}
-                      <div className="mt-3 pt-3 border-t border-border">
-                        <span className="text-[9px] font-medium text-muted-foreground uppercase tracking-wide mr-2">Delivery:</span>
-                        <span className="text-[11px] text-muted-foreground">{r.deliveryReasons.join(' · ')}</span>
-                      </div>
-                    </td>
-                  </tr>
-                ),
-              ];
-            })}
-          </tbody>
-        </table>
+            </div>
+            {r.analystNote && (
+              <p className="text-[11px] text-muted-foreground mt-3 leading-relaxed border-t border-border pt-3">
+                {r.analystNote}
+              </p>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -742,76 +938,115 @@ function AnalystTable({ results, planets, ascendant }: {
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
-export function PlanetsTab({ planets, ascendant, dashaContext }: PlanetsTabProps) {
-  const [mode, setMode] = useState<Mode>('explore');
+export function PlanetsTab({ planets, ascendant, dashaInfo }: PlanetsTabProps) {
   const [selected, setSelected] = useState<string | null>(null);
+
+  // Build dasha context for engine
+  const dashaContext = useMemo(() => ({
+    currentMahadasha:  dashaInfo?.currentMahadasha,
+    currentAntardasha: undefined,
+    currentPratyantar: undefined,
+  }), [dashaInfo]);
 
   const results = useMemo(() => {
     try { return assessAllPlanets({ planets, ascendant, dashaContext }); }
     catch { return {} as Record<string, PlanetStrengthResult>; }
   }, [planets, ascendant, dashaContext]);
 
-  // Build inline list with detail panel after selected card
-  type Item = { type: 'card'; name: string } | { type: 'detail'; name: string };
-  const items: Item[] = [];
-  PLANET_ORDER.forEach(n => {
-    items.push({ type: 'card', name: n });
-    if (selected === n) items.push({ type: 'detail', name: n });
-  });
+  // Group planets
+  const groups = useMemo(() => {
+    const g: Record<'working'|'mixed'|'struggling', string[]> = { working:[], mixed:[], struggling:[] };
+    for (const name of PLANET_ORDER) {
+      const r = results[name];
+      if (!r) continue;
+      g[fnToGroupKey(r.functionalNature, r.functionalLean)].push(name);
+    }
+    return g;
+  }, [results]);
+
+  const GROUP_LABELS = {
+    working:    { label:'Generally working for you', dot:'#059669' },
+    mixed:      { label:'Mixed — depends on the area', dot:'#d97706' },
+    struggling: { label:'Facing challenges', dot:'#dc2626' },
+  };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h2 className="text-base font-semibold">Planetary Strength</h2>
-          <p className="text-[11px] text-muted-foreground mt-0.5">
-            {ascendant.sign} lagna · 14-layer practitioner-grade assessment
-          </p>
-        </div>
-        <ModeToggle mode={mode} onChange={m => { setMode(m); setSelected(null); }} />
+      <div>
+        <h2 className="text-base font-medium">Your planets</h2>
+        <p className="text-[12px] text-muted-foreground mt-0.5">
+          {ascendant.sign} lagna · How each planet works in your chart
+        </p>
       </div>
 
-      {/* Explore */}
-      {mode === 'explore' && (
-        <div>
-          <div className="text-[11px] text-muted-foreground mb-4 px-3 py-2 bg-muted rounded-lg border border-border flex items-start gap-2">
-            <Info className="h-3 w-3 mt-0.5 flex-shrink-0" />
-            <span>Each planet is assessed across 14 layers. The same planet can be your strongest ally or biggest challenge depending on your lagna. Click any card to expand the full assessment.</span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {items.map(item => {
-              if (item.type === 'detail') {
+      {/* Groups */}
+      {(['working','mixed','struggling'] as const).map(gk => {
+        const planetNames = groups[gk];
+        if (!planetNames.length) return null;
+        const { label, dot } = GROUP_LABELS[gk];
+
+        // Build items with detail panel
+        const items: Array<{ type: 'card'|'detail'; name: string }> = [];
+        planetNames.forEach(name => {
+          items.push({ type:'card', name });
+          if (selected === name) items.push({ type:'detail', name });
+        });
+
+        return (
+          <div key={gk}>
+            {/* Group label */}
+            <div className="flex items-center gap-2 mb-3">
+              <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: dot }} />
+              <span className="text-[11px] font-medium text-muted-foreground">{label}</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {items.map(item => {
+                if (item.type === 'detail') {
+                  const r  = results[item.name];
+                  const pd = planets[item.name] as PlanetData | undefined;
+                  if (!r || !pd) return null;
+                  return (
+                    <div key={`d-${item.name}`} className="col-span-1 sm:col-span-2 lg:col-span-3">
+                      <DetailPanel r={r} pd={pd} dashaInfo={dashaInfo} onClose={() => setSelected(null)} />
+                    </div>
+                  );
+                }
                 const r  = results[item.name];
                 const pd = planets[item.name] as PlanetData | undefined;
                 if (!r || !pd) return null;
                 return (
-                  <div key={`d-${item.name}`} className="col-span-1 sm:col-span-2 lg:col-span-3">
-                    <ExploreDetail r={r} pd={pd} onClose={() => setSelected(null)} />
-                  </div>
+                  <PlanetCard key={item.name} r={r} pd={pd}
+                    isSelected={selected === item.name}
+                    onSelect={() => setSelected(p => p === item.name ? null : item.name)} />
                 );
-              }
-              const r  = results[item.name];
-              const pd = planets[item.name] as PlanetData | undefined;
-              if (!r || !pd) return null;
-              return (
-                <PlanetCard key={item.name} r={r} pd={pd}
-                  isSelected={selected === item.name}
-                  onSelect={() => setSelected(p => p === item.name ? null : item.name)} />
-              );
-            })}
+              })}
+            </div>
           </div>
-        </div>
-      )}
-
-      {/* Analyst */}
-      {mode === 'analyst' && (
-        <AnalystTable results={results} planets={planets} ascendant={ascendant} />
-      )}
+        );
+      })}
     </div>
   );
 }
 
+// ─── Tiny helpers ─────────────────────────────────────────────────────────────
+
 function ord(n: number): string {
   return n === 1 ? 'st' : n === 2 ? 'nd' : n === 3 ? 'rd' : 'th';
 }
+
+function cap(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function dignityShort(l: import('@/lib/astrology/strength').DignityLevel): string {
+  return {
+    exalted:'Exalted', moolatrikona:'Moolatrikona', own_sign:'Own sign',
+    great_friend:'Great friend', friend:'Friendly', neutral:'Neutral',
+    enemy:'Enemy', great_enemy:'Great enemy', debilitated:'Debilitated',
+  }[l] ?? l;
+}
+
+// Re-export type for use in this file
+type ConditionGrade = import('@/lib/astrology/strength').ConditionGrade;
