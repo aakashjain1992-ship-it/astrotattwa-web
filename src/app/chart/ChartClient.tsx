@@ -21,7 +21,7 @@ import { ChartLegend } from '@/components/chart/ChartLegend';
 import { DashaNavigator } from '@/components/chart/DashaNavigator';
 import { buildLagnaHouses, buildMoonHouses, buildNavamsaHouses } from '@/lib/utils/chartHelpers';
 import { SadeSatiTableView } from '@/components/chart/sadesati/SadeSatiTableView';
-
+import { PlanetsTab } from '@/components/chart/PlanetsTab';
 
 
 // Import proper types from astrology module
@@ -39,7 +39,7 @@ import {
 
 
 
-type TabType = 'overview' | 'dasha'| 'divisional' | 'sadesati';
+type TabType = 'overview' | 'planets'| 'dasha'| 'divisional' | 'sadesati';
 type MobileSubTab = 'planets' | 'avakahada';
 
 // ============================================
@@ -225,7 +225,7 @@ export default function ChartClient() {
   const tabParam = searchParams.get('tab') as TabType | null;
 
   useEffect(() => {
-    if (tabParam === 'overview' || tabParam === 'dasha' || tabParam === 'divisional' || tabParam === 'sadesati') {
+    if (tabParam === 'overview' ||tabParam === 'planets' || tabParam === 'dasha' || tabParam === 'divisional' || tabParam === 'sadesati') {
       setActiveTab(tabParam);
     } else {
       setActiveTab('overview');
@@ -567,6 +567,12 @@ export default function ChartClient() {
             Overview
           </TabButton>
           <TabButton
+            active={activeTab === 'planets'}
+            onClick={() => setTab('planets')}
+          >
+            Planets
+          </TabButton>
+          <TabButton
             active={activeTab === 'dasha'}
             onClick={() => setTab('dasha')}
           >
@@ -613,6 +619,14 @@ export default function ChartClient() {
             <div className="max-w-2xl mx-auto">
               <ChartLegend variant="accordion" />
             </div>
+          </div>
+        )}
+        {activeTab === 'planets' && (
+          <div className="animate-fade-in">
+            <PlanetsTab
+              planets={chartData.planets}
+              ascendant={ascendant}
+            />
           </div>
         )}
 
