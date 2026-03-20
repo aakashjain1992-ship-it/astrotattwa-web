@@ -76,24 +76,36 @@ function delivGradeToWord(g: DeliveryGrade): string {
 }
 
 function strGradeToColor(g: StructuralGrade): string {
-  return { very_strong:'#059669', strong:'#0891b2', moderate:'#d97706',
-           weak:'#ea580c', very_weak:'#dc2626' }[g];
+  // Structural bar: 3 colours only
+  if (g === 'very_strong' || g === 'strong') return '#059669';
+  if (g === 'moderate') return '#d97706';
+  return '#dc2626';
 }
 
-function delivGradeToColor(g: DeliveryGrade): string {
-  return { reliable:'#059669', delayed:'#0891b2', inconsistent:'#d97706',
-           distorted_delivery:'#ea580c', obstructed:'#dc2626' }[g];
+// Single colour function for delivery — 3 values max
+function delivGradeToColor(g: DeliveryGrade, sg?: StructuralGrade): string {
+  if (g === 'reliable') return '#059669';
+  if (g === 'delayed') return (sg === 'very_strong' || sg === 'strong') ? '#059669' : '#d97706';
+  if (g === 'inconsistent') return '#d97706';
+  return '#dc2626';
 }
 
-function fnToGroupKey(fn: FunctionalNature, lean: FunctionalLean): 'working'|'mixed'|'struggling' {
-  if (fn === 'yogakaraka' || fn === 'strong_benefic' || fn === 'benefic') return 'working';
-  if (fn === 'malefic') return 'struggling';
-  if (fn === 'mixed') {
-    if (lean === 'benefic_lean' || lean === 'protective_with_complication') return 'working';
-    if (lean === 'malefic_lean') return 'struggling';
-    return 'mixed';
+function fnToGroupKey(r: PlanetStrengthResult): 'working'|'mixed'|'struggling' {
+  // Group by delivery grade — this is what the user actually feels in their life.
+  // A strong Saturn that rules difficult houses still delivers steadily;
+  // it should not appear in "Facing challenges" just because of house lordship.
+  const dg = r.deliveryGrade;
+  const sg = r.structuralGrade;
+
+  if (dg === 'reliable') return 'working';
+  if (dg === 'delayed') {
+    // Strong + delayed = working (results come, just slower)
+    // Weak + delayed = mixed
+    return (sg === 'very_strong' || sg === 'strong') ? 'working' : 'mixed';
   }
-  return 'mixed';
+  if (dg === 'inconsistent') return 'mixed';
+  // obstructed or distorted_delivery
+  return 'struggling';
 }
 
 // ─── "In your chart" — 2-3 paragraph human story ─────────────────────────────
@@ -700,13 +712,38 @@ function PlanetCard({ r, pd, isSelected, onSelect }: {
   const fn = r.functionalNature;
   const lean = r.functionalLean;
   let cardLine: string;
-  if (fn === 'yogakaraka') cardLine = 'Your most powerful planet — rules both career and fortune houses.';
-  else if (fn === 'strong_benefic' && r.housesRuled.includes(1)) cardLine = `Your chart ruler — shapes how you show up in the world.`;
-  else if (fn === 'strong_benefic') cardLine = `Primary benefic — rules ${r.housesRuled.map(h => `${h}${ord(h)}`).join(' and ')} house${r.housesRuled.length > 1 ? 's' : ''}.`;
-  else if (fn === 'malefic') cardLine = `Challenging role — rules the ${r.housesRuled.map(h => `${h}${ord(h)}`).join(' and ')} house${r.housesRuled.length > 1 ? 's' : ''}.`;
-  else if (fn === 'mixed' && lean === 'benefic_lean') cardLine = `Mixed but leans positive — ${r.strongDomains[0] ? DOMAIN_LABELS[r.strongDomains[0]] : 'some areas'} supported.`;
-  else if (fn === 'mixed' && lean === 'malefic_lean') cardLine = `Mixed but leans challenging — requires attention.`;
-  else cardLine = `Neutral role — impact depends on placement and activation.`;
+  const housesStr = r.housesRuled.map(h => `${h}${ord(h)}`).join(' and ');
+  const topDomain = r.strongDomains[0] ? DOMAIN_LABELS[r.strongDomains[0]] : r.mixedDomains[0] ? DOMAIN_LABELS[r.mixedDomains[0]] : null;
+  const isNode = r.planet === 'Rahu' || r.planet === 'Ketu';
+
+  if (fn === 'yogakaraka') {
+    cardLine = `Yogakaraka — rules kendra and trikona. Your most constructive planet.`;
+  } else if (fn === 'strong_benefic' && r.housesRuled.includes(1)) {
+    cardLine = `Your chart ruler — its condition shapes your overall self-expression.`;
+  } else if (fn === 'strong_benefic') {
+    cardLine = `Primary benefic for this lagna — rules the ${housesStr} house${r.housesRuled.length > 1 ? 's' : ''}.`;
+  } else if (fn === 'benefic') {
+    cardLine = `Kendra lord — rules the ${housesStr} house${r.housesRuled.length > 1 ? 's' : ''}. Stabilising role.`;
+  } else if (fn === 'malefic') {
+    const topWeak = r.weakDomains[0] ? DOMAIN_LABELS[r.weakDomains[0]] : null;
+    cardLine = `Rules the ${housesStr} — dusthana houses. Creates friction${topWeak ? ` particularly in ${topWeak.toLowerCase()}` : ''}.`;
+  } else if (fn === 'mixed' && lean === 'benefic_lean') {
+    cardLine = `Mixed ownership — leans positive.${topDomain ? ` ${topDomain} is the strongest area.` : ''}`;
+  } else if (fn === 'mixed' && lean === 'malefic_lean') {
+    const topWeak = r.weakDomains[0] ? DOMAIN_LABELS[r.weakDomains[0]] : null;
+    cardLine = `Mixed ownership — leans challenging.${topWeak ? ` ${topWeak} needs the most attention.` : ''}`;
+  } else if (fn === 'mixed' && lean === 'maraka_driven') {
+    cardLine = `Maraka planet — rules the 2nd and 7th. Life-sensitive in its own dasha.`;
+  } else if (fn === 'mixed') {
+    cardLine = `Mixed role — rules the ${housesStr} house${r.housesRuled.length > 1 ? 's' : ''}.${topDomain ? ` Best for ${topDomain.toLowerCase()}.` : ''}`;
+  } else if (isNode && r.nodeInheritance) {
+    const disp = r.nodeInheritance.dispositorName;
+    const houseNote = r.housePosition === 7 ? 'relationships' : r.housePosition === 1 ? 'your identity' : r.housePosition === 10 ? 'career' : r.housePosition === 4 ? 'home' : `the ${r.housePosition}${ord(r.housePosition)} house`;
+    cardLine = `${r.planet} in ${houseNote} — amplifies those themes. Strength inherited from ${disp}.`;
+  } else {
+    // True neutral — show placement + best domain
+    cardLine = `In the ${r.housePosition}${ord(r.housePosition)} house.${topDomain ? ` Most relevant for ${topDomain.toLowerCase()}.` : ''}`;
+  }
 
   // Top 3 relevant areas for the card
   const cardAreas = [
@@ -720,8 +757,8 @@ function PlanetCard({ r, pd, isSelected, onSelect }: {
         isSelected ? 'border-blue-400 shadow-sm ring-1 ring-blue-400/20 dark:border-blue-600'
                    : 'border-border hover:border-border/80 hover:shadow-sm')}>
 
-      {/* Top stripe = delivery colour */}
-      <div className="h-[3px]" style={{ background: delivGradeToColor(r.deliveryGrade) }} />
+      {/* Top stripe — 3 colours only: green/amber/red */}
+      <div className="h-[3px]" style={{ background: delivGradeToColor(r.deliveryGrade, r.structuralGrade) }} />
 
       <div className="p-4">
         {/* Header */}
@@ -959,15 +996,15 @@ export function PlanetsTab({ planets, ascendant, dashaInfo }: PlanetsTabProps) {
     for (const name of PLANET_ORDER) {
       const r = results[name];
       if (!r) continue;
-      g[fnToGroupKey(r.functionalNature, r.functionalLean)].push(name);
+      g[fnToGroupKey(r)].push(name);
     }
     return g;
   }, [results]);
 
   const GROUP_LABELS = {
-    working:    { label:'Generally working for you', dot:'#059669' },
-    mixed:      { label:'Mixed — depends on the area', dot:'#d97706' },
-    struggling: { label:'Facing challenges', dot:'#dc2626' },
+    working:    { label:'Delivering well for you', dot:'#059669' },
+    mixed:      { label:'Mixed — results come, but not consistently', dot:'#d97706' },
+    struggling: { label:'Blocked or distorted — needs awareness', dot:'#dc2626' },
   };
 
   return (
