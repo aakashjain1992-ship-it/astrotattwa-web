@@ -844,7 +844,7 @@ function CollapsibleSection({ title, children, defaultOpen = false, count }: {
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="border border-border rounded-xl overflow-hidden mt-3">
+    <div className="border border-border rounded-xl overflow-hidden mt-2 first:mt-0">
       <button
         type="button"
         onClick={() => setOpen(p => !p)}
@@ -967,7 +967,7 @@ function StorySection({ beats }: { beats: Beat[] }) {
             {/* Tag */}
             <div className="flex items-center gap-2 mb-2">
               <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: beat.dotColor }} />
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">{beat.tagLabel}</span>
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{beat.tagLabel}</span>
             </div>
             {/* Text paragraph */}
             {beat.text && (
@@ -1212,7 +1212,7 @@ function DrawerPanel({ r, pd, moonData, birthDateUtc, allPlanets, onClose }: {
         </div>
 
         {/* Body */}
-        <div className="px-5 py-2">
+        <div className="px-5 pt-3 pb-6 space-y-2">
 
           {/* Active dasha banner */}
           {isDasha && (
