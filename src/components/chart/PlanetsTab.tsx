@@ -840,18 +840,34 @@ function fmtRange(start: Date, end: Date): string {
 
 // ─── UI components ────────────────────────────────────────────────────────────
 
-function Section({ title, children, defaultOpen = false }: {
-  title: string; children: React.ReactNode; defaultOpen?: boolean;
+// ─── Collapsible section ─────────────────────────────────────────────────────
+
+function CollapsibleSection({ title, children, defaultOpen = false, count }: {
+  title: string; children: React.ReactNode; defaultOpen?: boolean; count?: number;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="border-t border-border pt-4 mt-4">
-      <button type="button" onClick={() => setOpen(p => !p)}
-        className="w-full flex items-center justify-between text-[11px] font-medium uppercase tracking-wide text-muted-foreground hover:text-foreground transition-colors mb-1">
-        {title}
-        {open ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+    <div className="border-t border-border">
+      <button
+        type="button"
+        onClick={() => setOpen(p => !p)}
+        className="w-full flex items-center justify-between py-3 px-0 text-left hover:opacity-80 transition-opacity"
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] font-medium text-foreground">{title}</span>
+          {count !== undefined && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">{count}</span>
+          )}
+        </div>
+        <ChevronDown className={cn('h-3.5 w-3.5 text-muted-foreground transition-transform duration-200', open && 'rotate-180')} />
       </button>
-      {open && <div className="mt-3">{children}</div>}
+      <div className={cn('grid transition-all duration-200 ease-in-out', open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]')}>
+        <div className="overflow-hidden">
+          <div className="pb-4">
+            {children}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1110,14 +1126,12 @@ function PlanetCard({ r, pd, isSelected, onSelect }: {
 
 // ─── Detail Panel ─────────────────────────────────────────────────────────────
 
-function DetailPanel({ r, pd, moonData, birthDateUtc, allPlanets, onClose }: {
+function DrawerPanel({ r, pd, moonData, birthDateUtc, allPlanets, onClose }: {
   r: PlanetStrengthResult; pd: PlanetData;
   moonData?: PlanetData; birthDateUtc?: string;
   allPlanets: Record<string, PlanetData>;
   onClose: () => void;
 }) {
-  const [showTech, setShowTech] = useState(false);
-
   const allMahas = useMemo((): MahaPeriod[] => {
     if (!moonData?.kp || !birthDateUtc) return [];
     try {
@@ -1139,127 +1153,158 @@ function DetailPanel({ r, pd, moonData, birthDateUtc, allPlanets, onClose }: {
   const isDasha  = r.temporalActivation.dashaBoostApplied;
 
   return (
-    <div className="col-span-full border border-blue-400/40 dark:border-blue-600/40 rounded-xl bg-card p-5 mt-1">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-5">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-lg">{GLYPH[r.planet]}</span>
-          <span className="font-medium text-base">{r.planet}</span>
+    <>
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 z-40 bg-black/25 dark:bg-black/50"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+
+      {/* Drawer */}
+      <div className={cn(
+        'fixed top-0 right-0 z-50 h-full overflow-y-auto',
+        'w-full sm:w-[42%] sm:min-w-[420px] sm:max-w-[600px]',
+        'bg-background border-l border-border shadow-2xl',
+        'flex flex-col',
+      )}>
+
+        {/* Sticky header */}
+        <div className="sticky top-0 z-10 bg-background border-b border-border px-5 py-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <span className="text-xl leading-none">{GLYPH[r.planet]}</span>
+              <span className="font-medium text-[15px]">{r.planet}</span>
+              {isDasha && (
+                <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 font-semibold border border-blue-200 dark:border-blue-700">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                  Active now
+                </span>
+              )}
+            </div>
+            <button
+              onClick={onClose}
+              className="flex-shrink-0 p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+              aria-label="Close"
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+            </button>
+          </div>
+
+          {/* 3-block summary */}
+          <div className="grid grid-cols-3 gap-2 mt-3">
+            <div className="bg-muted/50 rounded-lg p-2.5">
+              <div className="text-[9px] text-muted-foreground uppercase tracking-wide mb-1">Strength</div>
+              <div className="text-[12px] font-medium" style={{ color: strColor }}>{strGradeToWord(r.structuralGrade)}</div>
+              <div className="text-[10px] text-muted-foreground mt-0.5">{dignityShort(r.dignityLevel)}</div>
+            </div>
+            <div className="bg-muted/50 rounded-lg p-2.5">
+              <div className="text-[9px] text-muted-foreground uppercase tracking-wide mb-1">Delivery</div>
+              <div className="text-[12px] font-medium" style={{ color: delivGradeToColor(r.deliveryGrade, r.structuralGrade) }}>{delivGradeToWord(r.deliveryGrade)}</div>
+              <div className="text-[10px] text-muted-foreground mt-0.5">{pd.kp?.nakshatraName ?? pd.sign}</div>
+            </div>
+            <div className="bg-muted/50 rounded-lg p-2.5">
+              <div className="text-[9px] text-muted-foreground uppercase tracking-wide mb-1">Top areas</div>
+              <div className="text-[11px] font-medium leading-tight">
+                {[...r.strongDomains, ...r.mixedDomains].slice(0, 2).map(d => DOMAIN_LABELS[d]).join(', ') || 'General'}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Scrollable body */}
+        <div className="flex-1 px-5 py-2">
+
+          {/* Active dasha banner */}
           {isDasha && (
-            <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 font-semibold border border-blue-200 dark:border-blue-700">
-              <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-              Active in your life right now
-            </span>
+            <div className="bg-blue-50 border border-blue-200 dark:bg-blue-900/20 dark:border-blue-700 rounded-lg px-4 py-3 my-4">
+              <div className="text-[10px] font-medium text-blue-700 dark:text-blue-300 uppercase tracking-wide mb-1">Shaping your life right now</div>
+              <p className="text-[12px] text-blue-900 dark:text-blue-200 leading-relaxed">
+                {r.planet}'s period is active. The reading below describes what is happening in your life at this moment — not just in theory.
+              </p>
+            </div>
           )}
-        </div>
-        <button onClick={onClose} className="text-xs text-muted-foreground hover:text-foreground px-2.5 py-1.5 rounded-lg border border-border hover:bg-muted transition-colors">
-          Close
-        </button>
-      </div>
 
-      {/* 3-block summary */}
-      <div className="grid grid-cols-3 gap-3 mb-5">
-        <div className="bg-muted/40 rounded-lg p-3">
-          <div className="text-[9px] text-muted-foreground uppercase tracking-wide mb-1.5">In your chart</div>
-          <div className="text-[13px] font-medium" style={{ color: strColor }}>{strGradeToWord(r.structuralGrade)}</div>
-          <div className="text-[10px] text-muted-foreground mt-0.5">{dignityShort(r.dignityLevel)}</div>
-        </div>
-        <div className="bg-muted/40 rounded-lg p-3">
-          <div className="text-[9px] text-muted-foreground uppercase tracking-wide mb-1.5">How it delivers</div>
-          <div className="text-[13px] font-medium" style={{ color: delivGradeToColor(r.deliveryGrade, r.structuralGrade) }}>{delivGradeToWord(r.deliveryGrade)}</div>
-          <div className="text-[10px] text-muted-foreground mt-0.5">{pd.kp?.nakshatraName ?? pd.sign}</div>
-        </div>
-        <div className="bg-muted/40 rounded-lg p-3">
-          <div className="text-[9px] text-muted-foreground uppercase tracking-wide mb-1.5">Main areas</div>
-          <div className="text-[12px] font-medium leading-tight">
-            {[...r.strongDomains, ...r.mixedDomains].slice(0, 2).map(d => DOMAIN_LABELS[d]).join(', ') || 'General influence'}
-          </div>
-        </div>
-      </div>
+          {/* In your chart — open by default */}
+          <CollapsibleSection title="In your chart" defaultOpen={true}>
+            <StorySection beats={beats} />
+          </CollapsibleSection>
 
-      {/* In your chart — beat story */}
-      <div className="mb-5">
-        <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-3">In your chart</div>
-        <StorySection beats={beats} />
-      </div>
+          {/* What this means — open by default */}
+          <CollapsibleSection title="What this means for you" defaultOpen={true} count={meanings.length}>
+            <div className="space-y-2.5 pt-1">
+              {meanings.map((m, i) => (
+                <div key={i} className="border border-border rounded-xl overflow-hidden">
+                  <div className="flex items-center gap-3 px-3.5 py-2.5 bg-muted/30">
+                    <span className="text-sm leading-none">{m.icon}</span>
+                    <span className="text-[12px] font-medium flex-1">{m.area}</span>
+                    <SignalBadge type={m.signalType} label={m.signal} />
+                  </div>
+                  <div className="px-3.5 py-2.5 border-t border-border">
+                    <p className="text-[12px] leading-relaxed font-medium mb-1">{m.what}</p>
+                    <p className="text-[11px] text-muted-foreground leading-relaxed">{m.why}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CollapsibleSection>
 
-      {/* What this means */}
-      <div className="mb-5">
-        <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-3">What this means for you</div>
-        <div className="space-y-3">
-          {meanings.map((m, i) => (
-            <div key={i} className="border border-border rounded-xl overflow-hidden">
-              <div className="flex items-center gap-3 px-4 py-3 bg-muted/30">
-                <span className="text-base leading-none">{m.icon}</span>
-                <span className="text-[12px] font-medium flex-1">{m.area}</span>
-                <SignalBadge type={m.signalType} label={m.signal} />
+          {/* Dasha — collapsed by default */}
+          {timeline.length > 0 && (
+            <CollapsibleSection title={`When does ${r.planet} give results?`} defaultOpen={false} count={timeline.length}>
+              <p className="text-[12px] text-muted-foreground mb-3 leading-relaxed pt-1">
+                Current and upcoming periods only — past periods not shown.
+              </p>
+              <div className="space-y-2">
+                {timeline.map((item, i) => <DashaPill key={i} item={item} />)}
               </div>
-              <div className="px-4 py-3 border-t border-border">
-                <p className="text-[13px] leading-relaxed font-medium mb-1.5">{m.what}</p>
-                <p className="text-[12px] text-muted-foreground leading-relaxed">{m.why}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Dasha timeline */}
-      {timeline.length > 0 && (
-        <div className="mb-5">
-          <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1.5">When does {r.planet} give results?</div>
-          <p className="text-[12px] text-muted-foreground mb-3 leading-relaxed">
-            Current and upcoming periods only. Planets deliver results most strongly during their own periods and sub-periods.
-          </p>
-          <div className="space-y-2">
-            {timeline.map((item, i) => <DashaPill key={i} item={item} />)}
-          </div>
-        </div>
-      )}
-
-      {/* All life areas */}
-      <Section title={`All life areas — ${r.planet}`}>
-        <div className="space-y-2">
-          {r.strongDomains.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[10px] text-muted-foreground min-w-[56px]">Works well</span>
-              {r.strongDomains.map(d => <AreaTag key={d} domain={d} type="strong" />)}
-            </div>
+            </CollapsibleSection>
           )}
-          {r.mixedDomains.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[10px] text-muted-foreground min-w-[56px]">Mixed</span>
-              {r.mixedDomains.map(d => <AreaTag key={d} domain={d} type="mixed" />)}
-            </div>
-          )}
-          {r.weakDomains.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[10px] text-muted-foreground min-w-[56px]">Difficult</span>
-              {r.weakDomains.map(d => <AreaTag key={d} domain={d} type="weak" />)}
-            </div>
-          )}
-        </div>
-      </Section>
 
-      {/* For astrologers */}
-      <div className="mt-4">
-        <button type="button" onClick={() => setShowTech(p => !p)}
-          className="text-[11px] text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors">
-          {showTech ? 'Hide technical details' : 'For astrologers — technical details'}
-        </button>
-        {showTech && (
-          <div className="mt-3 bg-muted/30 rounded-lg border border-border p-4">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+          {/* All life areas — collapsed by default */}
+          <CollapsibleSection
+            title="All life areas"
+            defaultOpen={false}
+            count={r.strongDomains.length + r.mixedDomains.length + r.weakDomains.length}
+          >
+            <div className="space-y-2 pt-1">
+              {r.strongDomains.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[10px] text-muted-foreground min-w-[48px]">Works well</span>
+                  {r.strongDomains.map(d => <AreaTag key={d} domain={d} type="strong" />)}
+                </div>
+              )}
+              {r.mixedDomains.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[10px] text-muted-foreground min-w-[48px]">Mixed</span>
+                  {r.mixedDomains.map(d => <AreaTag key={d} domain={d} type="mixed" />)}
+                </div>
+              )}
+              {r.weakDomains.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[10px] text-muted-foreground min-w-[48px]">Difficult</span>
+                  {r.weakDomains.map(d => <AreaTag key={d} domain={d} type="weak" />)}
+                </div>
+              )}
+            </div>
+          </CollapsibleSection>
+
+          {/* For astrologers — collapsed by default */}
+          <CollapsibleSection title="For astrologers — technical details" defaultOpen={false}>
+            <div className="grid grid-cols-2 gap-2 pt-1 mb-3">
               {([
-                ['Dignity', dignityShort(r.dignityLevel)],
-                ['House', `${r.housePosition}${ord(r.housePosition)}`],
+                ['Dignity',    dignityShort(r.dignityLevel)],
+                ['House',      `${r.housePosition}${ord(r.housePosition)}`],
                 ['Functional', r.functionalNature.replace(/_/g,' ')],
-                ['Condition', r.conditionGrade.replace(/_/g,' ')],
-                ['D9', dignityShort(r.vargaAssessment.d9DignityLevel)],
-                ['Delivery', r.deliveryGrade.replace(/_/g,' ')],
+                ['Condition',  r.conditionGrade.replace(/_/g,' ')],
+                ['D9',         dignityShort(r.vargaAssessment.d9DignityLevel)],
+                ['Delivery',   r.deliveryGrade.replace(/_/g,' ')],
                 ['Natal rank', `#${r.natalPriorityRank}`],
                 ['Confidence', r.assessmentConfidence],
               ] as [string,string][]).map(([k, v]) => (
-                <div key={k}>
+                <div key={k} className="bg-muted/40 rounded-lg px-3 py-2">
                   <div className="text-[9px] text-muted-foreground mb-0.5">{k}</div>
                   <div className="text-[11px] font-medium">{v}</div>
                 </div>
@@ -1268,12 +1313,15 @@ function DetailPanel({ r, pd, moonData, birthDateUtc, allPlanets, onClose }: {
             {r.analystNote && (
               <p className="text-[11px] text-muted-foreground leading-relaxed border-t border-border pt-3">{r.analystNote}</p>
             )}
-          </div>
-        )}
+          </CollapsibleSection>
+
+          <div className="h-8" />
+        </div>
       </div>
-    </div>
+    </>
   );
 }
+
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
@@ -1316,13 +1364,6 @@ export function PlanetsTab({ planets, ascendant, dashaInfo, birthDate }: Planets
       {(['working','mixed','struggling'] as const).map(gk => {
         const planetNames = groups[gk]; if (!planetNames.length) return null;
         const { label, dot } = GROUP_LABELS[gk];
-
-        const items: Array<{ type:'card'|'detail'; name: string }> = [];
-        planetNames.forEach(name => {
-          items.push({ type:'card', name });
-          if (selected === name) items.push({ type:'detail', name });
-        });
-
         return (
           <div key={gk}>
             <div className="flex items-center gap-2 mb-3">
@@ -1330,36 +1371,36 @@ export function PlanetsTab({ planets, ascendant, dashaInfo, birthDate }: Planets
               <span className="text-[11px] font-medium text-muted-foreground">{label}</span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {items.map(item => {
-                if (item.type === 'detail') {
-                  const r  = results[item.name];
-                  const pd = planets[item.name] as PlanetData | undefined;
-                  if (!r || !pd) return null;
-                  return (
-                    <div key={`d-${item.name}`} className="col-span-1 sm:col-span-2 lg:col-span-3">
-                      <DetailPanel
-                        r={r} pd={pd}
-                        moonData={planets['Moon'] as PlanetData | undefined}
-                        birthDateUtc={birthDate}
-                        allPlanets={planets}
-                        onClose={() => setSelected(null)}
-                      />
-                    </div>
-                  );
-                }
-                const r  = results[item.name];
-                const pd = planets[item.name] as PlanetData | undefined;
+              {planetNames.map(name => {
+                const r  = results[name];
+                const pd = planets[name] as PlanetData | undefined;
                 if (!r || !pd) return null;
                 return (
-                  <PlanetCard key={item.name} r={r} pd={pd}
-                    isSelected={selected === item.name}
-                    onSelect={() => setSelected(p => p === item.name ? null : item.name)} />
+                  <PlanetCard key={name} r={r} pd={pd}
+                    isSelected={selected === name}
+                    onSelect={() => setSelected(p => p === name ? null : name)} />
                 );
               })}
             </div>
           </div>
         );
       })}
+
+      {/* Drawer — rendered outside the grid so it floats over the page */}
+      {selected && (() => {
+        const r  = results[selected];
+        const pd = planets[selected] as PlanetData | undefined;
+        if (!r || !pd) return null;
+        return (
+          <DrawerPanel
+            r={r} pd={pd}
+            moonData={planets['Moon'] as PlanetData | undefined}
+            birthDateUtc={birthDate}
+            allPlanets={planets}
+            onClose={() => setSelected(null)}
+          />
+        );
+      })()}
     </div>
   );
 }
