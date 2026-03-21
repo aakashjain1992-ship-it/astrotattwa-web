@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { assessAllPlanets, getNaturalRelationship } from '@/lib/astrology/strength';
 import type { PlanetStrengthResult, StructuralGrade, DeliveryGrade, Domain, FunctionalNature, FunctionalLean } from '@/lib/astrology/strength';
 import type { PlanetData, AscendantData, ChartDashaData } from '@/types/astrology';
-import { calculateAntardashas, calculatePratyantars, calculateSookshmas } from '@/lib/astrology/kp/dasa';
+import { calculateAntardashas, calculatePratyantars, calculateSookshmas, vimshottariDasha } from '@/lib/astrology/kp/dasa';
 import { DASHA_ORDER, DASHA_YEARS } from '@/lib/astrology/kp/constants';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -480,17 +480,23 @@ function dashaReason(
   return `${planet} activates as a ${levelLabel} within ${enclosingStr}'s period. ${relNote} Mixed results — some things move, others stall.`;
 }
 
+interface MahaPeriod {
+  planet: string;
+  startUtc: string;
+  endUtc: string;
+}
+
 function buildDashaTimeline(
   planet: string,
   r: PlanetStrengthResult,
-  dashaInfo?: ChartDashaData
+  allMahas: MahaPeriod[]
 ): DashaWindowItem[] {
   const items: DashaWindowItem[] = [];
-  if (!dashaInfo?.allMahadashas?.length) return items;
+  if (!allMahas.length) return items;
 
   const now = new Date();
 
-  for (const maha of dashaInfo.allMahadashas) {
+  for (const maha of allMahas) {
     const mahaStart  = new Date(maha.startUtc);
     const mahaEnd    = new Date(maha.endUtc);
     const mahaActive = now >= mahaStart && now <= mahaEnd;
@@ -809,13 +815,34 @@ function PlanetCard({ r, pd, isSelected, onSelect }: {
 
 // ─── Detail Panel ─────────────────────────────────────────────────────────────
 
-function DetailPanel({ r, pd, dashaInfo, onClose }: {
-  r: PlanetStrengthResult; pd: PlanetData; dashaInfo?: ChartDashaData; onClose: () => void;
+function DetailPanel({ r, pd, moonData, birthDateUtc, onClose }: {
+  r: PlanetStrengthResult; pd: PlanetData;
+  moonData?: PlanetData; birthDateUtc?: string;
+  onClose: () => void;
 }) {
   const [showTech, setShowTech] = useState(false);
   const story    = useMemo(() => buildInYourChart(r, pd, pd.signNumber), [r, pd]);
   const meanings = useMemo(() => buildWhatThisMeans(r, pd), [r, pd]);
-  const timeline = useMemo(() => buildDashaTimeline(r.planet, r, dashaInfo), [r, dashaInfo]);
+
+  // Compute all mahadashas client-side from Moon KP data
+  const allMahas = useMemo((): MahaPeriod[] => {
+    if (!moonData?.kp || !birthDateUtc) return [];
+    try {
+      const result = vimshottariDasha(
+        moonData.longitude,
+        new Date(birthDateUtc),
+        moonData.kp.elapsedFractionOfNakshatra,
+        moonData.kp.nakshatraLord as any
+      );
+      return (result.allMahadashas ?? []).map((m: any) => ({
+        planet: m.lord,
+        startUtc: m.startUtc,
+        endUtc: m.endUtc,
+      }));
+    } catch { return []; }
+  }, [moonData, birthDateUtc]);
+
+  const timeline = useMemo(() => buildDashaTimeline(r.planet, r, allMahas), [r, allMahas]);
 
   const strColor  = strGradeToColor(r.structuralGrade);
   const isDasha   = r.temporalActivation.dashaBoostApplied;
@@ -975,7 +1002,7 @@ function DetailPanel({ r, pd, dashaInfo, onClose }: {
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
-export function PlanetsTab({ planets, ascendant, dashaInfo }: PlanetsTabProps) {
+export function PlanetsTab({ planets, ascendant, dashaInfo, birthDate }: PlanetsTabProps) {
   const [selected, setSelected] = useState<string | null>(null);
 
   // Build dasha context for engine
@@ -1046,7 +1073,10 @@ export function PlanetsTab({ planets, ascendant, dashaInfo }: PlanetsTabProps) {
                   if (!r || !pd) return null;
                   return (
                     <div key={`d-${item.name}`} className="col-span-1 sm:col-span-2 lg:col-span-3">
-                      <DetailPanel r={r} pd={pd} dashaInfo={dashaInfo} onClose={() => setSelected(null)} />
+                      <DetailPanel r={r} pd={pd}
+                        moonData={planets['Moon'] as PlanetData | undefined}
+                        birthDateUtc={birthDate}
+                        onClose={() => setSelected(null)} />
                     </div>
                   );
                 }
