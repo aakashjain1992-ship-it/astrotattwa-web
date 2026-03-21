@@ -610,41 +610,70 @@ function buildDomainWhy(
   planet: string, domain: Domain, type: 'strong'|'mixed'|'weak',
   r: PlanetStrengthResult, pd: PlanetData
 ): string {
-  const parts: string[] = [];
   const houseForDomain: Partial<Record<Domain,number>> = {
     self:1, wealth:2, siblings:3, home:4, children:5, health:6,
     marriage:7, longevity:8, fortune:9, career:10, gains:11, liberation:12,
   };
   const dHouse = houseForDomain[domain];
+  const fn     = r.functionalNature;
+  const dg     = r.deliveryGrade;
+  const cg     = r.conditionGrade;
+  const sign   = pd.sign;
 
+  // Build a specific why — ownership first, then the most relevant modifier for THIS domain
+  const parts: string[] = [];
+
+  // 1. Ownership / placement
   if (dHouse && r.housesRuled.includes(dHouse)) {
-    parts.push(`${planet} directly rules the ${dHouse}${ord(dHouse)} house — the house of ${(DOMAIN_LABELS[domain] ?? domain).toLowerCase()}`);
+    parts.push(`${planet} directly rules your ${dHouse}${ord(dHouse)} house — ${(DOMAIN_LABELS[domain] ?? domain).toLowerCase()} is its responsibility in your chart`);
   } else if (dHouse && r.housePosition === dHouse) {
-    parts.push(`${planet} is placed in the ${dHouse}${ord(dHouse)} house — activating its themes directly`);
-  }
-
-  if (r.conditionGrade === 'supported' || r.conditionGrade === 'clean') {
-    parts.push(`clean condition — it can express itself without major interference`);
-  } else if (r.conditionGrade === 'afflicted') {
-    parts.push(`afflicted condition — there is external interference in how it operates`);
+    parts.push(`${planet} is placed in the ${dHouse}${ord(dHouse)} house, activating ${(DOMAIN_LABELS[domain] ?? domain).toLowerCase()} themes directly`);
   } else {
-    parts.push(`heavily afflicted or distorted condition — significant interference in expression`);
+    // Karakatwa (natural signification)
+    const KARAKAS: Partial<Record<string, string>> = {
+      Sun:     'father, authority, and vitality',
+      Moon:    'mind, mother, and emotional wellbeing',
+      Mars:    'siblings, energy, and property',
+      Mercury: 'intellect and communication',
+      Jupiter: 'children, wisdom, and fortune',
+      Venus:   'relationships, pleasure, and comfort',
+      Saturn:  'longevity, discipline, and karma',
+      Rahu:    'foreign matters, ambition, and disruption',
+      Ketu:    'spirituality, detachment, and past karma',
+    };
+    const karaka = KARAKAS[planet];
+    if (karaka && karaka.toLowerCase().includes(domain.replace('_',' '))) {
+      parts.push(`${planet} is the natural significator of ${karaka}`);
+    } else {
+      parts.push(`${planet}'s placement in ${sign} connects it to ${(DOMAIN_LABELS[domain] ?? domain).toLowerCase()} themes`);
+    }
   }
 
-  if (r.deliveryGrade === 'obstructed' || r.deliveryGrade === 'distorted_delivery') {
-    parts.push(`delivery is blocked or distorted, limiting what reaches your life`);
-  } else if (r.deliveryGrade === 'reliable') {
-    parts.push(`results deliver reliably`);
-  } else if (r.deliveryGrade === 'delayed') {
-    parts.push(`results arrive with delay — patience is the key`);
+  // 2. The most relevant modifier — specific to this domain's quality
+  if (type === 'strong') {
+    if (dg === 'reliable') parts.push(`it delivers here reliably — good results tend to come`);
+    else if (dg === 'delayed') parts.push(`results come, but patience is needed — not quick wins`);
+    else if (fn === 'yogakaraka' || fn === 'strong_benefic') parts.push(`as your chart's primary benefic, its positive themes tend to reach this area`);
+    else parts.push(`despite delivery challenges, the ownership gives it direct relevance here`);
+  } else if (type === 'mixed') {
+    if (cg === 'afflicted' || cg === 'heavily_afflicted') parts.push(`affliction in the chart creates interference — good periods mix with difficult ones`);
+    else if (dg === 'inconsistent') parts.push(`delivery is inconsistent — this area has good periods followed by quieter ones`);
+    else if (fn === 'mixed') parts.push(`its mixed house lordship means this area gets both support and friction`);
+    else parts.push(`competing influences create a mixed experience here`);
+  } else {
+    // type === 'weak'
+    if (cg === 'distorted' || cg === 'heavily_afflicted') parts.push(`its distorted condition means energy in this area arrives in an amplified or irregular form`);
+    else if (dg === 'obstructed' || dg === 'distorted_delivery') parts.push(`delivery is obstructed — this area faces the most direct impact of ${planet}'s challenges`);
+    else if (fn === 'malefic') parts.push(`as a functional malefic for your lagna, its activation tends to bring friction to this house`);
+    else parts.push(`the combination of its placement and condition makes this the most difficult area`);
   }
 
+  // 3. D9 note for marriage only
   if (domain === 'marriage' && r.vargaAssessment.hasD9SecondPass && r.vargaAssessment.d9Contradicts) {
-    parts.push(`the Navamsa (D9) specifically weakens this planet for relationship matters`);
+    parts.push(`the Navamsa (D9) specifically contradicts — inner reliability for relationships is low`);
   }
 
-  if (!parts.length) return `${planet}'s placement and condition shape this area.`;
-  return parts.map((p, i) => i === 0 ? cap(p) : p).join('; ') + '.';
+  return parts.map((p, i) => i === 0 ? cap(p) : p).join('. ') + '.';
 }
 
 // ─── Dasha Timeline ───────────────────────────────────────────────────────────
@@ -654,7 +683,7 @@ interface MahaPeriod { planet: string; startUtc: string; endUtc: string; }
 interface DashaWindowItem {
   mahaLord: string; antarLord: string | null; pratyLord: string | null; sookshmaLord: string | null;
   level: 'maha'|'antar'|'pratyantar'|'sookshma';
-  dateRange: string; isActive: boolean;
+  dateRange: string; startUtcRaw: string; isActive: boolean;
   quality: 'great'|'good'|'moderate'|'difficult';
   reason: string;
 }
@@ -719,46 +748,48 @@ function dashaReason(
   }
   return `${planet} activates as a ${levelLabel} within ${enclosingStr}'s period.${relNote} Mixed results — some things move, others stall.`;
 }
-
 function buildDashaTimeline(
   planet: string, r: PlanetStrengthResult, allMahas: MahaPeriod[]
 ): DashaWindowItem[] {
   const items: DashaWindowItem[] = [];
   if (!allMahas.length) return items;
 
-  const now = new Date();
-  // Only consider mahadashas that haven't ended yet
+  const now         = new Date();
+  const tenYearsOut = new Date(now.getTime() + 10 * 365.25 * 24 * 60 * 60 * 1000);
+
+  function push(
+    startDate: Date, endDate: Date,
+    mahaLord: string, antarLord: string|null, pratyLord: string|null, sookshmaLord: string|null,
+    level: DashaWindowItem["level"], quality: DashaWindowItem["quality"]
+  ) {
+    const isActive = now >= startDate && now <= endDate;
+    if (!isActive && startDate > tenYearsOut) return;
+    if (endDate <= now) return;
+    items.push({
+      mahaLord, antarLord, pratyLord, sookshmaLord,
+      level, dateRange: fmtRange(startDate, endDate),
+      startUtcRaw: startDate.toISOString(),
+      isActive, quality,
+      reason: dashaReason(planet, level, mahaLord, antarLord, pratyLord, sookshmaLord, quality, r),
+    });
+  }
+
   const futureMahas = allMahas.filter(m => new Date(m.endUtc) > now);
 
   for (const maha of futureMahas) {
-    const mahaStart  = new Date(maha.startUtc);
-    const mahaEnd    = new Date(maha.endUtc);
-    const mahaActive = now >= mahaStart && now <= mahaEnd;
+    const mahaStart = new Date(maha.startUtc);
+    const mahaEnd   = new Date(maha.endUtc);
 
     if (maha.planet === planet) {
       const quality = dashaQuality(planet, r, [planet]);
-      items.push({
-        mahaLord: planet, antarLord: null, pratyLord: null, sookshmaLord: null,
-        level: 'maha', dateRange: fmtRange(mahaStart, mahaEnd),
-        isActive: mahaActive, quality,
-        reason: dashaReason(planet, 'maha', planet, null, null, null, quality, r),
-      });
+      push(mahaStart, mahaEnd, planet, null, null, null, "maha", quality);
       try {
         const antars = calculateAntardashas(maha.planet as any, maha.startUtc, maha.endUtc);
         for (const antar of antars) {
-          if (new Date(antar.endUtc) <= now) continue; // skip past antars
-          const aStart  = new Date(antar.startUtc);
-          const aEnd    = new Date(antar.endUtc);
-          const aActive = now >= aStart && now <= aEnd;
-          const aQual   = dashaQuality(planet, r, [maha.planet, antar.lord]);
-          if (aActive || aQual === 'great' || aQual === 'good') {
-            items.push({
-              mahaLord: maha.planet, antarLord: antar.lord, pratyLord: null, sookshmaLord: null,
-              level: 'antar', dateRange: fmtRange(aStart, aEnd),
-              isActive: aActive, quality: aQual,
-              reason: dashaReason(planet, 'antar', maha.planet, antar.lord, null, null, aQual, r),
-            });
-          }
+          const aS = new Date(antar.startUtc), aE = new Date(antar.endUtc);
+          const aQ = dashaQuality(planet, r, [maha.planet, antar.lord]);
+          const aActive = now >= aS && now <= aE;
+          if (aActive || aQ === "great" || aQ === "good") push(aS, aE, maha.planet, antar.lord, null, null, "antar", aQ);
         }
       } catch { /* skip */ }
       continue;
@@ -768,67 +799,33 @@ function buildDashaTimeline(
       const antars = calculateAntardashas(maha.planet as any, maha.startUtc, maha.endUtc);
       for (const antar of antars) {
         if (antar.lord !== planet) continue;
-        if (new Date(antar.endUtc) <= now) continue; // skip past antars
-        const aStart  = new Date(antar.startUtc);
-        const aEnd    = new Date(antar.endUtc);
-        const aActive = now >= aStart && now <= aEnd;
-        const aQual   = dashaQuality(planet, r, [maha.planet, planet]);
-        items.push({
-          mahaLord: maha.planet, antarLord: planet, pratyLord: null, sookshmaLord: null,
-          level: 'antar', dateRange: fmtRange(aStart, aEnd),
-          isActive: aActive, quality: aQual,
-          reason: dashaReason(planet, 'antar', maha.planet, planet, null, null, aQual, r),
-        });
-
+        const aS = new Date(antar.startUtc), aE = new Date(antar.endUtc);
+        if (aE <= now || aS > tenYearsOut) continue;
+        const aQ = dashaQuality(planet, r, [maha.planet, planet]);
+        push(aS, aE, maha.planet, planet, null, null, "antar", aQ);
         try {
           const pratys = calculatePratyantars(maha.planet as any, antar.lord as any, antar.startUtc, antar.endUtc);
           for (const praty of pratys) {
             if (praty.lord !== planet) continue;
-            if (new Date(praty.endUtc) <= now) continue;
-            const pStart  = new Date(praty.startUtc);
-            const pEnd    = new Date(praty.endUtc);
-            const pActive = now >= pStart && now <= pEnd;
-            const pQual   = dashaQuality(planet, r, [maha.planet, antar.lord, planet]);
-            items.push({
-              mahaLord: maha.planet, antarLord: antar.lord, pratyLord: planet, sookshmaLord: null,
-              level: 'pratyantar', dateRange: fmtRange(pStart, pEnd),
-              isActive: pActive, quality: pQual,
-              reason: dashaReason(planet, 'pratyantar', maha.planet, antar.lord, planet, null, pQual, r),
-            });
-
-            try {
-              const sooks = calculateSookshmas(maha.planet as any, antar.lord as any, praty.lord as any, praty.startUtc, praty.endUtc);
-              for (const sook of sooks) {
-                if (sook.lord !== planet) continue;
-                if (new Date(sook.endUtc) <= now) continue;
-                const sStart  = new Date(sook.startUtc);
-                const sEnd    = new Date(sook.endUtc);
-                const sActive = now >= sStart && now <= sEnd;
-                const sQual   = dashaQuality(planet, r, [maha.planet, antar.lord, praty.lord, planet]);
-                items.push({
-                  mahaLord: maha.planet, antarLord: antar.lord, pratyLord: praty.lord,
-                  sookshmaLord: planet, level: 'sookshma',
-                  dateRange: fmtRange(sStart, sEnd), isActive: sActive, quality: sQual,
-                  reason: dashaReason(planet, 'sookshma', maha.planet, antar.lord, praty.lord, planet, sQual, r),
-                });
-              }
-            } catch { /* skip */ }
+            const pS = new Date(praty.startUtc), pE = new Date(praty.endUtc);
+            const pActive = now >= pS && now <= pE;
+            const pQ = dashaQuality(planet, r, [maha.planet, antar.lord, planet]);
+            if (pActive || (pS <= tenYearsOut && pE > now)) push(pS, pE, maha.planet, antar.lord, planet, null, "pratyantar", pQ);
           }
         } catch { /* skip */ }
       }
     } catch { /* skip */ }
   }
 
-  const LEVEL_ORDER = { maha:0, antar:1, pratyantar:2, sookshma:3 };
-  const QUAL_ORDER  = { great:0, good:1, moderate:2, difficult:3 };
-  return items.sort((a, b) => {
-    if (a.isActive && !b.isActive) return -1;
-    if (!a.isActive && b.isActive) return 1;
-    const qDiff = QUAL_ORDER[a.quality] - QUAL_ORDER[b.quality];
-    if (qDiff !== 0) return qDiff;
-    return LEVEL_ORDER[a.level] - LEVEL_ORDER[b.level];
-  }).slice(0, 12);
+  return items
+    .sort((a, b) => {
+      if (a.isActive && !b.isActive) return -1;
+      if (!a.isActive && b.isActive) return 1;
+      return new Date(a.startUtcRaw).getTime() - new Date(b.startUtcRaw).getTime();
+    })
+    .slice(0, 8);
 }
+
 
 function fmtRange(start: Date, end: Date): string {
   const y = (d: Date) => d.getFullYear().toString();
@@ -1083,7 +1080,6 @@ function PlanetCard({ r, pd, isSelected, onSelect }: {
       className={cn('w-full text-left rounded-xl border overflow-hidden bg-card transition-all',
         isSelected ? 'border-blue-400 shadow-sm ring-1 ring-blue-400/20 dark:border-blue-600'
                    : 'border-border hover:border-border/80 hover:shadow-sm')}>
-      <div className="h-[3px]" style={{ background: delivGradeToColor(r.deliveryGrade, r.structuralGrade) }} />
       <div className="p-4">
         <div className="flex items-start gap-3 mb-3">
           <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center text-base flex-shrink-0">
@@ -1167,14 +1163,15 @@ function DrawerPanel({ r, pd, moonData, birthDateUtc, allPlanets, onClose }: {
         'w-full sm:w-[42%] sm:min-w-[420px] sm:max-w-[600px]',
         'bg-background border-l border-border shadow-2xl',
         'flex flex-col',
+        'pt-16', // clear the site navbar
       )}>
 
         {/* Sticky header */}
-        <div className="sticky top-0 z-10 bg-background border-b border-border px-5 py-4">
+        <div className="sticky top-16 z-10 bg-background border-b border-border px-5 py-4">
           <div className="flex items-start justify-between gap-3">
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <span className="text-xl leading-none">{GLYPH[r.planet]}</span>
-              <span className="font-medium text-[15px]">{r.planet}</span>
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="text-2xl leading-none">{GLYPH[r.planet]}</span>
+              <span className="font-semibold text-[22px] tracking-tight">{r.planet}</span>
               {isDasha && (
                 <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 font-semibold border border-blue-200 dark:border-blue-700">
                   <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
