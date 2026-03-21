@@ -23,7 +23,8 @@ export type { DomainKarakaContext, PlanetDomainContext } from './domainEngine';
 export { getDignityLabel, getPositionalScore, getSimpleDignity } from './dignityEngine';
 export { computeFunctionalNature, getHousesRuled, isMarakaCapable, getLordOfSignPublic } from './functionalNature';
 export { checkNeechaBhanga } from './neechaBhanga';
-export { getAspectInfo, getAspectedSigns, getConjunctions, degreeDiff } from './aspectEngine';
+export { getAspectInfo, getAspectedSigns, getConjunctions, degreeDiff,
+         getWeightedConjunctionScore, getWeightedAspectScore } from './aspectEngine';
 export { getNaturalRelationship } from './relationships';
 export { computeNodeInheritance } from './nodeInheritance';
 export { computeNakshatraInfluence } from './nakshatraLayer';
