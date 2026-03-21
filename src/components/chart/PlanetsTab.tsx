@@ -1157,17 +1157,17 @@ function DrawerPanel({ r, pd, moonData, birthDateUtc, allPlanets, onClose }: {
         aria-hidden="true"
       />
 
-      {/* Drawer — starts below the site navbar */}
+      {/* Drawer — starts below the site navbar, outer div is the scroll container */}
       <div className={cn(
         'fixed top-16 right-0 z-50',
-        'h-[calc(100vh-4rem)]', // full height minus navbar
+        'h-[calc(100vh-4rem)]',
         'w-full sm:w-[42%] sm:min-w-[420px] sm:max-w-[600px]',
         'bg-background border-l border-border shadow-2xl',
-        'flex flex-col overflow-hidden', // overflow-hidden on outer, scroll on inner
+        'overflow-y-auto', // THIS is the scroll container
       )}>
 
-        {/* Sticky header — top-0 works correctly inside a flex column */}
-        <div className="flex-shrink-0 bg-background border-b border-border px-5 py-4">
+        {/* Header — sticky top-0 relative to the scroll container above */}
+        <div className="sticky top-0 z-10 bg-background border-b border-border px-5 py-4">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3 flex-wrap">
               <span className="text-2xl leading-none">{GLYPH[r.planet]}</span>
@@ -1211,8 +1211,8 @@ function DrawerPanel({ r, pd, moonData, birthDateUtc, allPlanets, onClose }: {
           </div>
         </div>
 
-        {/* Scrollable body */}
-        <div className="flex-1 overflow-y-auto px-5 py-2">
+        {/* Body */}
+        <div className="px-5 py-2">
 
           {/* Active dasha banner */}
           {isDasha && (
