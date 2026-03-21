@@ -324,9 +324,10 @@ export function computeDomains(
     const naturalStr     = NATURAL_KARAKATWA[planet]?.[domain] ?? 0;
     const domainVargaScore = getDomainVargaScore(domain, vargaAssessment);
 
-    // ── 1. Ownership relevance (35%) ─────────────────────────────────────────
-    let ownershipScore = 45; // neutral default
+    // ── 1. Ownership/placement relevance (35%) ──────────────────────────────
+    let ownershipScore = 40; // neutral default for unrelated planet
     if (domainHouse !== null && housesRuled.includes(domainHouse)) {
+      // Planet OWNS this house — full ownership score
       const fnBonus = functionalNature === 'yogakaraka' ? 30
                     : functionalNature === 'strong_benefic' ? 25
                     : functionalNature === 'benefic' ? 20
@@ -336,10 +337,12 @@ export function computeDomains(
                           : functionalLean === 'maraka_driven' ? -5 : 0)
                     : functionalNature === 'malefic' ? -20 : 0;
       ownershipScore = Math.max(10, Math.min(95, 65 + fnBonus));
-    } else if (housePosition === domainHouse) {
-      ownershipScore = functionalNature === 'malefic' ? 35 : 55;
+    } else if (domainHouse !== null && housePosition === domainHouse) {
+      // Planet is PLACED in this house — strong activation regardless of lordship
+      // A planet in the 7th activates marriage, in the 5th activates children, etc.
+      ownershipScore = functionalNature === 'malefic' ? 45 : 65;
     } else {
-      ownershipScore = 30;
+      ownershipScore = 30; // no direct house connection
     }
 
     // ── 2. Natural karakatwa (20%) ─────────────────────────────────────────────
@@ -393,9 +396,9 @@ export function computeDomains(
   }
 
   return {
-    strongDomains: strong.slice(0, 5),
-    mixedDomains:  mixed.slice(0, 4),
-    weakDomains:   weak.slice(0, 4),
+    strongDomains: strong,
+    mixedDomains:  mixed,
+    weakDomains:   weak,
     domainConfidenceMap: confidenceMap,
   };
 }
