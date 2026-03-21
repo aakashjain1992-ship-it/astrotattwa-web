@@ -3,11 +3,21 @@
 import { useState, useMemo } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { assessAllPlanets, getNaturalRelationship } from '@/lib/astrology/strength';
-import type { PlanetStrengthResult, StructuralGrade, DeliveryGrade, Domain, FunctionalNature, FunctionalLean } from '@/lib/astrology/strength';
+import {
+  assessAllPlanets, getNaturalRelationship,
+  getWeightedConjunctionScore, getWeightedAspectScore,
+} from '@/lib/astrology/strength';
+import type {
+  PlanetStrengthResult, StructuralGrade, DeliveryGrade,
+  Domain, FunctionalNature, FunctionalLean, DignityLevel,
+} from '@/lib/astrology/strength';
+import type { WeightedInfluence } from '@/lib/astrology/strength/aspectEngine';
 import type { PlanetData, AscendantData, ChartDashaData } from '@/types/astrology';
-import { calculateAntardashas, calculatePratyantars, calculateSookshmas, vimshottariDasha } from '@/lib/astrology/kp/dasa';
-import { DASHA_ORDER, DASHA_YEARS } from '@/lib/astrology/kp/constants';
+import {
+  calculateAntardashas, calculatePratyantars,
+  calculateSookshmas, vimshottariDasha,
+} from '@/lib/astrology/kp/dasa';
+import { HOUSE_MEANINGS, getHouseTypeLabel } from '@/lib/astrology/constants/houseMeanings';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -15,7 +25,7 @@ interface PlanetsTabProps {
   planets: Record<string, PlanetData>;
   ascendant: AscendantData;
   dashaInfo?: ChartDashaData;
-  birthDate?: string; // ISO UTC
+  birthDate?: string;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -27,20 +37,6 @@ const GLYPH: Record<string,string> = {
   Jupiter:'♃', Venus:'♀', Saturn:'♄', Rahu:'☊', Ketu:'☋',
 };
 
-// Natural karaka domains — what each planet naturally signifies
-const PLANET_KARAKAS: Record<string, string[]> = {
-  Sun:     ['soul','authority','father','career','health'],
-  Moon:    ['mind','emotions','mother','home','belonging'],
-  Mars:    ['energy','courage','siblings','property','competition'],
-  Mercury: ['intellect','communication','skills','business','adaptability'],
-  Jupiter: ['wisdom','children','wealth','fortune','spirituality'],
-  Venus:   ['relationships','beauty','pleasure','comfort','creativity'],
-  Saturn:  ['discipline','karma','longevity','career','perseverance'],
-  Rahu:    ['ambition','foreign','unconventional paths','obsession','disruption'],
-  Ketu:    ['spirituality','detachment','past-life karma','moksha','insight'],
-};
-
-// Domain → readable label
 const DOMAIN_LABELS: Record<Domain, string> = {
   self:'Self & identity', wealth:'Wealth', siblings:'Siblings',
   home:'Home & family', children:'Children', health:'Health',
@@ -50,7 +46,6 @@ const DOMAIN_LABELS: Record<Domain, string> = {
   spirituality:'Spiritual life', communication:'Communication', foreign:'Foreign & travel',
 };
 
-// Domain → emoji icon
 const DOMAIN_ICONS: Record<Domain, string> = {
   self:'✦', wealth:'◈', siblings:'◉', home:'⌂', children:'❋',
   health:'♥', marriage:'◎', longevity:'◇', fortune:'★',
@@ -58,31 +53,25 @@ const DOMAIN_ICONS: Record<Domain, string> = {
   intellect:'✧', spirituality:'☸', communication:'◐', foreign:'◈',
 };
 
-// ─── Language helpers ─────────────────────────────────────────────────────────
+// ─── Grade helpers ────────────────────────────────────────────────────────────
 
 function strGradeToWord(g: StructuralGrade): string {
   return { very_strong:'Very strong', strong:'Strong', moderate:'Average',
            weak:'Struggling', very_weak:'Very weak' }[g];
 }
-
 function strGradeToWidth(g: StructuralGrade): number {
   return { very_strong:92, strong:74, moderate:55, weak:32, very_weak:14 }[g];
 }
-
 function delivGradeToWord(g: DeliveryGrade): string {
   return { reliable:'Flows well', delayed:'Steady but slow',
            inconsistent:'Comes and goes', distorted_delivery:'Hard to work with',
            obstructed:'Mostly blocked' }[g];
 }
-
 function strGradeToColor(g: StructuralGrade): string {
-  // Structural bar: 3 colours only
   if (g === 'very_strong' || g === 'strong') return '#059669';
   if (g === 'moderate') return '#d97706';
   return '#dc2626';
 }
-
-// Single colour function for delivery — 3 values max
 function delivGradeToColor(g: DeliveryGrade, sg?: StructuralGrade): string {
   if (g === 'reliable') return '#059669';
   if (g === 'delayed') return (sg === 'very_strong' || sg === 'strong') ? '#059669' : '#d97706';
@@ -91,334 +80,595 @@ function delivGradeToColor(g: DeliveryGrade, sg?: StructuralGrade): string {
 }
 
 function fnToGroupKey(r: PlanetStrengthResult): 'working'|'mixed'|'struggling' {
-  // Group by delivery grade — this is what the user actually feels in their life.
-  // A strong Saturn that rules difficult houses still delivers steadily;
-  // it should not appear in "Facing challenges" just because of house lordship.
   const dg = r.deliveryGrade;
   const sg = r.structuralGrade;
-
   if (dg === 'reliable') return 'working';
-  if (dg === 'delayed') {
-    // Strong + delayed = working (results come, just slower)
-    // Weak + delayed = mixed
-    return (sg === 'very_strong' || sg === 'strong') ? 'working' : 'mixed';
-  }
+  if (dg === 'delayed') return (sg === 'very_strong' || sg === 'strong') ? 'working' : 'mixed';
   if (dg === 'inconsistent') return 'mixed';
-  // obstructed or distorted_delivery
   return 'struggling';
 }
 
-// ─── "In your chart" — 2-3 paragraph human story ─────────────────────────────
+// ─── Beat types ───────────────────────────────────────────────────────────────
 
-function buildInYourChart(r: PlanetStrengthResult, pd: PlanetData, lagnaSign: number): string[] {
-  const p = r.planet;
-  const fn = r.functionalNature;
-  const lean = r.functionalLean;
-  const sg = r.structuralGrade;
-  const cg = r.conditionGrade;
-  const dg = r.deliveryGrade;
+interface ConjItem {
+  planet: string;
+  orb: number;
+  label: 'very_tight' | 'tight' | 'mild' | 'weak';
+  isBenefic: boolean;
+  isNode: boolean;
+  effect: string;
+}
+
+interface AspectItem {
+  planet: string;
+  orb: number;
+  isBenefic: boolean;
+  aspectType: string;
+  effect: string;
+}
+
+interface RulerItem {
+  house: number;
+  houseName: string;
+  houseTypeLabel: string;
+  desc: string;
+  isSwaPlacement: boolean;
+}
+
+interface ActiveDashaChain {
+  maha?: { planet: string; startUtc: string; endUtc: string };
+  antar?: { planet: string; startUtc: string; endUtc: string };
+  pratyantar?: { planet: string; startUtc: string; endUtc: string };
+}
+
+interface Beat {
+  id: 'placement' | 'conjunctions' | 'aspects' | 'rulership' | 'synthesis';
+  tagLabel: string;
+  dotColor: string;
+  text?: string;
+  conjCluster?: { items: ConjItem[]; netVerdict: string };
+  rulerItems?: RulerItem[];
+}
+
+// ─── Conjunction effect sentences ────────────────────────────────────────────
+
+function getConjunctionEffect(
+  conjPlanet: string, targetPlanet: string,
+  label: 'very_tight'|'tight'|'mild'|'weak', isBenefic: boolean, isNode: boolean
+): string {
+  const intensity = label === 'very_tight' ? 'dominant' : label === 'tight' ? 'strong' : 'moderate';
+  const orbNote   = label === 'very_tight' ? 'This is close enough to be the defining influence on the conjunction.'
+                  : label === 'mild'       ? 'A background influence — present but not overwhelming.'
+                  : label === 'weak'       ? 'Wide orb — a mild background colouring only.'
+                  : '';
+
+  const EFFECTS: Record<string, string> = {
+    // Rahu as conjunctor
+    'Rahu':    `Rahu amplifies and intensifies whatever it touches — often to the point of obsession or restlessness. Its ${intensity} influence on ${targetPlanet} creates heightened energy in the areas ${targetPlanet} governs, but the expression can feel scattered or driven rather than calm. ${orbNote}`,
+    'Ketu':    `Ketu brings withdrawal, past-karma, and spiritual detachment to ${targetPlanet}. Its ${intensity} influence creates a quality of dissociation — the areas ${targetPlanet} governs may feel less personally attached, sometimes elusive, sometimes spiritually charged. ${orbNote}`,
+    'Saturn':  `Saturn's ${intensity} conjunction brings discipline, delay, and karmic weight to ${targetPlanet}. Results in ${targetPlanet}'s domains come with more effort, more patience required, and sometimes a sense of restriction before release. ${orbNote}`,
+    'Mars':    `Mars brings energy, aggression, and drive to ${targetPlanet}. Its ${intensity} influence can be empowering (adding initiative and force) or destabilising (adding heat, conflict, and impulsiveness). The result depends on how Mars is otherwise placed. ${orbNote}`,
+    'Sun':     `The Sun's conjunction creates combustion when within 6°, overshadowing ${targetPlanet}'s independent expression. The Sun lends authority and visibility, but ${targetPlanet} may operate more in service of ego and recognition than its own nature. ${orbNote}`,
+    'Jupiter': `Jupiter's ${intensity} conjunction is generally protective and expansive. It brings wisdom, grace, and a broadening quality to ${targetPlanet}'s expression. Even when ${targetPlanet} is otherwise compromised, Jupiter's presence softens and guides. ${orbNote}`,
+    'Venus':   `Venus brings pleasure, beauty, and relationship themes to ${targetPlanet}. Its ${intensity} conjunction adds a quality of refinement and social ease — though Venus can also soften planets that need their edge, making them more diplomatic than decisive. ${orbNote}`,
+    'Mercury': `Mercury's ${intensity} conjunction brings intellect, analysis, and communication themes to ${targetPlanet}. The two planets often reinforce each other's rational and communicative qualities. ${orbNote}`,
+    'Moon':    `Moon brings emotional sensitivity, fluctuation, and intuition to ${targetPlanet}. Its ${intensity} conjunction can deepen emotional attunement but also add instability or mood-driven expression to ${targetPlanet}'s areas. ${orbNote}`,
+  };
+
+  return EFFECTS[conjPlanet] ?? `${conjPlanet}'s ${intensity} conjunction influences ${targetPlanet}'s expression — its presence adds its own themes and energy to how ${targetPlanet} operates. ${orbNote}`;
+}
+
+// ─── Aspect effect sentences ──────────────────────────────────────────────────
+
+function getAspectEffect(
+  aspectingPlanet: string, targetPlanet: string, isBenefic: boolean, orb: number
+): string {
+  const orbQuality = orb < 3 ? 'tight' : orb < 7 ? 'moderate' : 'wide';
+  const ASPECTS: Record<string, string> = {
+    'Jupiter': `Jupiter is casting its ${orbQuality} aspect onto ${targetPlanet} — a positive influence. Jupiter's presence through aspect brings wisdom, grace, and protection. Even when ${targetPlanet} is challenged, Jupiter's aspect gives it a philosophical buffer and reduces the harshest effects.`,
+    'Saturn':  `Saturn casts a ${orbQuality} aspect onto ${targetPlanet}, bringing pressure, delay, and disciplinary force. Saturn doesn't destroy — but it demands that ${targetPlanet}'s affairs be approached with patience and seriousness rather than ease.`,
+    'Mars':    `Mars aspects ${targetPlanet} with ${orbQuality} force, adding aggression, energy, and friction. Mars aspects tend to activate and heat up the areas ${targetPlanet} governs — useful for initiative, difficult for peace.`,
+    'Rahu':    `Rahu's ${orbQuality} aspect casts an amplifying, distorting influence on ${targetPlanet} from a distance. Like conjunction, Rahu aspects intensify themes but can make them obsessive or unpredictable.`,
+    'Ketu':    `Ketu's ${orbQuality} aspect brings a dissociating, spiritualising quality to ${targetPlanet} — a detachment from the areas ${targetPlanet} governs, which can manifest as withdrawal, insight, or past-karma themes.`,
+  };
+  return ASPECTS[aspectingPlanet] ?? `${aspectingPlanet}'s ${orbQuality} aspect influences ${targetPlanet} — its themes and energy reach ${targetPlanet} from across the chart.`;
+}
+
+// ─── Net verdict for conjunction cluster ─────────────────────────────────────
+
+function buildConjNetVerdict(
+  targetPlanet: string, items: ConjItem[], conditionGrade: string
+): string {
+  const maleficNodes = items.filter(i => !i.isBenefic || i.isNode);
+  const benefics     = items.filter(i => i.isBenefic && !i.isNode);
+  const dominant     = items.find(i => i.label === 'very_tight') ?? items[0];
+
+  if (items.length === 1) {
+    const item = items[0];
+    if (item.isNode) {
+      return item.label === 'very_tight' || item.label === 'tight'
+        ? `${item.planet}'s tight conjunction is the most significant external influence on ${targetPlanet}. The nodal distortion is dominant — ${targetPlanet}'s natural expression gets amplified and destabilised.`
+        : `${item.planet}'s mild conjunction adds a background nodal colouring to ${targetPlanet}. Not dominant, but present as a pattern.`;
+    }
+    if (!item.isBenefic) {
+      return `${item.planet}'s ${item.label.replace('_',' ')} conjunction is the primary external pressure on ${targetPlanet}. Results in ${targetPlanet}'s domains carry ${item.planet}'s characteristics — ${item.planet === 'Saturn' ? 'delay and discipline' : item.planet === 'Mars' ? 'heat and aggression' : 'difficulty'}.`;
+    }
+    return `${item.planet}'s ${item.label.replace('_',' ')} conjunction supports ${targetPlanet}. ${item.planet === 'Jupiter' ? 'This is one of the most valuable conjunctions in astrology — Jupiter brings grace and protection.' : `${item.planet}'s positive qualities blend constructively with ${targetPlanet}.`}`;
+  }
+
+  // Multiple conjunctions
+  const dominantNote = dominant
+    ? `${dominant.planet} is the closest (${dominant.orb.toFixed(1)}°) and therefore the most influential.`
+    : '';
+
+  if (maleficNodes.length > 0 && benefics.length > 0) {
+    const protector = benefics.find(b => b.planet === 'Jupiter') ?? benefics[0];
+    return `This is a mixed conjunction cluster — malefic and benefic influences together. ${dominantNote} ${protector?.planet}'s presence offers some protection, but the overall condition is under competing pressures. The net effect depends on which of these planets is stronger in your chart overall.`;
+  }
+  if (maleficNodes.length === items.length) {
+    return `All conjunctions here are challenging — ${maleficNodes.map(i => i.planet).join(', ')} together create compounded pressure on ${targetPlanet}. ${dominantNote} This is a difficult conjunction cluster that significantly affects how ${targetPlanet} can express itself.`;
+  }
+  return `Multiple supportive influences are conjunct ${targetPlanet} — ${benefics.map(i => i.planet).join(', ')}. ${dominantNote} The combined benefic presence is a notable strength in this placement.`;
+}
+
+// ─── Parse conjunction data ───────────────────────────────────────────────────
+
+function parseConjunctions(
+  planet: string, pd: PlanetData, allPlanets: Record<string, PlanetData>
+): ConjItem[] {
+  const result = getWeightedConjunctionScore(planet, pd.longitude, allPlanets);
+  const influences = (result as any).influences as WeightedInfluence[] ?? [];
+  return influences
+    .sort((a, b) => a.orb - b.orb)
+    .map(inf => ({
+      planet:    inf.planet,
+      orb:       inf.orb,
+      label:     inf.label,
+      isBenefic: inf.isBenefic,
+      isNode:    inf.planet === 'Rahu' || inf.planet === 'Ketu',
+      effect:    getConjunctionEffect(inf.planet, planet, inf.label, inf.isBenefic, inf.planet === 'Rahu' || inf.planet === 'Ketu'),
+    }));
+}
+
+// ─── Parse aspect data ────────────────────────────────────────────────────────
+
+function parseAspects(
+  planet: string, pd: PlanetData, allPlanets: Record<string, PlanetData>
+): AspectItem[] {
+  const result = getWeightedAspectScore(planet, pd.signNumber, pd.longitude, allPlanets);
+  const items: AspectItem[] = [];
+
+  // Parse planet name and orb from strings like "Aspected by Jupiter (6.2°)"
+  const RE = /Aspected by (\w+)(?:\s*\(([0-9.]+)°\))?/;
+  for (const str of [...result.afflictions, ...result.protections]) {
+    const m = str.match(RE);
+    if (!m) continue;
+    const asp   = m[1];
+    const orb   = m[2] ? parseFloat(m[2]) : 5;
+    const isBen = ['Jupiter','Venus','Mercury'].includes(asp);
+    items.push({
+      planet:     asp,
+      orb,
+      isBenefic:  isBen,
+      aspectType: isBen ? 'benefic aspect' : 'malefic aspect',
+      effect:     getAspectEffect(asp, planet, isBen, orb),
+    });
+  }
+  return items.sort((a, b) => a.orb - b.orb);
+}
+
+// ─── Beat builders ────────────────────────────────────────────────────────────
+
+function buildPlacementBeat(r: PlanetStrengthResult, pd: PlanetData): Beat {
+  const p     = r.planet;
+  const sign  = pd.sign;
   const house = r.housePosition;
-  const sign = pd.sign;
-  const isRetro = r.isRetrograde;
-  const isCombust = r.isCombust;
-  const isNB = r.neechaBhanga.isApplied;
-  const dignityLevel = r.dignityLevel;
+  const deg   = pd.degreeInSign;
   const isNode = p === 'Rahu' || p === 'Ketu';
 
-  // Paragraph 1 — role in this chart
-  let p1 = '';
-  const housesStr = r.housesRuled.length > 0
-    ? `${r.housesRuled.map(h => `${h}${ord(h)}`).join(' and ')} ${r.housesRuled.length === 1 ? 'house' : 'houses'}`
-    : 'no houses specifically';
+  // Degree quality note
+  const isSandhi = deg < 1 || deg > 29;
+  const isDeepExalt = (p === 'Sun' && pd.signNumber === 1 && Math.abs(deg - 10) < 3) ||
+                      (p === 'Moon' && pd.signNumber === 2 && Math.abs(deg - 3) < 3)  ||
+                      (p === 'Mars' && pd.signNumber === 10 && Math.abs(deg - 28) < 3) ||
+                      (p === 'Mercury' && pd.signNumber === 6 && Math.abs(deg - 15) < 3) ||
+                      (p === 'Jupiter' && pd.signNumber === 4 && Math.abs(deg - 5) < 3) ||
+                      (p === 'Venus' && pd.signNumber === 12 && Math.abs(deg - 27) < 3) ||
+                      (p === 'Saturn' && pd.signNumber === 7 && Math.abs(deg - 20) < 3);
 
-  if (fn === 'yogakaraka') {
-    p1 = `${p} is the most powerful planet in your chart — a yogakaraka, meaning it rules both a kendra (angular house) and a trikona (house of fortune) simultaneously. Very few charts have this, and when they do, that planet becomes a natural ally for achievement, success, and growth.`;
-  } else if (fn === 'strong_benefic') {
-    if (r.housesRuled.includes(1)) {
-      p1 = `${p} is your lagna lord — the ruler of your entire chart, your body, and your self-expression. Whatever house your lagna lord is placed in and how it is doing in your chart shapes how you show up in the world.`;
-    } else {
-      p1 = `${p} plays a primary beneficial role in your chart, ruling the ${housesStr}. This makes it one of the planets that tends to support your life.`;
-    }
-  } else if (fn === 'benefic') {
-    p1 = `${p} rules the ${housesStr} — kendra houses that stabilise the chart. Its job is to bring structure and strength to your life areas.`;
-  } else if (fn === 'malefic') {
-    p1 = `${p} rules the ${housesStr} in your chart — houses that create friction, service demands, and challenges. This makes it a functional malefic for your lagna, meaning its natural energy tends to create more difficulty than ease when it is activated.`;
-  } else if (fn === 'mixed') {
-    const leanNote = lean === 'benefic_lean' ? 'the positive side tends to outweigh the difficult'
-                   : lean === 'malefic_lean' ? 'the challenging side tends to outweigh the positive'
-                   : lean === 'maraka_driven' ? 'it carries maraka (life-sensitive) responsibility through 2nd and 7th lordship'
-                   : 'it has roughly balanced ownership';
-    p1 = `${p} has a mixed role in your chart, ruling the ${housesStr}. In mixed planets, context matters a great deal — ${leanNote}.`;
-  } else {
-    p1 = `${p} has a neutral role in your chart — it doesn't carry strong positive or negative house lordship for your lagna. Its impact comes primarily from where it is placed and what it touches.`;
+  const degNote = isSandhi
+    ? ` At ${deg.toFixed(1)}°, it sits near the sign boundary (called sandhi) — a sensitive position where the planet's energy is transitional and sometimes unstable.`
+    : isDeepExalt
+    ? ` At ${deg.toFixed(1)}°, it is near its point of deep exaltation — close to maximum strength in this sign.`
+    : '';
+
+  const signDesc: Record<string, string> = {
+    exalted:      `exalted in ${sign} — one of the strongest possible positions in the zodiac`,
+    moolatrikona: `in its moolatrikona portion of ${sign} — very close to its own territory, with extra authority`,
+    own_sign:     `in its own sign ${sign} — completely at home, operating with full control and authority`,
+    great_friend: `in a great friend's sign (${sign}) — warmly received and well supported`,
+    friend:       `in a friendly sign (${sign}) — comfortable and functional`,
+    neutral:      `in a neutral sign (${sign}) — neither strongly helped nor hindered`,
+    enemy:        `in an enemy sign (${sign}) — somewhat uncomfortable, has to work harder for results`,
+    great_enemy:  `in a great enemy's sign (${sign}) — very uncomfortable, significantly constrained`,
+    debilitated:  `debilitated in ${sign} — the sign where ${p} is at its structural weakest`,
+  };
+
+  const houseData = HOUSE_MEANINGS[house];
+  const houseDesc = houseData
+    ? `placed in the ${house}${ord(house)} house (${houseData.shortLabel}). ${houseData.placementTheme}.`
+    : `placed in the ${house}${ord(house)} house.`;
+
+  let text = `${p} sits at ${deg.toFixed(1)}° ${sign}, ${signDesc[r.dignityLevel] ?? `in ${sign}`}. It is ${houseDesc}${degNote}`;
+
+  if (r.isRetrograde && !isNode) {
+    text += ` ${p} is retrograde — moving backward from Earth's perspective. Its energy turns inward: results tend to come through internal processing, revisiting, or unconventional routes rather than straight-line expression.`;
+  }
+  if (r.isCombust && p !== 'Sun') {
+    // Extract orb from afflictions string if available
+    const combustStr = r.afflictions.find(a => a.toLowerCase().includes('combust'));
+    const orbMatch   = combustStr?.match(/\(([0-9.]+)°\)/);
+    const orbNote    = orbMatch ? ` (${orbMatch[1]}° from the Sun)` : '';
+    text += ` ${p} is also combust${orbNote} — too close to the Sun's glare, which overshadows its independent expression. ${p} operates more in service of the Sun's themes than its own nature during this period.`;
+  }
+  if (r.neechaBhanga.isApplied) {
+    text += ` However, Neecha Bhanga applies — a classical cancellation of debility. ${r.neechaBhanga.rule ? `Rule: ${r.neechaBhanga.rule}.` : ''} This gives ${p} partial recovery capacity it would not otherwise have.`;
   }
 
-  // Paragraph 2 — placement and structural quality
-  let p2 = '';
-  const signDesc = {
-    exalted: `exalted in ${sign} — one of the strongest positions in the zodiac`,
-    moolatrikona: `in its moolatrikona portion of ${sign} — near its own sign, with extra strength`,
-    own_sign: `in its own sign ${sign} — comfortable and in full control`,
-    great_friend: `in a great friend's sign (${sign}) — well received and supported`,
-    friend: `in a friendly sign (${sign}) — comfortable placement`,
-    neutral: `in a neutral sign (${sign}) — neither especially helped nor hindered`,
-    enemy: `in an enemy sign (${sign}) — somewhat uncomfortable, works harder for results`,
-    great_enemy: `in a great enemy's sign (${sign}) — very uncomfortable placement`,
-    debilitated: `debilitated in ${sign} — the sign where ${p} is at its weakest structurally`,
-  }[r.dignityLevel] ?? `in ${sign}`;
+  return { id:'placement', tagLabel:'Where it sits', dotColor:'#d97706', text };
+}
 
-  const houseNote = house === 1 ? 'in your lagna itself — very visible in your personality'
-    : house === 4 ? 'in the 4th house — home, mother, and inner peace'
-    : house === 7 ? 'in the 7th house — relationships and partnerships'
-    : house === 10 ? 'in the 10th house — career and public life'
-    : house === 5 ? 'in the 5th house — creativity, children, and intelligence'
-    : house === 9 ? 'in the 9th house — fortune, dharma, and father'
-    : house === 8 ? 'in the 8th house — transformation, depth, and hidden matters'
-    : house === 12 ? 'in the 12th house — liberation, foreign lands, and what lies beneath'
-    : `in the ${house}${ord(house)} house`;
+function buildConjunctionBeat(
+  r: PlanetStrengthResult, pd: PlanetData, allPlanets: Record<string, PlanetData>
+): Beat | null {
+  const items = parseConjunctions(r.planet, pd, allPlanets);
+  if (items.length === 0) return null;
 
-  p2 = `In your chart, ${p} is ${signDesc}, placed ${houseNote}.`;
+  const tagLabel   = items.length === 1
+    ? `Conjunct ${items[0].planet} — ${items[0].label.replace('_', ' ')} influence`
+    : `${items.length} planets conjunct — conjunction cluster`;
 
-  if (isRetro && !isNode) {
-    p2 += ` It is retrograde — which means its energy turns inward. Results through ${p} tend to come through internal processing, revisiting, or unconventional paths rather than straightforward expression.`;
-  }
-  if (isCombust && p !== 'Sun') {
-    p2 += ` It is also combust — too close to the Sun — which overshadows it and reduces its independent expression.`;
-  }
-  if (isNB) {
-    p2 += ` Interestingly, Neecha Bhanga (a classical cancellation) applies here — the debilitation is at least partially cancelled, which gives ${p} some recovery capacity that it would not otherwise have.`;
-  }
+  const netVerdict = buildConjNetVerdict(r.planet, items, r.conditionGrade);
 
-  // Paragraph 3 — condition and delivery
-  let p3 = '';
-  const topAffliction = r.afflictions[0];
-  const topProtection = r.protections[0];
+  const introText = items.length === 1
+    ? `${items[0].planet} is in the same sign as ${r.planet}, ${items[0].orb.toFixed(1)}° away.`
+    : `${r.planet} is not alone in its sign — ${items.length} other planets share this position. Their combined influence shapes how ${r.planet} expresses itself.`;
 
-  if (cg === 'supported' || cg === 'clean') {
-    if (topProtection) {
-      p3 = `Its condition is ${cg === 'supported' ? 'well supported' : 'clean'} — ${topProtection.toLowerCase().replace(/\.$/, '')}. This means ${p}'s energy can express itself without major interference.`;
-    } else {
-      p3 = `Its condition is ${cg === 'supported' ? 'well supported' : 'clean'} — no major afflictions. ${p} can express itself relatively freely.`;
-    }
-  } else if (cg === 'afflicted') {
-    if (topAffliction) {
-      p3 = `Its condition is afflicted — ${topAffliction.toLowerCase().replace(/\.$/, '')}. This creates some disturbance in how ${p} expresses itself, though not severe enough to block it completely.`;
-    } else {
-      p3 = `Its condition is afflicted — there are planetary influences that create friction in how ${p} operates.`;
-    }
-  } else if (cg === 'heavily_afflicted' || cg === 'distorted') {
-    if (topAffliction) {
-      p3 = `Its condition is ${cg === 'distorted' ? 'severely distorted' : 'heavily afflicted'} — ${topAffliction.toLowerCase().replace(/\.$/, '')}. This significantly alters how ${p}'s energy comes through — results in its domains tend to arrive in a distorted or intensified form.`;
-    } else {
-      p3 = `Its condition is ${cg === 'distorted' ? 'severely distorted' : 'heavily afflicted'}, which significantly impacts how its energy reaches you.`;
-    }
-  }
+  return {
+    id: 'conjunctions',
+    tagLabel,
+    dotColor: items.every(i => i.isBenefic && !i.isNode) ? '#059669'
+            : items.some(i => i.isBenefic && !i.isNode) ? '#d97706'
+            : '#dc2626',
+    text: introText,
+    conjCluster: { items, netVerdict },
+  };
+}
 
-  // Node-specific addendum
+function buildAspectBeat(
+  r: PlanetStrengthResult, pd: PlanetData, allPlanets: Record<string, PlanetData>
+): Beat | null {
+  const items = parseAspects(r.planet, pd, allPlanets);
+  if (items.length === 0) return null;
+
+  const text = items.length === 1
+    ? `From across the chart, ${items[0].planet} is casting its aspect onto ${r.planet} (${items[0].orb.toFixed(1)}° orb).`
+    : `${items.length} planets are casting aspects onto ${r.planet} from across the chart, each adding their influence from a distance.`;
+
+  return {
+    id: 'aspects',
+    tagLabel: 'Aspects received',
+    dotColor: items.some(i => i.planet === 'Jupiter') ? '#059669'
+            : items.every(i => !i.isBenefic) ? '#dc2626' : '#d97706',
+    text,
+    conjCluster: {
+      items: items.map(i => ({
+        planet: i.planet, orb: i.orb,
+        label: i.orb < 3 ? 'very_tight' : i.orb < 7 ? 'tight' : 'mild',
+        isBenefic: i.isBenefic, isNode: i.planet === 'Rahu' || i.planet === 'Ketu',
+        effect: i.effect,
+      })),
+      netVerdict: items.length === 1
+        ? `${items[0].planet}'s ${items[0].aspectType} is the external influence shaping ${r.planet} from a distance — it does not touch directly but reaches across the chart.`
+        : `Multiple planetary aspects reach ${r.planet} — the combined effect depends on which aspects are tighter and which planets are stronger in your chart overall.`,
+    },
+  };
+}
+
+function buildRulershipBeat(r: PlanetStrengthResult, pd: PlanetData): Beat {
+  const p          = r.planet;
+  const isNode     = p === 'Rahu' || p === 'Ketu';
+
   if (isNode && r.nodeInheritance) {
-    const disp = r.nodeInheritance.dispositorName;
+    const disp    = r.nodeInheritance.dispositorName;
     const dispDel = r.nodeInheritance.dispositorDeliveryGrade;
-    const dispFn = r.nodeInheritance.dispositorFunctionalNature;
-    const quality = dispDel === 'reliable' ? 'strong and reliable' : dispDel === 'obstructed' || dispDel === 'distorted_delivery' ? 'weak and compromised' : 'moderate';
-    p3 += ` ${p} doesn't rule houses directly — its character is inherited from ${disp} (${quality} in your chart). ${dispDel === 'reliable' || dispDel === 'delayed' ? `This gives ${p} a relatively organised channel to work through.` : `This means ${p}'s energy has a fragile foundation — it amplifies without direction.`}`;
+    const quality = dispDel === 'reliable' ? 'strong and reliable'
+                  : dispDel === 'obstructed' || dispDel === 'distorted_delivery' ? 'weak and compromised'
+                  : 'moderate';
+    const text = `${p} doesn't rule houses directly — unlike the other planets, it inherits its character from its dispositor (the lord of the sign it occupies). In your chart, ${p} sits in ${pd.sign}, which is ruled by ${disp} (${quality} in your chart). ${dispDel === 'reliable' || dispDel === 'delayed' ? `${disp} gives ${p} a relatively organised channel to work through — ${p} amplifies ${disp}'s themes.` : `Because ${disp} is ${quality}, ${p} amplifies those themes but without strong direction — its energy intensifies without clear purpose.`}`;
+    return { id:'rulership', tagLabel:'How it inherits its character', dotColor:'#7c3aed', text };
   }
 
-  return [p1, p2, p3].filter(Boolean);
+  if (r.housesRuled.length === 0) {
+    return {
+      id:'rulership', tagLabel:'What it rules', dotColor:'#185FA5',
+      text:`${p} does not have strong house lordship for your lagna — its influence comes primarily from its placement and the planets it associates with rather than from ruling specific houses.`,
+    };
+  }
+
+  const rulerItems: RulerItem[] = r.housesRuled.map(house => {
+    const hData       = HOUSE_MEANINGS[house];
+    const isSwa       = r.housePosition === house;
+    const hTypeLabel  = getHouseTypeLabel(house);
+    const typeSuffix  = hTypeLabel ? ` (${hTypeLabel})` : '';
+    const swaNote     = isSwa
+      ? ` Notably, ${p} is also placed in this very house — ruling and occupying the same house gives it direct, concentrated expression of these themes. This is a powerful self-referential placement.`
+      : '';
+
+    const desc = hData
+      ? `${p} rules your ${house}${ord(house)} house${typeSuffix} — ${hData.shortLabel.toLowerCase()}. ${hData.rulerTheme}.${swaNote}`
+      : `${p} rules your ${house}${ord(house)} house${typeSuffix}. Its condition shapes how well these areas express in your life.${swaNote}`;
+
+    return {
+      house, houseName: hData?.shortLabel ?? `${house}${ord(house)} house`,
+      houseTypeLabel: hTypeLabel, desc, isSwaPlacement: isSwa,
+    };
+  });
+
+  return { id:'rulership', tagLabel:'What it rules in your chart', dotColor:'#185FA5', rulerItems };
+}
+
+function buildSynthesisBeat(
+  r: PlanetStrengthResult,
+  beats: Beat[],
+  activeDashaChain: ActiveDashaChain
+): Beat {
+  const p    = r.planet;
+  const sg   = r.structuralGrade;
+  const dg   = r.deliveryGrade;
+  const isNode = p === 'Rahu' || p === 'Ketu';
+
+  // Structural summary (1 sentence — no repetition of details already in placement beat)
+  const strSummary = sg === 'very_strong' || sg === 'strong'
+    ? `${p} has genuine structural strength in your chart`
+    : sg === 'moderate' ? `${p} has moderate structural strength`
+    : `${p} is structurally challenged in your chart`;
+
+  // Conjunction summary (only if conjunction beat exists)
+  const conjBeat   = beats.find(b => b.id === 'conjunctions');
+  const conjItems  = conjBeat?.conjCluster?.items ?? [];
+  const conjSummary = conjItems.length > 0
+    ? `, and its ${conjItems.length === 1 ? `${conjItems[0].label.replace('_',' ')} conjunction with ${conjItems[0].planet}` : `${conjItems.length}-planet conjunction cluster`} is the most significant external modifier of its expression`
+    : '';
+
+  // Rulership synthesis (brief — details are in the rulership beat)
+  const rulerItems = beats.find(b => b.id === 'rulership')?.rulerItems ?? [];
+  const rulerSummary = rulerItems.length > 0
+    ? `. Its rulership of the ${rulerItems.map(ri => `${ri.house}${ord(ri.house)}`).join(' and ')} house${rulerItems.length > 1 ? 's' : ''} means ${r.functionalNature === 'yogakaraka' ? 'it combines fortune and action into one' : r.functionalNature === 'strong_benefic' ? 'its well-being directly shapes your own' : r.functionalNature === 'malefic' ? 'its activation tends to bring friction alongside any gains' : 'it has mixed responsibilities that need to be read in context'}`
+    : '';
+
+  // Delivery sentence
+  const delivSummary = dg === 'reliable' ? `. It delivers its results reliably.`
+    : dg === 'delayed' ? `. Results come, but with characteristic patience required.`
+    : dg === 'inconsistent' ? `. Delivery is inconsistent — good periods alternate with quieter ones.`
+    : `. Its ability to deliver is significantly compromised — the energy is present but blocked or distorted in expression.`;
+
+  // Current dasha synthesis — this is the personal, now-relevant part
+  let dashaSummary = '';
+  const { maha, antar, pratyantar } = activeDashaChain;
+  const now = new Date();
+
+  if (maha?.planet === p) {
+    // This planet IS the running Mahadasha
+    dashaSummary = ` ${p}'s own major period (Mahadasha) is running right now — this means everything described above is your current lived experience, not just astrological background. The full 17-year weight of ${p}'s character is active in your life at this moment.`;
+  } else if (antar?.planet === p && maha) {
+    // Planet is running as Antardasha
+    dashaSummary = ` ${p} is currently active as a sub-period (Antardasha) within ${maha.planet}'s major period. You may be feeling ${p}'s themes — ${r.strongDomains.slice(0,2).map(d => DOMAIN_LABELS[d]?.toLowerCase()).filter(Boolean).join(' and ') || 'its key life areas'} — distinctly during this window.`;
+  } else if (pratyantar?.planet === p && maha && antar) {
+    // Planet is running as Pratyantar
+    dashaSummary = ` ${p}'s minor sub-period (Pratyantar) is running right now within ${maha.planet} › ${antar.planet}'s period chain. This is a shorter window — weeks to months — where ${p}'s energy surfaces briefly within the larger ${maha.planet} cycle. You may feel a brief intensification of ${p}'s themes during this time.`;
+  } else if (r.temporalActivation.dashaBoostApplied) {
+    dashaSummary = ` ${p} is currently activated somewhere in your running dasha chain, bringing its themes into the foreground at this time.`;
+  }
+
+  const text = `${strSummary}${conjSummary}${rulerSummary}${delivSummary}${dashaSummary}`;
+
+  return { id:'synthesis', tagLabel:'The full picture', dotColor:'#7c3aed', text };
+}
+
+// ─── Get active dasha chain for a planet ─────────────────────────────────────
+
+function getCurrentDashaChain(
+  allMahas: MahaPeriod[]
+): ActiveDashaChain {
+  const now    = new Date();
+  const chain: ActiveDashaChain = {};
+
+  const activeMaha = allMahas.find(m =>
+    now >= new Date(m.startUtc) && now <= new Date(m.endUtc)
+  );
+  if (!activeMaha) return chain;
+  chain.maha = activeMaha;
+
+  try {
+    const antars = calculateAntardashas(activeMaha.planet as any, activeMaha.startUtc, activeMaha.endUtc);
+    const activeAntar = antars.find(a =>
+      now >= new Date(a.startUtc) && now <= new Date(a.endUtc)
+    );
+    if (!activeAntar) return chain;
+    chain.antar = { planet: activeAntar.lord, startUtc: activeAntar.startUtc, endUtc: activeAntar.endUtc };
+
+    try {
+      const pratys = calculatePratyantars(activeMaha.planet as any, activeAntar.lord as any, activeAntar.startUtc, activeAntar.endUtc);
+      const activePraty = pratys.find(p =>
+        now >= new Date(p.startUtc) && now <= new Date(p.endUtc)
+      );
+      if (activePraty) {
+        chain.pratyantar = { planet: activePraty.lord, startUtc: activePraty.startUtc, endUtc: activePraty.endUtc };
+      }
+    } catch { /* ok */ }
+  } catch { /* ok */ }
+
+  return chain;
+}
+
+// ─── Build all beats for a planet ────────────────────────────────────────────
+
+function buildStoryBeats(
+  r: PlanetStrengthResult,
+  pd: PlanetData,
+  allPlanets: Record<string, PlanetData>,
+  allMahas: MahaPeriod[]
+): Beat[] {
+  const beats: Beat[] = [];
+
+  beats.push(buildPlacementBeat(r, pd));
+
+  const conjBeat = buildConjunctionBeat(r, pd, allPlanets);
+  if (conjBeat) beats.push(conjBeat);
+
+  const aspectBeat = buildAspectBeat(r, pd, allPlanets);
+  if (aspectBeat) beats.push(aspectBeat);
+
+  beats.push(buildRulershipBeat(r, pd));
+
+  const dashaChain = getCurrentDashaChain(allMahas);
+  beats.push(buildSynthesisBeat(r, beats, dashaChain));
+
+  return beats;
 }
 
 // ─── "What this means" — per life area ───────────────────────────────────────
 
 interface AreaMeaning {
-  area: string;
-  icon: string;
-  signal: string;
-  signalType: 'good' | 'mixed' | 'hard';
-  what: string;
-  why: string;
+  area: string; icon: string; signal: string;
+  signalType: 'good'|'mixed'|'hard'; what: string; why: string;
 }
 
 function buildWhatThisMeans(r: PlanetStrengthResult, pd: PlanetData): AreaMeaning[] {
-  const p = r.planet;
-  const fn = r.functionalNature;
-  const lean = r.functionalLean;
-  const cg = r.conditionGrade;
-  const dg = r.deliveryGrade;
-  const sg = r.structuralGrade;
   const result: AreaMeaning[] = [];
-
-  const isDeliveryGood = dg === 'reliable' || dg === 'delayed';
-  const isDeliveryBad  = dg === 'obstructed' || dg === 'distorted_delivery';
-  const isStrong       = sg === 'very_strong' || sg === 'strong';
-  const isWeak         = sg === 'weak' || sg === 'very_weak';
-  const isAfflicted    = cg === 'afflicted' || cg === 'heavily_afflicted' || cg === 'distorted';
-
-  // Pick the 3 most relevant domains
-  const dominated = [
-    ...r.strongDomains.slice(0, 2),
-    ...r.mixedDomains.slice(0, 1),
-    ...r.weakDomains.slice(0, 1),
-  ];
-  // Ensure unique and capped at 3–4
   const seen = new Set<string>();
-  const picked: Array<{ domain: Domain; type: 'strong'|'mixed'|'weak' }> = [];
-  for (const d of r.strongDomains.slice(0,2))  { if (!seen.has(d)) { seen.add(d); picked.push({domain:d,type:'strong'}); } }
-  for (const d of r.mixedDomains.slice(0,2))   { if (!seen.has(d)) { seen.add(d); picked.push({domain:d,type:'mixed'}); } }
-  for (const d of r.weakDomains.slice(0,1))    { if (!seen.has(d)) { seen.add(d); picked.push({domain:d,type:'weak'}); } }
 
-  const finalPicked = picked.slice(0, 4);
+  const pickedDomains = [
+    ...r.strongDomains.slice(0,2).map(d => ({d, type:'strong' as const})),
+    ...r.mixedDomains.slice(0,2).map(d => ({d, type:'mixed' as const})),
+    ...r.weakDomains.slice(0,1).map(d => ({d, type:'weak' as const})),
+  ].filter(({d}) => { if (seen.has(d)) return false; seen.add(d); return true; }).slice(0,4);
 
-  for (const { domain, type } of finalPicked) {
-    const label = DOMAIN_LABELS[domain] ?? domain;
-    const icon  = DOMAIN_ICONS[domain] ?? '◎';
-
-    const signal = type === 'strong' ? 'Works in your favour'
-                 : type === 'mixed'  ? 'Mixed'
-                 : 'Needs attention';
-    const signalType: 'good'|'mixed'|'hard' = type === 'strong' ? 'good' : type === 'mixed' ? 'mixed' : 'hard';
-
-    const what = buildDomainWhat(p, domain, type, fn, lean, cg, dg, sg, r);
-    const why  = buildDomainWhy(p, domain, type, fn, lean, cg, dg, sg, r, pd);
-
-    result.push({ area: label, icon, signal, signalType, what, why });
+  for (const {d, type} of pickedDomains) {
+    const label  = DOMAIN_LABELS[d] ?? d;
+    const icon   = DOMAIN_ICONS[d] ?? '◎';
+    const signal = type === 'strong' ? 'Works in your favour' : type === 'mixed' ? 'Mixed' : 'Needs attention';
+    const signalType: AreaMeaning['signalType'] = type === 'strong' ? 'good' : type === 'mixed' ? 'mixed' : 'hard';
+    result.push({
+      area: label, icon, signal, signalType,
+      what: buildDomainWhat(r.planet, d, type, r),
+      why:  buildDomainWhy(r.planet, d, type, r, pd),
+    });
   }
-
   return result;
 }
 
 function buildDomainWhat(
-  planet: string, domain: Domain, type: 'strong'|'mixed'|'weak',
-  fn: FunctionalNature, lean: FunctionalLean, cg: ConditionGrade,
-  dg: DeliveryGrade, sg: StructuralGrade, r: PlanetStrengthResult
+  planet: string, domain: Domain, type: 'strong'|'mixed'|'weak', r: PlanetStrengthResult
 ): string {
-  const isStrong = type === 'strong';
-  const isMixed  = type === 'mixed';
-
-  // Domain-specific human descriptions
   const DESC: Partial<Record<Domain, [string, string, string]>> = {
-    self:         ['Your sense of identity and self-expression tend to flow naturally.', 'Your self-expression is a work in progress — confidence can be built but takes effort.', 'You may struggle with a clear sense of self or find it hard to be fully seen.'],
-    wealth:       ['Financial matters tend to work in your favour — income, savings, and resources accumulate.', 'Finances are up and down — not in crisis, but not stable either.', 'Wealth requires more effort and attention than it does for most — there can be instability or unexpected losses.'],
-    career:       ['Career tends to reward your efforts. Recognition and advancement are likely with consistent work.', 'Career has its moments — good periods followed by plateaus or changes of direction.', 'Career can feel like pushing against resistance — success is possible but slower and harder.'],
-    marriage:     ['Long-term partnership and close relationships tend to be fulfilling and supportive.', 'Relationships are meaningful but complex — they bring both deep connection and genuine challenges.', 'Close partnerships carry weight in your chart — this is an area that deserves conscious attention and patience.'],
-    children:     ['Children and creativity tend to bring joy and fulfilment — this area is supported.', 'Children and creative expression are mixed — rewarding but not without complications.', 'This area requires patience — timing and circumstances around children or creative projects can be challenging.'],
-    health:       ['Your physical vitality is supported — resilience and energy tend to be present.', 'Health is generally okay but benefits from attention — there may be recurring minor issues.', 'Health deserves ongoing attention — this planet\'s influence can create recurring physical strain or vulnerability.'],
-    home:         ['Home and domestic life tend to feel stable and nourishing — a genuine sanctuary.', 'Home life is meaningful but can require repeated effort to maintain peace.', 'Home and family matters may carry recurring friction — domestic peace takes conscious effort to maintain.'],
-    fortune:      ['Fortune and good luck are genuine features of your chart — opportunity tends to arrive.', 'Fortune is there but comes through effort — not luck alone.', 'Fortune comes through depth and patience rather than ease — it arrives, but usually not without a journey.'],
-    intellect:    ['Your mind is sharp and works in your favour — learning and analysis come naturally.', 'Intellectually capable but inconsistent — some areas sharp, others foggy.', 'Mental clarity can be challenging — the mind works hard but output is harder to access.'],
-    spirituality: ['Spiritual practice and inner life are genuinely supported in your chart.', 'Spirituality is meaningful but complex — the path involves real questioning.', 'Deep spiritual themes run through your chart — they demand attention whether you seek them or not.'],
-    gains:        ['Income, networks, and gains from effort tend to come through.', 'Gains are possible but require significant effort and sometimes competition.', 'Gains face resistance — what you earn may come with strings attached or feel inconsistent.'],
-    longevity:    ['Longevity and physical resilience are real strengths.', 'Physical health and longevity need ongoing attention.', 'The body may carry more demands than usual — pacing and rest matter here.'],
-    foreign:      ['Foreign connections, travel, and cross-cultural experiences tend to bring opportunity.', 'Foreign matters are a mixed chapter — opportunity exists but the path has obstacles.', 'Foreign matters are a source of disruption or complication in this chart.'],
-    communication:['Communication is a strength — words and ideas reach people effectively.', 'Communication is functional but can be inconsistent or misread.', 'Communication is an area of real effort — what you mean and what\'s received don\'t always match.'],
-    liberation:   ['Spiritual liberation and depth are supported — this is a genuine strength.', 'Liberation themes run through your life but the path is complex.', 'Liberation-related themes are intense — there is depth here, but it requires conscious engagement.'],
-    siblings:     ['Sibling relationships and close networks tend to be supportive.', 'Sibling relationships are meaningful but complex.', 'Sibling and close network dynamics carry friction in this chart.'],
-    father:       ['The father figure and authority relationships tend to be positive.', 'The father relationship is meaningful but complicated.', 'Authority figures and the father relationship carry weight and complexity.'],
-    mother:       ['The mother figure and home base tend to be nourishing.', 'The mother relationship is meaningful but carries some complexity.', 'The mother and domestic roots may carry emotional complexity.'],
+    self:          ['Your sense of identity tends to flow naturally — you show up clearly and with confidence.','Your self-expression is a work in progress — confidence can be built but takes consistent effort.','A clear, confident sense of self can be harder to maintain — this area deserves conscious cultivation.'],
+    wealth:        ['Financial matters tend to work in your favour — income and resources accumulate with effort.','Finances are up and down — not in crisis, but not consistently stable.','Wealth requires more effort than it does for most — there may be instability or unexpected changes.'],
+    career:        ['Career tends to reward your efforts — recognition and advancement are likely with consistency.','Career has its moments — good periods followed by plateaus or shifts in direction.','Career can feel like pushing against resistance — success is possible but slower and harder.'],
+    marriage:      ['Long-term partnership tends to be fulfilling and supportive — this area is genuinely helped.','Relationships are meaningful but complex — they bring both deep connection and real challenges.','Close partnerships carry weight in your chart — this area deserves conscious attention and patience.'],
+    children:      ['Children and creativity tend to bring genuine joy and fulfilment.','Children and creative expression are rewarding but not without complexity.','This area requires patience — timing and circumstances can be challenging.'],
+    health:        ['Physical vitality and resilience are supported — the body tends to hold up well.','Health is generally okay but benefits from consistent attention.','Health deserves ongoing care — there may be recurring vulnerabilities that need to be managed.'],
+    home:          ['Home and domestic life tend to feel stable and nourishing.','Home life is meaningful but can require repeated effort to maintain peace.','Home and family matters may carry recurring friction — domestic peace takes conscious work.'],
+    fortune:       ['Fortune and good timing are genuine features of your chart — opportunity tends to arrive.','Fortune is present but comes through effort rather than luck alone.','Fortune comes through depth and patience — it arrives, but usually not without a journey.'],
+    intellect:     ['Your mind is sharp and works well — learning and analysis come naturally.','Intellectually capable but inconsistent — some areas sharp, others foggy.','Mental clarity can be challenging — the mind works hard but output is harder to access.'],
+    spirituality:  ['Spiritual practice and inner life are genuinely supported.','Spirituality is meaningful but the path involves real questioning.','Deep spiritual themes run through your chart — they demand attention.'],
+    gains:         ['Income, networks, and gains from effort tend to come through reliably.','Gains are possible but require significant effort and sometimes competition.','Gains face resistance — what you earn may come with strings or feel inconsistent.'],
+    longevity:     ['Physical resilience and longevity are real strengths.','Physical health needs ongoing attention.','The body may carry more demands than usual — pacing and rest matter.'],
+    foreign:       ['Foreign connections and cross-cultural experiences tend to bring opportunity.','Foreign matters are a mixed chapter — opportunity exists but the path has obstacles.','Foreign matters are a source of disruption or complication in this chart.'],
+    communication: ['Communication is a strength — words and ideas reach people effectively.','Communication is functional but can be inconsistent or misread.','Communication is an area of real effort — what you mean and what\'s received don\'t always match.'],
+    liberation:    ['Spiritual liberation and depth are supported — a genuine strength.','Liberation themes run through your life but the path is complex.','Liberation-related themes are intense — they require conscious engagement.'],
+    siblings:      ['Sibling relationships and close networks tend to be supportive.','Sibling relationships are meaningful but complex.','Sibling dynamics carry friction in this chart.'],
+    father:        ['The father figure and authority relationships tend to be positive.','The father relationship is meaningful but complicated.','Authority figures and the father relationship carry weight and complexity.'],
+    mother:        ['The mother figure and home base tend to be nourishing.','The mother relationship is meaningful but carries some complexity.','The mother and domestic roots may carry emotional complexity.'],
   };
 
-  const [goodTxt, mixedTxt, hardTxt] = DESC[domain] ?? [
-    `${domain} tends to work in your favour with this planet's support.`,
-    `${domain} is a mixed area — sometimes supported, sometimes challenging.`,
-    `${domain} requires extra attention and patience in your chart.`,
+  const [good, mid, hard] = DESC[domain] ?? [
+    `${domain} tends to work in your favour.`,
+    `${domain} is a mixed area.`,
+    `${domain} requires extra attention and patience.`,
   ];
-
-  // Adjust for delivery
-  if (type === 'strong' && dg === 'delayed') {
-    return goodTxt + ' Results come — but usually after patience and effort rather than quickly.';
+  if (type === 'strong') {
+    if (r.deliveryGrade === 'delayed') return good + ' Results come — but usually after patience rather than quickly.';
+    if (r.deliveryGrade === 'inconsistent') return good + ' The timing can be inconsistent — good periods followed by quieter spells.';
+    return good;
   }
-  if (type === 'strong' && (dg === 'inconsistent')) {
-    return goodTxt + ' The timing can be inconsistent — good periods followed by quieter spells.';
-  }
-  return type === 'strong' ? goodTxt : type === 'mixed' ? mixedTxt : hardTxt;
+  return type === 'mixed' ? mid : hard;
 }
 
 function buildDomainWhy(
   planet: string, domain: Domain, type: 'strong'|'mixed'|'weak',
-  fn: FunctionalNature, lean: FunctionalLean, cg: ConditionGrade,
-  dg: DeliveryGrade, sg: StructuralGrade, r: PlanetStrengthResult, pd: PlanetData
+  r: PlanetStrengthResult, pd: PlanetData
 ): string {
   const parts: string[] = [];
+  const houseForDomain: Partial<Record<Domain,number>> = {
+    self:1, wealth:2, siblings:3, home:4, children:5, health:6,
+    marriage:7, longevity:8, fortune:9, career:10, gains:11, liberation:12,
+  };
+  const dHouse = houseForDomain[domain];
 
-  // Why based on ownership
-  if (r.housesRuled.some(h => h === domainToHouse(domain))) {
-    parts.push(`${planet} directly rules the house governing ${(DOMAIN_LABELS[domain] ?? domain).toLowerCase()}`);
-  } else if (r.housePosition === domainToHouse(domain)) {
-    parts.push(`${planet} is placed in the house of ${(DOMAIN_LABELS[domain] ?? domain).toLowerCase()}`);
+  if (dHouse && r.housesRuled.includes(dHouse)) {
+    parts.push(`${planet} directly rules the ${dHouse}${ord(dHouse)} house — the house of ${(DOMAIN_LABELS[domain] ?? domain).toLowerCase()}`);
+  } else if (dHouse && r.housePosition === dHouse) {
+    parts.push(`${planet} is placed in the ${dHouse}${ord(dHouse)} house — activating its themes directly`);
+  }
+
+  if (r.conditionGrade === 'supported' || r.conditionGrade === 'clean') {
+    parts.push(`clean condition — it can express itself without major interference`);
+  } else if (r.conditionGrade === 'afflicted') {
+    parts.push(`afflicted condition — there is external interference in how it operates`);
   } else {
-    const karaka = PLANET_KARAKAS[planet]?.find(k => k.includes(domain) || domain.includes(k));
-    if (karaka) parts.push(`${planet} is the natural significator of ${karaka}`);
+    parts.push(`heavily afflicted or distorted condition — significant interference in expression`);
   }
 
-  // Why based on condition
-  if (cg === 'supported' || cg === 'clean') {
-    parts.push(`it is in ${cg === 'supported' ? 'supported' : 'clean'} condition — no major planetary interference`);
-  } else if (cg === 'afflicted') {
-    const topAffliction = r.afflictions[0];
-    if (topAffliction) parts.push(`it is afflicted (${topAffliction.split('—')[0].trim().toLowerCase().replace(/\.$/, '')})`);
-  } else if (cg === 'heavily_afflicted' || cg === 'distorted') {
-    parts.push(`it carries significant affliction that distorts its natural expression`);
+  if (r.deliveryGrade === 'obstructed' || r.deliveryGrade === 'distorted_delivery') {
+    parts.push(`delivery is blocked or distorted, limiting what reaches your life`);
+  } else if (r.deliveryGrade === 'reliable') {
+    parts.push(`results deliver reliably`);
+  } else if (r.deliveryGrade === 'delayed') {
+    parts.push(`results arrive with delay — patience is the key`);
   }
 
-  // Why based on delivery
-  if (dg === 'obstructed' || dg === 'distorted_delivery') {
-    parts.push(`its delivery is blocked or distorted, limiting what it can pass through to your life`);
-  } else if (dg === 'reliable') {
-    parts.push(`it delivers its results reliably`);
-  } else if (dg === 'delayed') {
-    parts.push(`its results come with delay — patience is required`);
-  }
-
-  // D9 note for marriage-sensitive
   if (domain === 'marriage' && r.vargaAssessment.hasD9SecondPass && r.vargaAssessment.d9Contradicts) {
     parts.push(`the Navamsa (D9) specifically weakens this planet for relationship matters`);
   }
 
-  if (parts.length === 0) return `${planet}'s placement and condition shape this area of your life.`;
-  return parts.map((p, i) => i === 0 ? cap(p) : p).join(', and ') + '.';
-}
-
-function domainToHouse(domain: Domain): number {
-  const map: Partial<Record<Domain, number>> = {
-    self:1, wealth:2, siblings:3, home:4, children:5, health:6,
-    marriage:7, longevity:8, fortune:9, career:10, gains:11, liberation:12,
-  };
-  return map[domain] ?? 0;
+  if (!parts.length) return `${planet}'s placement and condition shape this area.`;
+  return parts.map((p, i) => i === 0 ? cap(p) : p).join('; ') + '.';
 }
 
 // ─── Dasha Timeline ───────────────────────────────────────────────────────────
 
+interface MahaPeriod { planet: string; startUtc: string; endUtc: string; }
+
 interface DashaWindowItem {
-  mahaLord: string;
-  antarLord: string | null;
-  pratyLord: string | null;
-  sookshmaLord: string | null;
-  level: 'maha' | 'antar' | 'pratyantar' | 'sookshma';
-  dateRange: string;
-  isActive: boolean;
-  quality: 'great' | 'good' | 'moderate' | 'difficult';
+  mahaLord: string; antarLord: string | null; pratyLord: string | null; sookshmaLord: string | null;
+  level: 'maha'|'antar'|'pratyantar'|'sookshma';
+  dateRange: string; isActive: boolean;
+  quality: 'great'|'good'|'moderate'|'difficult';
   reason: string;
 }
 
-/**
- * Quality score for a dasha combination.
- * Weighs relationship between ALL active lords and the planet being assessed,
- * plus the planet's own delivery grade.
- */
-function dashaQuality(
-  planet: string,
-  r: PlanetStrengthResult,
-  lords: string[]            // [mahaLord, antarLord?, pratyLord?, sookshmaLord?]
-): DashaWindowItem['quality'] {
-  // Planet's own delivery grade sets the ceiling
+function dashaQuality(planet: string, r: PlanetStrengthResult, lords: string[]): DashaWindowItem['quality'] {
   const deliveryCeiling: DashaWindowItem['quality'] =
     r.deliveryGrade === 'reliable'    ? 'great'
     : r.deliveryGrade === 'delayed'   ? 'good'
     : r.deliveryGrade === 'inconsistent' ? 'moderate'
     : 'difficult';
 
-  // Count friendly / enemy relationships with all enclosing lords
   let friendCount = 0, enemyCount = 0;
   for (const lord of lords) {
-    if (lord === planet) continue; // own period — neutral for relationship calc
+    if (lord === planet) continue;
     const rel = getNaturalRelationship(lord, planet);
     if (rel === 'friend') friendCount++;
     if (rel === 'enemy')  enemyCount++;
@@ -430,78 +680,61 @@ function dashaQuality(
     : friendCount === 1 ? 'good'
     : 'moderate';
 
-  // Take the worse of delivery ceiling and relationship score
   const ORDER = { great:0, good:1, moderate:2, difficult:3 };
   return ORDER[deliveryCeiling] >= ORDER[relScore] ? deliveryCeiling : relScore;
 }
 
 function dashaReason(
-  planet: string,
-  level: DashaWindowItem['level'],
-  mahaLord: string,
-  antarLord: string | null,
-  pratyLord: string | null,
-  sookshmaLord: string | null,
-  quality: DashaWindowItem['quality'],
-  r: PlanetStrengthResult
+  planet: string, level: DashaWindowItem['level'],
+  mahaLord: string, antarLord: string|null, pratyLord: string|null, sookshmaLord: string|null,
+  quality: DashaWindowItem['quality'], r: PlanetStrengthResult
 ): string {
   const enclosing = [mahaLord, antarLord, pratyLord, sookshmaLord].filter(Boolean) as string[];
   const otherLords = enclosing.filter(l => l !== planet);
 
   if (level === 'maha') {
-    if (quality === 'great') return `${planet}'s own major period — its themes fully dominate. ${planet} delivers well in your chart, so this is a genuinely productive stretch.`;
-    if (quality === 'good')  return `${planet}'s own major period. Results arrive, though with characteristic slowness or a non-linear path.`;
+    if (quality === 'great') return `${planet}'s own major period — its themes fully dominate. It delivers well in your chart, making this a genuinely productive stretch.`;
+    if (quality === 'good')  return `${planet}'s own major period. Results arrive, though with characteristic delay or non-linear path.`;
     if (quality === 'moderate') return `${planet}'s own major period. Its results are inconsistent — some things work, others follow unexpected patterns.`;
     return `${planet}'s own major period. Because ${planet} faces real challenges in your chart, this period is intense and can feel demanding.`;
   }
 
+  const levelLabel = level === 'antar' ? 'sub-period' : level === 'pratyantar' ? 'minor sub-period' : 'fine-grain window';
   const enclosingStr = otherLords.length > 1
-    ? `${otherLords.slice(0,-1).join(', ')} and ${otherLords[otherLords.length-1]}`
+    ? `${otherLords.slice(0,-1).join(' › ')} › ${otherLords[otherLords.length-1]}`
     : otherLords[0] ?? mahaLord;
 
-  const levelLabel = level === 'antar' ? 'sub-period'
-                   : level === 'pratyantar' ? 'minor sub-period'
-                   : 'fine-grain window';
-
-  // Relationship notes
   const rels = otherLords.map(l => {
     const rel = getNaturalRelationship(l, planet);
-    return rel === 'friend' ? `${l} is a friend` : rel === 'enemy' ? `${l} is an enemy` : null;
+    return rel === 'friend' ? `${l} is a natural friend` : rel === 'enemy' ? `${l} is a natural enemy` : null;
   }).filter(Boolean);
+  const relNote = rels.length > 0 ? ' ' + rels.join('; ') + '.' : '';
 
-  let relNote = rels.length > 0 ? rels.join('; ') + '.' : '';
-
+  const topDomain = r.strongDomains[0] ? (DOMAIN_LABELS[r.strongDomains[0]] ?? r.strongDomains[0]).toLowerCase() : 'your key areas';
   if (quality === 'great' || quality === 'good') {
-    return `${planet} activates as a ${levelLabel} within ${enclosingStr}'s period. ${relNote} Good window for ${planet}-related themes — watch for movement in ${(r.strongDomains[0] ? (DOMAIN_LABELS[r.strongDomains[0]] ?? r.strongDomains[0]).toLowerCase() : 'your key life areas')}.`;
+    return `${planet} activates as a ${levelLabel} within ${enclosingStr}'s period.${relNote} Watch for movement in ${topDomain} during this window.`;
   }
   if (quality === 'difficult') {
-    return `${planet} activates as a ${levelLabel} within ${enclosingStr}'s period. ${relNote} This combination creates friction — ${planet}'s areas may feel more pressured or blocked during this window.`;
+    return `${planet} activates as a ${levelLabel} within ${enclosingStr}'s period.${relNote} This combination creates friction — ${planet}'s areas may feel pressured during this window.`;
   }
-  return `${planet} activates as a ${levelLabel} within ${enclosingStr}'s period. ${relNote} Mixed results — some things move, others stall.`;
-}
-
-interface MahaPeriod {
-  planet: string;
-  startUtc: string;
-  endUtc: string;
+  return `${planet} activates as a ${levelLabel} within ${enclosingStr}'s period.${relNote} Mixed results — some things move, others stall.`;
 }
 
 function buildDashaTimeline(
-  planet: string,
-  r: PlanetStrengthResult,
-  allMahas: MahaPeriod[]
+  planet: string, r: PlanetStrengthResult, allMahas: MahaPeriod[]
 ): DashaWindowItem[] {
   const items: DashaWindowItem[] = [];
   if (!allMahas.length) return items;
 
   const now = new Date();
+  // Only consider mahadashas that haven't ended yet
+  const futureMahas = allMahas.filter(m => new Date(m.endUtc) > now);
 
-  for (const maha of allMahas) {
+  for (const maha of futureMahas) {
     const mahaStart  = new Date(maha.startUtc);
     const mahaEnd    = new Date(maha.endUtc);
     const mahaActive = now >= mahaStart && now <= mahaEnd;
 
-    // ── Level 1: Planet IS the Mahadasha ─────────────────────────────────────
     if (maha.planet === planet) {
       const quality = dashaQuality(planet, r, [planet]);
       items.push({
@@ -510,15 +743,14 @@ function buildDashaTimeline(
         isActive: mahaActive, quality,
         reason: dashaReason(planet, 'maha', planet, null, null, null, quality, r),
       });
-      // Also drill into ALL antars within this Maha to find supportive sub-periods
       try {
         const antars = calculateAntardashas(maha.planet as any, maha.startUtc, maha.endUtc);
         for (const antar of antars) {
+          if (new Date(antar.endUtc) <= now) continue; // skip past antars
           const aStart  = new Date(antar.startUtc);
           const aEnd    = new Date(antar.endUtc);
           const aActive = now >= aStart && now <= aEnd;
           const aQual   = dashaQuality(planet, r, [maha.planet, antar.lord]);
-          // Only surface notable antars inside own Maha (good/great or currently active)
           if (aActive || aQual === 'great' || aQual === 'good') {
             items.push({
               mahaLord: maha.planet, antarLord: antar.lord, pratyLord: null, sookshmaLord: null,
@@ -532,16 +764,15 @@ function buildDashaTimeline(
       continue;
     }
 
-    // ── Level 2: Planet appears as Antardasha ─────────────────────────────────
     try {
       const antars = calculateAntardashas(maha.planet as any, maha.startUtc, maha.endUtc);
       for (const antar of antars) {
         if (antar.lord !== planet) continue;
+        if (new Date(antar.endUtc) <= now) continue; // skip past antars
         const aStart  = new Date(antar.startUtc);
         const aEnd    = new Date(antar.endUtc);
         const aActive = now >= aStart && now <= aEnd;
         const aQual   = dashaQuality(planet, r, [maha.planet, planet]);
-
         items.push({
           mahaLord: maha.planet, antarLord: planet, pratyLord: null, sookshmaLord: null,
           level: 'antar', dateRange: fmtRange(aStart, aEnd),
@@ -549,18 +780,15 @@ function buildDashaTimeline(
           reason: dashaReason(planet, 'antar', maha.planet, planet, null, null, aQual, r),
         });
 
-        // ── Level 3: Planet appears as Pratyantar within this Antar ──────────
         try {
-          const pratys = calculatePratyantars(
-            maha.planet as any, antar.lord as any, antar.startUtc, antar.endUtc
-          );
+          const pratys = calculatePratyantars(maha.planet as any, antar.lord as any, antar.startUtc, antar.endUtc);
           for (const praty of pratys) {
             if (praty.lord !== planet) continue;
+            if (new Date(praty.endUtc) <= now) continue;
             const pStart  = new Date(praty.startUtc);
             const pEnd    = new Date(praty.endUtc);
             const pActive = now >= pStart && now <= pEnd;
             const pQual   = dashaQuality(planet, r, [maha.planet, antar.lord, planet]);
-
             items.push({
               mahaLord: maha.planet, antarLord: antar.lord, pratyLord: planet, sookshmaLord: null,
               level: 'pratyantar', dateRange: fmtRange(pStart, pEnd),
@@ -568,23 +796,19 @@ function buildDashaTimeline(
               reason: dashaReason(planet, 'pratyantar', maha.planet, antar.lord, planet, null, pQual, r),
             });
 
-            // ── Level 4: Planet appears as Sookshma within this Pratyantar ──
             try {
-              const sooks = calculateSookshmas(
-                maha.planet as any, antar.lord as any, praty.lord as any, praty.startUtc, praty.endUtc
-              );
+              const sooks = calculateSookshmas(maha.planet as any, antar.lord as any, praty.lord as any, praty.startUtc, praty.endUtc);
               for (const sook of sooks) {
                 if (sook.lord !== planet) continue;
+                if (new Date(sook.endUtc) <= now) continue;
                 const sStart  = new Date(sook.startUtc);
                 const sEnd    = new Date(sook.endUtc);
                 const sActive = now >= sStart && now <= sEnd;
                 const sQual   = dashaQuality(planet, r, [maha.planet, antar.lord, praty.lord, planet]);
-
                 items.push({
                   mahaLord: maha.planet, antarLord: antar.lord, pratyLord: praty.lord,
                   sookshmaLord: planet, level: 'sookshma',
-                  dateRange: fmtRange(sStart, sEnd),
-                  isActive: sActive, quality: sQual,
+                  dateRange: fmtRange(sStart, sEnd), isActive: sActive, quality: sQual,
                   reason: dashaReason(planet, 'sookshma', maha.planet, antar.lord, praty.lord, planet, sQual, r),
                 });
               }
@@ -595,7 +819,6 @@ function buildDashaTimeline(
     } catch { /* skip */ }
   }
 
-  // Sort: active first → quality → level depth (broader first)
   const LEVEL_ORDER = { maha:0, antar:1, pratyantar:2, sookshma:3 };
   const QUAL_ORDER  = { great:0, good:1, moderate:2, difficult:3 };
   return items.sort((a, b) => {
@@ -604,19 +827,18 @@ function buildDashaTimeline(
     const qDiff = QUAL_ORDER[a.quality] - QUAL_ORDER[b.quality];
     if (qDiff !== 0) return qDiff;
     return LEVEL_ORDER[a.level] - LEVEL_ORDER[b.level];
-  }).slice(0, 12); // show up to 12 windows across all 4 levels
+  }).slice(0, 12);
 }
 
 function fmtRange(start: Date, end: Date): string {
-  const fmtYear = (d: Date) => d.getFullYear().toString();
-  const fmtMon  = (d: Date) => d.toLocaleString('en',{month:'short'});
-  if (end.getFullYear() - start.getFullYear() <= 2) {
-    return `${fmtMon(start)} ${fmtYear(start)} – ${fmtMon(end)} ${fmtYear(end)}`;
-  }
-  return `${fmtYear(start)} – ${fmtYear(end)}`;
+  const y = (d: Date) => d.getFullYear().toString();
+  const m = (d: Date) => d.toLocaleString('en',{month:'short'});
+  return end.getFullYear() - start.getFullYear() <= 2
+    ? `${m(start)} ${y(start)} – ${m(end)} ${y(end)}`
+    : `${y(start)} – ${y(end)}`;
 }
 
-// ─── UI Components ────────────────────────────────────────────────────────────
+// ─── UI components ────────────────────────────────────────────────────────────
 
 function Section({ title, children, defaultOpen = false }: {
   title: string; children: React.ReactNode; defaultOpen?: boolean;
@@ -637,14 +859,10 @@ function Section({ title, children, defaultOpen = false }: {
 function SignalBadge({ type, label }: { type: 'good'|'mixed'|'hard'; label: string }) {
   const s = {
     good:  'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800',
-    mixed: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-700',
-    hard:  'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800',
+    mixed: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300',
+    hard:  'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400',
   };
-  return (
-    <span className={cn('text-[10px] px-2 py-0.5 rounded-full border font-medium', s[type])}>
-      {label}
-    </span>
-  );
+  return <span className={cn('text-[10px] px-2 py-0.5 rounded-full border font-medium', s[type])}>{label}</span>;
 }
 
 function AreaTag({ domain, type }: { domain: Domain; type: 'strong'|'mixed'|'weak' }) {
@@ -653,10 +871,109 @@ function AreaTag({ domain, type }: { domain: Domain; type: 'strong'|'mixed'|'wea
     mixed: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300',
     weak:  'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400',
   };
+  return <span className={cn('text-[10px] px-2 py-0.5 rounded-full border', s[type])}>{DOMAIN_LABELS[domain] ?? domain}</span>;
+}
+
+/** Renders the conjunction / aspect cluster rows */
+function ConjClusterBlock({ items, netVerdict, isAspect = false }: {
+  items: ConjItem[]; netVerdict: string; isAspect?: boolean;
+}) {
   return (
-    <span className={cn('text-[10px] px-2 py-0.5 rounded-full border', s[type])}>
-      {DOMAIN_LABELS[domain] ?? domain}
-    </span>
+    <div className="mt-3 bg-muted/30 rounded-xl border border-border overflow-hidden">
+      {/* Per-planet rows */}
+      <div className="divide-y divide-border">
+        {items.map((item, i) => {
+          const chipColor = item.isNode
+            ? 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300'
+            : item.isBenefic
+            ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400'
+            : 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400';
+          const orbLabel = item.label === 'very_tight' ? 'dominant' : item.label === 'tight' ? 'strong' : item.label === 'mild' ? 'moderate' : 'background';
+          return (
+            <div key={i} className="p-3">
+              <div className="flex items-center gap-2 mb-1.5">
+                <span className={cn('inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-full border', chipColor)}>
+                  {GLYPH[item.planet] ?? '○'} {item.planet}
+                </span>
+                <span className="text-[10px] font-mono bg-muted px-1.5 py-0.5 rounded border border-border text-muted-foreground">
+                  {item.orb.toFixed(1)}°
+                </span>
+                <span className="text-[9px] text-muted-foreground">{orbLabel}</span>
+              </div>
+              <p className="text-[12px] text-foreground leading-relaxed">{item.effect}</p>
+            </div>
+          );
+        })}
+      </div>
+      {/* Net verdict */}
+      <div className="border-t border-border bg-muted/50 px-3 py-2.5">
+        <div className="text-[9px] font-medium text-muted-foreground uppercase tracking-wide mb-1">
+          {isAspect ? 'Overall aspect influence' : 'Net effect of this cluster'}
+        </div>
+        <p className="text-[12px] text-foreground leading-relaxed">{netVerdict}</p>
+      </div>
+    </div>
+  );
+}
+
+/** Renders the house ruler strip */
+function RulerStripBlock({ items }: { items: RulerItem[] }) {
+  return (
+    <div className="mt-3 space-y-3">
+      {items.map((item, i) => (
+        <div key={i} className="bg-muted/30 rounded-xl border border-border p-3">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center text-[11px] font-medium border border-border flex-shrink-0">
+              {item.house}
+            </div>
+            <div>
+              <span className="text-[12px] font-medium">{item.houseName}</span>
+              {item.houseTypeLabel && (
+                <span className="ml-1.5 text-[9px] px-1.5 py-0.5 rounded bg-muted border border-border text-muted-foreground">{item.houseTypeLabel}</span>
+              )}
+              {item.isSwaPlacement && (
+                <span className="ml-1.5 text-[9px] px-1.5 py-0.5 rounded bg-violet-50 border border-violet-200 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400">own placement</span>
+              )}
+            </div>
+          </div>
+          <p className="text-[12px] text-muted-foreground leading-relaxed">{item.desc}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Renders the full "In your chart" story as beats */
+function StorySection({ beats }: { beats: Beat[] }) {
+  return (
+    <div className="space-y-4">
+      {beats.map((beat, i) => {
+        const isLast = beat.id === 'synthesis';
+        return (
+          <div key={i} className={cn('pl-3.5', isLast ? 'border-l-2 border-violet-400' : 'border-l-2 border-border')}>
+            {/* Tag */}
+            <div className="flex items-center gap-2 mb-2">
+              <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: beat.dotColor }} />
+              <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">{beat.tagLabel}</span>
+            </div>
+            {/* Text paragraph */}
+            {beat.text && (
+              <p className="text-[13px] leading-relaxed text-foreground">{beat.text}</p>
+            )}
+            {/* Conjunction/aspect cluster */}
+            {beat.conjCluster && (
+              <ConjClusterBlock
+                items={beat.conjCluster.items}
+                netVerdict={beat.conjCluster.netVerdict}
+                isAspect={beat.id === 'aspects'}
+              />
+            )}
+            {/* Ruler strip */}
+            {beat.rulerItems && <RulerStripBlock items={beat.rulerItems} />}
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
@@ -670,15 +987,10 @@ function DashaPill({ item }: { item: DashaWindowItem }) {
     : 'border-border bg-muted/40';
 
   const LEVEL_LABELS: Record<DashaWindowItem['level'], string> = {
-    maha:       'Mahadasha — major period',
-    antar:      'Antardasha — sub-period',
-    pratyantar: 'Pratyantar — minor period',
-    sookshma:   'Sookshma — fine-grain window',
+    maha:'Mahadasha — major period', antar:'Antardasha — sub-period',
+    pratyantar:'Pratyantar — minor period', sookshma:'Sookshma — fine-grain window',
   };
-
-  // Full chain: Maha › Antar › Praty › Sookshma (only non-null)
-  const chain = [item.mahaLord, item.antarLord, item.pratyLord, item.sookshmaLord]
-    .filter(Boolean).join(' › ');
+  const chain = [item.mahaLord, item.antarLord, item.pratyLord, item.sookshmaLord].filter(Boolean).join(' › ');
 
   return (
     <div className={cn('rounded-lg border p-3', border)}>
@@ -690,9 +1002,7 @@ function DashaPill({ item }: { item: DashaWindowItem }) {
             : item.quality === 'difficult' ? 'text-red-700 dark:text-red-400'
             : 'text-foreground')}>
             {chain}
-            {item.isActive && (
-              <span className="ml-1.5 text-[9px] px-1.5 py-0.5 rounded bg-blue-500 text-white font-semibold align-middle">NOW</span>
-            )}
+            {item.isActive && <span className="ml-1.5 text-[9px] px-1.5 py-0.5 rounded bg-blue-500 text-white font-semibold align-middle">NOW</span>}
           </div>
           <div className="text-[9px] text-muted-foreground mt-0.5">{LEVEL_LABELS[item.level]}</div>
         </div>
@@ -709,49 +1019,44 @@ function PlanetCard({ r, pd, isSelected, onSelect }: {
   r: PlanetStrengthResult; pd: PlanetData; isSelected: boolean; onSelect: () => void;
 }) {
   const strColor  = strGradeToColor(r.structuralGrade);
-  const strWord   = strGradeToWord(r.structuralGrade);
   const strWidth  = strGradeToWidth(r.structuralGrade);
-  const delivWord = delivGradeToWord(r.deliveryGrade);
   const isDasha   = r.temporalActivation.dashaBoostApplied;
 
-  // Short card desc — 1 line only
-  const fn = r.functionalNature;
+  const fn   = r.functionalNature;
   const lean = r.functionalLean;
+  const isNode = r.planet === 'Rahu' || r.planet === 'Ketu';
+
   let cardLine: string;
   const housesStr = r.housesRuled.map(h => `${h}${ord(h)}`).join(' and ');
   const topDomain = r.strongDomains[0] ? DOMAIN_LABELS[r.strongDomains[0]] : r.mixedDomains[0] ? DOMAIN_LABELS[r.mixedDomains[0]] : null;
-  const isNode = r.planet === 'Rahu' || r.planet === 'Ketu';
 
   if (fn === 'yogakaraka') {
-    cardLine = `Yogakaraka — rules kendra and trikona. Your most constructive planet.`;
+    cardLine = 'Yogakaraka — rules both kendra and trikona. Your most constructive planet.';
   } else if (fn === 'strong_benefic' && r.housesRuled.includes(1)) {
-    cardLine = `Your chart ruler — its condition shapes your overall self-expression.`;
+    cardLine = 'Your chart ruler — its condition shapes your overall self-expression.';
   } else if (fn === 'strong_benefic') {
-    cardLine = `Primary benefic for this lagna — rules the ${housesStr} house${r.housesRuled.length > 1 ? 's' : ''}.`;
+    cardLine = `Primary benefic — rules the ${housesStr} house${r.housesRuled.length > 1 ? 's' : ''}.`;
   } else if (fn === 'benefic') {
     cardLine = `Kendra lord — rules the ${housesStr} house${r.housesRuled.length > 1 ? 's' : ''}. Stabilising role.`;
   } else if (fn === 'malefic') {
     const topWeak = r.weakDomains[0] ? DOMAIN_LABELS[r.weakDomains[0]] : null;
-    cardLine = `Rules the ${housesStr} — dusthana houses. Creates friction${topWeak ? ` particularly in ${topWeak.toLowerCase()}` : ''}.`;
+    cardLine = `Rules the ${housesStr} — dusthana houses. Creates friction${topWeak ? ` in ${topWeak.toLowerCase()}` : ''}.`;
   } else if (fn === 'mixed' && lean === 'benefic_lean') {
-    cardLine = `Mixed ownership — leans positive.${topDomain ? ` ${topDomain} is the strongest area.` : ''}`;
+    cardLine = `Mixed — leans constructive.${topDomain ? ` ${topDomain} is the strongest area.` : ''}`;
   } else if (fn === 'mixed' && lean === 'malefic_lean') {
     const topWeak = r.weakDomains[0] ? DOMAIN_LABELS[r.weakDomains[0]] : null;
-    cardLine = `Mixed ownership — leans challenging.${topWeak ? ` ${topWeak} needs the most attention.` : ''}`;
+    cardLine = `Mixed — leans challenging.${topWeak ? ` ${topWeak} needs the most attention.` : ''}`;
   } else if (fn === 'mixed' && lean === 'maraka_driven') {
-    cardLine = `Maraka planet — rules the 2nd and 7th. Life-sensitive in its own dasha.`;
+    cardLine = 'Maraka planet — rules the 2nd and 7th. Life-sensitive in its own dasha.';
   } else if (fn === 'mixed') {
     cardLine = `Mixed role — rules the ${housesStr} house${r.housesRuled.length > 1 ? 's' : ''}.${topDomain ? ` Best for ${topDomain.toLowerCase()}.` : ''}`;
   } else if (isNode && r.nodeInheritance) {
-    const disp = r.nodeInheritance.dispositorName;
     const houseNote = r.housePosition === 7 ? 'relationships' : r.housePosition === 1 ? 'your identity' : r.housePosition === 10 ? 'career' : r.housePosition === 4 ? 'home' : `the ${r.housePosition}${ord(r.housePosition)} house`;
-    cardLine = `${r.planet} in ${houseNote} — amplifies those themes. Strength inherited from ${disp}.`;
+    cardLine = `In ${houseNote} — amplifies those themes. Inherits character from ${r.nodeInheritance.dispositorName}.`;
   } else {
-    // True neutral — show placement + best domain
     cardLine = `In the ${r.housePosition}${ord(r.housePosition)} house.${topDomain ? ` Most relevant for ${topDomain.toLowerCase()}.` : ''}`;
   }
 
-  // Top 3 relevant areas for the card
   const cardAreas = [
     ...r.strongDomains.slice(0,2).map(d => ({d, t: 'strong' as const})),
     ...r.mixedDomains.slice(0,1).map(d => ({d, t: 'mixed' as const})),
@@ -762,12 +1067,8 @@ function PlanetCard({ r, pd, isSelected, onSelect }: {
       className={cn('w-full text-left rounded-xl border overflow-hidden bg-card transition-all',
         isSelected ? 'border-blue-400 shadow-sm ring-1 ring-blue-400/20 dark:border-blue-600'
                    : 'border-border hover:border-border/80 hover:shadow-sm')}>
-
-      {/* Top stripe — 3 colours only: green/amber/red */}
       <div className="h-[3px]" style={{ background: delivGradeToColor(r.deliveryGrade, r.structuralGrade) }} />
-
       <div className="p-4">
-        {/* Header */}
         <div className="flex items-start gap-3 mb-3">
           <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center text-base flex-shrink-0">
             {GLYPH[r.planet] ?? '?'}
@@ -787,22 +1088,16 @@ function PlanetCard({ r, pd, isSelected, onSelect }: {
             </div>
           </div>
         </div>
-
-        {/* Strength bar */}
         <div className="mb-3">
           <div className="h-1 rounded-full bg-muted overflow-hidden mb-1.5">
-            <div className="h-full rounded-full transition-all" style={{ width: `${strWidth}%`, background: strColor }} />
+            <div className="h-full rounded-full" style={{ width: `${strWidth}%`, background: strColor }} />
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-medium" style={{ color: strColor }}>{strWord}</span>
-            <span className="text-[11px] text-muted-foreground">{delivWord}</span>
+            <span className="text-[11px] font-medium" style={{ color: strColor }}>{strGradeToWord(r.structuralGrade)}</span>
+            <span className="text-[11px] text-muted-foreground">{delivGradeToWord(r.deliveryGrade)}</span>
           </div>
         </div>
-
-        {/* Card line */}
         <p className="text-[12px] text-muted-foreground leading-relaxed mb-3">{cardLine}</p>
-
-        {/* Area tags */}
         {cardAreas.length > 0 && (
           <div className="flex flex-wrap gap-1">
             {cardAreas.map(({ d, t }) => <AreaTag key={d} domain={d} type={t} />)}
@@ -815,37 +1110,33 @@ function PlanetCard({ r, pd, isSelected, onSelect }: {
 
 // ─── Detail Panel ─────────────────────────────────────────────────────────────
 
-function DetailPanel({ r, pd, moonData, birthDateUtc, onClose }: {
+function DetailPanel({ r, pd, moonData, birthDateUtc, allPlanets, onClose }: {
   r: PlanetStrengthResult; pd: PlanetData;
   moonData?: PlanetData; birthDateUtc?: string;
+  allPlanets: Record<string, PlanetData>;
   onClose: () => void;
 }) {
   const [showTech, setShowTech] = useState(false);
-  const story    = useMemo(() => buildInYourChart(r, pd, pd.signNumber), [r, pd]);
-  const meanings = useMemo(() => buildWhatThisMeans(r, pd), [r, pd]);
 
-  // Compute all mahadashas client-side from Moon KP data
   const allMahas = useMemo((): MahaPeriod[] => {
     if (!moonData?.kp || !birthDateUtc) return [];
     try {
       const result = vimshottariDasha(
-        moonData.longitude,
-        new Date(birthDateUtc),
-        moonData.kp.elapsedFractionOfNakshatra,
-        moonData.kp.nakshatraLord as any
+        moonData.longitude, new Date(birthDateUtc),
+        moonData.kp.elapsedFractionOfNakshatra, moonData.kp.nakshatraLord as any
       );
       return (result.allMahadashas ?? []).map((m: any) => ({
-        planet: m.lord,
-        startUtc: m.startUtc,
-        endUtc: m.endUtc,
+        planet: m.lord, startUtc: m.startUtc, endUtc: m.endUtc,
       }));
     } catch { return []; }
   }, [moonData, birthDateUtc]);
 
+  const beats    = useMemo(() => buildStoryBeats(r, pd, allPlanets, allMahas), [r, pd, allPlanets, allMahas]);
+  const meanings = useMemo(() => buildWhatThisMeans(r, pd), [r, pd]);
   const timeline = useMemo(() => buildDashaTimeline(r.planet, r, allMahas), [r, allMahas]);
 
-  const strColor  = strGradeToColor(r.structuralGrade);
-  const isDasha   = r.temporalActivation.dashaBoostApplied;
+  const strColor = strGradeToColor(r.structuralGrade);
+  const isDasha  = r.temporalActivation.dashaBoostApplied;
 
   return (
     <div className="col-span-full border border-blue-400/40 dark:border-blue-600/40 rounded-xl bg-card p-5 mt-1">
@@ -875,7 +1166,7 @@ function DetailPanel({ r, pd, moonData, birthDateUtc, onClose }: {
         </div>
         <div className="bg-muted/40 rounded-lg p-3">
           <div className="text-[9px] text-muted-foreground uppercase tracking-wide mb-1.5">How it delivers</div>
-          <div className="text-[13px] font-medium" style={{ color: delivGradeToColor(r.deliveryGrade) }}>{delivGradeToWord(r.deliveryGrade)}</div>
+          <div className="text-[13px] font-medium" style={{ color: delivGradeToColor(r.deliveryGrade, r.structuralGrade) }}>{delivGradeToWord(r.deliveryGrade)}</div>
           <div className="text-[10px] text-muted-foreground mt-0.5">{pd.kp?.nakshatraName ?? pd.sign}</div>
         </div>
         <div className="bg-muted/40 rounded-lg p-3">
@@ -886,24 +1177,10 @@ function DetailPanel({ r, pd, moonData, birthDateUtc, onClose }: {
         </div>
       </div>
 
-      {/* Active dasha banner */}
-      {isDasha && (
-        <div className="bg-blue-50 border border-blue-200 dark:bg-blue-900/20 dark:border-blue-700 rounded-lg px-4 py-3 mb-5">
-          <div className="text-[10px] font-medium text-blue-700 dark:text-blue-300 uppercase tracking-wide mb-1">Currently shaping your life</div>
-          <p className="text-[12px] text-blue-900 dark:text-blue-200 leading-relaxed">
-            {r.planet}'s period is active right now. The themes below are not just astrological background — they are describing what is happening in your life at this moment.
-          </p>
-        </div>
-      )}
-
-      {/* In your chart story */}
+      {/* In your chart — beat story */}
       <div className="mb-5">
         <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-3">In your chart</div>
-        <div className="space-y-3">
-          {story.map((para, i) => (
-            <p key={i} className="text-[13px] leading-relaxed text-foreground">{para}</p>
-          ))}
-        </div>
+        <StorySection beats={beats} />
       </div>
 
       {/* What this means */}
@@ -931,7 +1208,7 @@ function DetailPanel({ r, pd, moonData, birthDateUtc, onClose }: {
         <div className="mb-5">
           <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1.5">When does {r.planet} give results?</div>
           <p className="text-[12px] text-muted-foreground mb-3 leading-relaxed">
-            Planets deliver results most strongly during their own periods and sub-periods. Here are the times in your dasha sequence when {r.planet}'s themes activate most directly.
+            Current and upcoming periods only. Planets deliver results most strongly during their own periods and sub-periods.
           </p>
           <div className="space-y-2">
             {timeline.map((item, i) => <DashaPill key={i} item={item} />)}
@@ -971,14 +1248,14 @@ function DetailPanel({ r, pd, moonData, birthDateUtc, onClose }: {
         </button>
         {showTech && (
           <div className="mt-3 bg-muted/30 rounded-lg border border-border p-4">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
               {([
                 ['Dignity', dignityShort(r.dignityLevel)],
                 ['House', `${r.housePosition}${ord(r.housePosition)}`],
-                ['Functional role', r.functionalNature.replace('_',' ')],
-                ['Condition', r.conditionGrade.replace('_',' ')],
+                ['Functional', r.functionalNature.replace(/_/g,' ')],
+                ['Condition', r.conditionGrade.replace(/_/g,' ')],
                 ['D9', dignityShort(r.vargaAssessment.d9DignityLevel)],
-                ['Delivery', r.deliveryGrade.replace('_',' ')],
+                ['Delivery', r.deliveryGrade.replace(/_/g,' ')],
                 ['Natal rank', `#${r.natalPriorityRank}`],
                 ['Confidence', r.assessmentConfidence],
               ] as [string,string][]).map(([k, v]) => (
@@ -989,9 +1266,7 @@ function DetailPanel({ r, pd, moonData, birthDateUtc, onClose }: {
               ))}
             </div>
             {r.analystNote && (
-              <p className="text-[11px] text-muted-foreground mt-3 leading-relaxed border-t border-border pt-3">
-                {r.analystNote}
-              </p>
+              <p className="text-[11px] text-muted-foreground leading-relaxed border-t border-border pt-3">{r.analystNote}</p>
             )}
           </div>
         )}
@@ -1005,11 +1280,8 @@ function DetailPanel({ r, pd, moonData, birthDateUtc, onClose }: {
 export function PlanetsTab({ planets, ascendant, dashaInfo, birthDate }: PlanetsTabProps) {
   const [selected, setSelected] = useState<string | null>(null);
 
-  // Build dasha context for engine
   const dashaContext = useMemo(() => ({
-    currentMahadasha:  dashaInfo?.currentMahadasha,
-    currentAntardasha: undefined,
-    currentPratyantar: undefined,
+    currentMahadasha: dashaInfo?.currentMahadasha,
   }), [dashaInfo]);
 
   const results = useMemo(() => {
@@ -1017,12 +1289,10 @@ export function PlanetsTab({ planets, ascendant, dashaInfo, birthDate }: Planets
     catch { return {} as Record<string, PlanetStrengthResult>; }
   }, [planets, ascendant, dashaContext]);
 
-  // Group planets
   const groups = useMemo(() => {
     const g: Record<'working'|'mixed'|'struggling', string[]> = { working:[], mixed:[], struggling:[] };
     for (const name of PLANET_ORDER) {
-      const r = results[name];
-      if (!r) continue;
+      const r = results[name]; if (!r) continue;
       g[fnToGroupKey(r)].push(name);
     }
     return g;
@@ -1036,7 +1306,6 @@ export function PlanetsTab({ planets, ascendant, dashaInfo, birthDate }: Planets
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div>
         <h2 className="text-base font-medium">Your planets</h2>
         <p className="text-[12px] text-muted-foreground mt-0.5">
@@ -1044,14 +1313,11 @@ export function PlanetsTab({ planets, ascendant, dashaInfo, birthDate }: Planets
         </p>
       </div>
 
-      {/* Groups */}
       {(['working','mixed','struggling'] as const).map(gk => {
-        const planetNames = groups[gk];
-        if (!planetNames.length) return null;
+        const planetNames = groups[gk]; if (!planetNames.length) return null;
         const { label, dot } = GROUP_LABELS[gk];
 
-        // Build items with detail panel
-        const items: Array<{ type: 'card'|'detail'; name: string }> = [];
+        const items: Array<{ type:'card'|'detail'; name: string }> = [];
         planetNames.forEach(name => {
           items.push({ type:'card', name });
           if (selected === name) items.push({ type:'detail', name });
@@ -1059,12 +1325,10 @@ export function PlanetsTab({ planets, ascendant, dashaInfo, birthDate }: Planets
 
         return (
           <div key={gk}>
-            {/* Group label */}
             <div className="flex items-center gap-2 mb-3">
               <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: dot }} />
               <span className="text-[11px] font-medium text-muted-foreground">{label}</span>
             </div>
-
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {items.map(item => {
                 if (item.type === 'detail') {
@@ -1073,10 +1337,13 @@ export function PlanetsTab({ planets, ascendant, dashaInfo, birthDate }: Planets
                   if (!r || !pd) return null;
                   return (
                     <div key={`d-${item.name}`} className="col-span-1 sm:col-span-2 lg:col-span-3">
-                      <DetailPanel r={r} pd={pd}
+                      <DetailPanel
+                        r={r} pd={pd}
                         moonData={planets['Moon'] as PlanetData | undefined}
                         birthDateUtc={birthDate}
-                        onClose={() => setSelected(null)} />
+                        allPlanets={planets}
+                        onClose={() => setSelected(null)}
+                      />
                     </div>
                   );
                 }
@@ -1099,21 +1366,11 @@ export function PlanetsTab({ planets, ascendant, dashaInfo, birthDate }: Planets
 
 // ─── Tiny helpers ─────────────────────────────────────────────────────────────
 
-function ord(n: number): string {
-  return n === 1 ? 'st' : n === 2 ? 'nd' : n === 3 ? 'rd' : 'th';
-}
+function ord(n: number): string { return n===1?'st':n===2?'nd':n===3?'rd':'th'; }
+function cap(s: string): string { return s.charAt(0).toUpperCase() + s.slice(1); }
 
-function cap(s: string): string {
-  return s.charAt(0).toUpperCase() + s.slice(1);
+function dignityShort(l: DignityLevel): string {
+  return { exalted:'Exalted', moolatrikona:'Moolatrikona', own_sign:'Own sign',
+           great_friend:'Great friend', friend:'Friendly', neutral:'Neutral',
+           enemy:'Enemy', great_enemy:'Great enemy', debilitated:'Debilitated' }[l] ?? l;
 }
-
-function dignityShort(l: import('@/lib/astrology/strength').DignityLevel): string {
-  return {
-    exalted:'Exalted', moolatrikona:'Moolatrikona', own_sign:'Own sign',
-    great_friend:'Great friend', friend:'Friendly', neutral:'Neutral',
-    enemy:'Enemy', great_enemy:'Great enemy', debilitated:'Debilitated',
-  }[l] ?? l;
-}
-
-// Re-export type for use in this file
-type ConditionGrade = import('@/lib/astrology/strength').ConditionGrade;
