@@ -1,9 +1,9 @@
 # Astrotattwa - Vedic Astrology Web Application
 
 **Version:** 0.2.0  
-**Status:** Production (Phase 1 Complete, Phase 2 67%)  
-**Live URL:** https://astrotattwa.com  
-**Last Updated:** February 10, 2026
+**Status:** Production (Phase 2 Complete, Phase 3 In Progress)
+**Live URL:** https://astrotattwa.com
+**Last Updated:** March 29, 2026
 
 ---
 
@@ -30,7 +30,7 @@ Astrotattwa is a **mobile-first Progressive Web App** that provides accurate Ved
 - ✅ **100% Free Chart Data** - No login required to calculate
 - ✅ **Swiss Ephemeris Precision** - Accurate to arcminutes
 - ✅ **Mobile-First Design** - Optimized for touch and small screens
-- ✅ **10 Divisional Charts** - D1, D2, D3, D4, D7, D9, D10, D12, D30, Moon Chart
+- ✅ **20 Divisional Charts** - D1-D60 (all complete including Moon Chart)
 - ✅ **4-Level Dasha System** - Mahadasha → Antardasha → Pratyantardasha → Sookshma
 - ✅ **Lightning Fast** - 100/100 Lighthouse Performance Score
 
@@ -47,11 +47,12 @@ Astrotattwa is a **mobile-first Progressive Web App** that provides accurate Ved
 
 ### Completion Summary
 - **Phase 1 (MVP):** ✅ **100% Complete**
-- **Phase 2 (Refactoring):** 🚧 **67% Complete** (P1.1 ✅ P1.2 ✅ P1.3 ⏳)
-- **Total Code:** ~12,618 lines (TypeScript/TSX)
-- **Components:** 45+ reusable components
-- **API Routes:** 10+ endpoints
-- **Database Tables:** 5 (Supabase PostgreSQL)
+- **Phase 2 (Refactoring):** ✅ **100% Complete** (P1.1 ✅ P1.2 ✅ P1.3 ✅)
+- **Phase 3 (Features):** 🚧 **In Progress** (P4 ✅ P6 ✅ P7 ✅ P9 🚧)
+- **Total Code:** ~31,000 lines (TypeScript/TSX)
+- **Components:** 62+ reusable components
+- **API Routes:** 18 endpoints
+- **Database Tables:** 12 (Supabase PostgreSQL)
 - **TypeScript Errors:** 0 (strict mode)
 
 ---
@@ -59,11 +60,11 @@ Astrotattwa is a **mobile-first Progressive Web App** that provides accurate Ved
 ## 🛠️ Tech Stack
 
 ### Frontend
-- **Framework:** Next.js 14 (App Router)
+- **Framework:** Next.js 16 (App Router)
 - **Language:** TypeScript 5.3 (strict mode)
 - **Styling:** Tailwind CSS 3.4
 - **UI Library:** shadcn/ui (Radix UI primitives)
-- **State Management:** Zustand 4.5
+- **State Management:** React Hooks (useState + custom hooks)
 - **Theme:** next-themes (dark/light mode)
 - **Animations:** Framer Motion 11.18
 
@@ -71,7 +72,7 @@ Astrotattwa is a **mobile-first Progressive Web App** that provides accurate Ved
 - **Runtime:** Node.js 20.20.0
 - **API:** Next.js API Routes
 - **Database:** Supabase (PostgreSQL 15)
-- **Auth:** Supabase Auth (configured, not active)
+- **Auth:** Supabase Auth (active - Google OAuth, email/password)
 - **Calculations:** Swiss Ephemeris 0.5.17
 
 ### Deployment
@@ -156,7 +157,6 @@ astrotattwa-web/
 │   │   └── validation/               # Zod schemas
 │   │
 │   ├── types/                        # TypeScript definitions
-│   ├── stores/                       # Zustand stores
 │   └── hooks/                        # Custom React hooks
 │
 ├── supabase/
@@ -280,12 +280,21 @@ astrotattwa-web/
 - ✅ **Error Handling** - Graceful fallbacks
 - ✅ **Loading States** - Smooth UX
 
-### Phase 2 (In Progress) 🚧
+### Phase 2 (Complete) ✅
 
-**P1: Code Optimization & Refactoring (67% Complete)**
+**P1: Code Optimization & Refactoring (100% Complete)**
 - ✅ P1.1: Unified divisional chart builder (Complete - Feb 10, 2026)
 - ✅ P1.2: Type system centralization (Complete - Feb 10, 2026)
-- ⏳ P1.3: Extract common form logic (Pending)
+- ✅ P1.3: Extract common form logic (Complete - Feb 14, 2026)
+
+### Phase 3 (In Progress) 🚧
+
+- ✅ P4: All 20 Divisional Charts (D1-D60) (Complete - Feb 28, 2026)
+- ✅ P6: Global City Search with Here Maps + geo-tz (Complete - Feb 14, 2026)
+- ✅ P7: Authentication System - Google OAuth, email/password, sessions (Complete - Feb 28, 2026)
+- 🚧 P9: UX Enhancements (In Progress)
+- ⏳ P5: Diamond Chart Improvements (Pending)
+- ⏳ P8: Chart Saving & Dashboard (Pending)
 
 See [DEVELOPMENT_ROADMAP.md](./DEVELOPMENT_ROADMAP.md) for detailed roadmap.
 
@@ -414,9 +423,16 @@ npm run type-check  # TypeScript checking
 #### `test_cases` & `test_case_runs`
 Used for calculation verification and accuracy testing.
 
-### Future Tables (Not Created Yet)
-- `reports` - AI-generated reports (planned)
-- `payments` - Razorpay transactions (planned)
+#### Additional Tables
+- `reports` - AI-generated reports
+- `payments` - Razorpay transactions
+- `astronomical_events` - Astronomical event data
+- `auth_login_attempts_v2` - Rate limiting for auth
+- `auth_login_events` - Login event tracking
+- `planet_daily_positions` - Daily planetary positions
+- `planet_retrograde_periods` - Retrograde period tracking
+- `planet_sign_transits` - Planet sign transit data
+- `transit_generation_log` - Transit generation logs
 
 ### Migration Plan
 Considering migration from Supabase to Linode-hosted PostgreSQL for better control and cost optimization. See [DEVELOPMENT_ROADMAP.md](./DEVELOPMENT_ROADMAP.md) for details.
@@ -430,16 +446,10 @@ Considering migration from Supabase to Linode-hosted PostgreSQL for better contr
 - ✅ Environment variables for secrets
 - ✅ Supabase Row Level Security (RLS) configured
 - ✅ CORS configured
-- ⏳ API authentication (planned for P3)
-- ⏳ Rate limiting (planned)
-- ⏳ Input sanitization (planned)
-
-### Planned Improvements
-- Add API authentication
-- Implement rate limiting
-- Add CSRF protection
-- Implement input validation middleware
-- Add security headers
+- ✅ API authentication (P7 complete - Supabase Auth)
+- ✅ Rate limiting (implemented in src/lib/api/rateLimit.ts)
+- ✅ Security headers (CSP, HSTS, X-Frame-Options via next.config.js + Nginx)
+- ✅ Input validation (Zod schemas in src/lib/validation/)
 
 ---
 
@@ -475,10 +485,10 @@ See [AI_HANDOFF_GUIDE.md](./AI_HANDOFF_GUIDE.md) for collaboration guidelines be
 
 ## 📊 Project Metrics
 
-- **Lines of Code:** ~6,222
-- **Components:** 45+
-- **API Endpoints:** 10+
-- **Database Tables:** 5
+- **Lines of Code:** ~31,000
+- **Components:** 62+
+- **API Endpoints:** 18
+- **Database Tables:** 12
 - **Lighthouse Score:** 100/100 (Performance)
 - **TypeScript Coverage:** 100%
 - **Mobile Responsive:** ✅ Yes
@@ -506,6 +516,6 @@ For issues and questions, please create an issue on GitHub or contact the develo
 
 ---
 
-**Last Updated:** February 7, 2026  
-**Version:** 0.2.0  
-**Status:** Production (Phase 1 Complete)
+**Last Updated:** March 29, 2026
+**Version:** 0.2.0
+**Status:** Production (Phase 2 Complete, Phase 3 In Progress)

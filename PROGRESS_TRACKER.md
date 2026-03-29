@@ -1,7 +1,7 @@
 # Astrotattwa - Progress Tracker
 
-**Last Updated:** February 28, 2026  
-**Phase:** 3 (Feature Expansion) - In Progress  
+**Last Updated:** March 29, 2026
+**Phase:** 3 (Feature Expansion) - In Progress
 **Overall Progress:** 82% Complete
 
 ---
@@ -20,7 +20,7 @@
 ## ✅ Phase 1: MVP Foundation (100% - COMPLETE)
 
 ### Infrastructure ✅
-- [x] Next.js 14 App Router setup
+- [x] Next.js 16 App Router setup
 - [x] TypeScript configuration (strict mode)
 - [x] Tailwind CSS + shadcn/ui
 - [x] Supabase integration
@@ -40,7 +40,7 @@
 - [x] Avakahada Chakra (21 attributes)
 - [x] Planet Dignity (Exalt, Debil, Combust, Retro)
 
-### Divisional Charts ✅ (All 19 Charts Complete)
+### Divisional Charts ✅ (All 20 Charts Complete)
 - [x] D1 - Lagna/Rashi (birth chart)
 - [x] D2 - Hora (wealth)
 - [x] D3 - Drekkana (siblings)
@@ -478,14 +478,16 @@
 ## 📊 Overall Statistics
 
 ### Code Metrics
-- **Total Lines:** ~18,280 (TypeScript/TSX code only)
-- **TypeScript Files:** 148 files
+- **Total Lines:** ~31,000 (TypeScript/TSX code only)
+- **TypeScript Files:** 185+ files
 - **Components:** 62+ documented (49 component files)
-- **API Routes:** 13 endpoints
-  - Auth: 3 (login, logout, me)
+- **API Routes:** 18 endpoints
+  - Auth: 3 (login, logout, me) + callback
   - Core: 2 (calculate, avakahada)
   - Cities: 1 (search)
-  - Dasha: 4 (current, antardasha, pratyantar, sookshma)
+  - Dasha: 5 (mahadashas, current, antardasha, pratyantar, sookshma)
+  - Saturn Transits: 2 (sadesati, period-analysis)
+  - Chart Saving: 2 (save-chart, save-chart/[id])
   - Test: 3 (run-calculations, history, delete-runs)
 - **Divisional Charts:** 20 (all D1-D60 complete)
 - **Test Cases:** Database-driven accuracy tests (test_cases table)
@@ -647,6 +649,6 @@
 - ⏳ Pending
 - ❌ Blocked
 
-**Last Updated:** February 28, 2026  
-**Updated By:** Claude  
-**Next Update:** March 5, 2026
+**Last Updated:** March 29, 2026
+**Updated By:** Claude
+**Next Update:** April 5, 2026
