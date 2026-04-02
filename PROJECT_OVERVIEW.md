@@ -1,8 +1,8 @@
 # Project Overview - Astrotattwa
 
 **Version:** 2.0  
-**Last Updated:** February 7, 2026  
-**Status:** Production (Phase 1 Complete)
+**Last Updated:** March 29, 2026
+**Status:** Production (Phase 2 Complete, Phase 3 In Progress)
 
 ---
 
@@ -93,7 +93,7 @@ Astrotattwa provides **accurate, free Vedic astrology calculations** with AI-pow
 ### Frontend Layer
 
 #### Core Framework
-- **Next.js 14** (App Router)
+- **Next.js 16** (App Router)
   - Server Components (default)
   - Client Components ('use client' when needed)
   - API Routes
@@ -145,11 +145,11 @@ Astrotattwa provides **accurate, free Vedic astrology calculations** with AI-pow
 - Direct server access
 - Custom configuration
 
-#### Authentication (Planned P7)
-- **Supabase Auth**
+#### Authentication (P7 Complete ✅)
+- **Supabase Auth** (active)
 - Google OAuth
 - Email/password
-- JWT tokens
+- JWT tokens with session refresh middleware
 
 #### Calculations Engine
 - **Swiss Ephemeris 0.5.17**
