@@ -8,6 +8,7 @@ import { Logo } from '@/components/ui/Logo'
 import { LogOut, Settings, User, ChevronDown } from 'lucide-react'
 import type { AuthUser } from '@/hooks/useAuth'
 import { performLogout } from '@/lib/auth/logout'
+import { useToast } from '@/hooks/use-toast'
 
 
 // ─── Avatar ──────────────────────────────────────────────────────────────────
@@ -63,9 +64,11 @@ function Avatar({ user }: { user: AuthUser }) {
 function UserDropdown({
   user,
   onSignOut,
+  onMyChartClick,
 }: {
   user: AuthUser
   onSignOut: () => void
+  onMyChartClick: () => void
 }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -167,10 +170,9 @@ function UserDropdown({
           {/* Menu items */}
           <nav style={{ padding: '4px 0' }}>
             <DropdownItem
-              href="/chart"
               icon={<User size={14} />}
               label="My Chart"
-              onClick={() => setOpen(false)}
+              onClick={() => { setOpen(false); onMyChartClick(); }}
             />
             <DropdownItem
               href="/settings"
@@ -224,25 +226,46 @@ function DropdownItem({
   label,
   onClick,
 }: {
-  href: string
+  href?: string
   icon: React.ReactNode
   label: string
   onClick: () => void
 }) {
+  const sharedStyle = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    padding: '9px 14px',
+    fontSize: 13,
+    color: 'var(--text2)',
+    textDecoration: 'none',
+    transition: 'background .12s',
+    width: '100%',
+    background: 'transparent',
+    border: 'none',
+    cursor: 'pointer',
+    textAlign: 'left' as const,
+  }
+
+  if (!href) {
+    return (
+      <button
+        onClick={onClick}
+        style={sharedStyle}
+        onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-subtle)' }}
+        onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+      >
+        <span style={{ color: 'var(--text3)' }}>{icon}</span>
+        {label}
+      </button>
+    )
+  }
+
   return (
     <Link
       href={href}
       onClick={onClick}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-        padding: '9px 14px',
-        fontSize: 13,
-        color: 'var(--text2)',
-        textDecoration: 'none',
-        transition: 'background .12s',
-      }}
+      style={sharedStyle}
       onMouseEnter={(e) => {
         e.currentTarget.style.background = 'var(--bg-subtle)'
       }}
@@ -269,6 +292,7 @@ export function Header({ showNav = true }: HeaderProps) {
   const [authLoading, setAuthLoading] = useState(true)
   const router = useRouter()
   const supabase = createClient()
+  const { toast } = useToast()
 
   // Scroll shadow
   useEffect(() => {
@@ -308,6 +332,21 @@ export function Header({ showNav = true }: HeaderProps) {
     router.refresh()
   }
 
+  const handleMyChartClick = () => {
+    try {
+      const hasChart = !!localStorage.getItem('lastChart')
+      if (!hasChart) {
+        toast({
+          title: '✨ No chart yet',
+          description: 'Calculate your Kundli first, then save it as "My Chart" to access it here.',
+          variant: 'dark',
+        })
+        return
+      }
+    } catch {}
+    router.push('/chart?loadFavorite=true')
+  }
+
   return (
     <header
       style={{
@@ -344,7 +383,7 @@ export function Header({ showNav = true }: HeaderProps) {
           {!authLoading && (
             <>
               {user ? (
-                <UserDropdown user={user} onSignOut={handleSignOut} />
+                <UserDropdown user={user} onSignOut={handleSignOut} onMyChartClick={handleMyChartClick} />
               ) : (
                 <>
                   <Link
