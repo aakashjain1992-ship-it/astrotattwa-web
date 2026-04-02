@@ -37,10 +37,41 @@ export function PanchaBhujaSection({ data }: { data: PanchangData }) {
           }))} />
         </Row>
         <Row label="Nakshatra">
-          <MultiEntry entries={data.nakshatra.map(n => ({
-            name: `${n.name} (Pada ${n.pada})`,
-            endTime: n.endTime,
-          }))} />
+          <div className="space-y-0.5">
+            {data.nakshatra.map((n, ni) => {
+              // If pada transitions exist, render each pada separately
+              if (n.padaTransitions && n.padaTransitions.length > 1) {
+                return (
+                  <div key={ni} className="space-y-0.5">
+                    {n.padaTransitions.map((pt, pi) => (
+                      <div key={pi} className="flex items-center justify-between gap-2">
+                        <span className="font-medium">{n.name} Pada {pt.pada}</span>
+                        {pt.endTime && (
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">upto {pt.endTime}</span>
+                        )}
+                      </div>
+                    ))}
+                    {/* Final pada (pada 4) ends at nakshatra end */}
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-medium">{n.name} Pada 4</span>
+                      {n.endTime && (
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">upto {n.endTime}</span>
+                      )}
+                    </div>
+                  </div>
+                )
+              }
+              // Simple display: single pada
+              return (
+                <div key={ni} className="flex items-center justify-between gap-2">
+                  <span className="font-medium">{n.name} (Pada {n.pada})</span>
+                  {n.endTime && (
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">upto {n.endTime}</span>
+                  )}
+                </div>
+              )
+            })}
+          </div>
         </Row>
         <Row label="Yoga">
           <MultiEntry entries={data.yoga.map(y => ({

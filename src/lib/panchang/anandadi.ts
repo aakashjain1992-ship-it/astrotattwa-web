@@ -26,6 +26,11 @@ export function computeAnandadiYoga(
   const adjustedIndex = ((nakshatraIndex - offset) % 28 + 28) % 28
   const yoga = ANANDADI_YOGA_LIST[adjustedIndex] ?? { name: 'Unknown', auspicious: false }
 
+  // Tamil Yoga: the next yoga in the 28-cycle (parallel system, runs concurrently)
+  // It represents the upcoming yoga after the current Anandadi yoga period ends.
+  const tamilYogaIndex = (adjustedIndex + 1) % 28
+  const tamilYoga = ANANDADI_YOGA_LIST[tamilYogaIndex] ?? { name: 'Unknown', auspicious: false }
+
   // Jeevanama: 1 = Full Life (both auspicious and inauspicious yogas give 1 Full Life)
   // drikpanchang shows "1 Full Life" for all Anandadi yogas including inauspicious ones
   const jeevanama = '1 Full Life'
@@ -41,6 +46,9 @@ export function computeAnandadiYoga(
     endTime: nakshatraEndTime,
     jeevanama,
     netrama,
+    tamilYogaName: tamilYoga.name,
+    tamilYogaAuspicious: tamilYoga.auspicious,
+    tamilYogaEndTime: nakshatraEndTime, // same nakshatra boundary
   }
 }
 

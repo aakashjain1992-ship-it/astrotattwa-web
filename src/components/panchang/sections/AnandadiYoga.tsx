@@ -37,6 +37,22 @@ export function AnandadiYogaSection({ data }: { data: PanchangData }) {
         </div>
         <Row label="Jeevanama" value={ay.jeevanama} />
         <Row label="Netrama" value={ay.netrama} />
+        <Row
+          label="Tamil Yoga"
+          value={ay.tamilYogaName}
+          sub={ay.tamilYogaEndTime ? `upto ${ay.tamilYogaEndTime}` : undefined}
+        />
+        <div className="flex justify-between items-center py-2 border-b border-border/40 last:border-0 text-sm">
+          <span className="text-muted-foreground">Tamil Quality</span>
+          <span className={cn(
+            'text-xs px-2.5 py-0.5 rounded-full font-medium',
+            ay.tamilYogaAuspicious
+              ? 'bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400'
+              : 'bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400'
+          )}>
+            {ay.tamilYogaAuspicious ? 'Auspicious' : 'Inauspicious'}
+          </span>
+        </div>
       </div>
     </CollapsibleSection>
   )

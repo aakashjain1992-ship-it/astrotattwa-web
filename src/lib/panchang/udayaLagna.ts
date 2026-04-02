@@ -24,8 +24,8 @@ export async function computeUdayaLagna(
   const startJD = sunriseJD - 1 / 24
   const endJD = sunriseJD + 23 / 24
 
-  // Sample every 4 minutes to find transitions
-  const STEP_DAYS = 4 / (24 * 60)
+  // Sample every 2 minutes to find transitions (finer sampling reduces lagna time drift)
+  const STEP_DAYS = 2 / (24 * 60)
   const samples: Array<{ jd: number; rashiIndex: number }> = []
 
   let jd = startJD

@@ -13,7 +13,7 @@ import {
 } from './ephemeris'
 import { sweCalcSidereal } from '@/lib/astrology/swissEph'
 import type {
-  TithiEntry, NakshatraEntry, YogaEntry, KaranaEntry, VaraData,
+  TithiEntry, NakshatraEntry, NakshatraPadaTransition, YogaEntry, KaranaEntry, VaraData,
   SunMoonPosition,
 } from './types'
 
@@ -108,6 +108,44 @@ export function getNakshatraPada(moonLon: number): number {
   return Math.floor(degInNakshatra / (360 / 108)) + 1 // 1–4
 }
 
+/** Compute intra-nakshatra pada transitions for a given nakshatra index, starting JD, and day boundary */
+async function computePadaTransitions(
+  nIdx: number,
+  startingPada: number,
+  searchFromJD: number,
+  dayEndJD: number,
+  dateStr: string,
+  timezone: string
+): Promise<NakshatraPadaTransition[]> {
+  const nakshatraSize = 360 / 27
+  const padaSize = nakshatraSize / 4
+  const nakshatraStartDeg = nIdx * nakshatraSize
+  const transitions: NakshatraPadaTransition[] = []
+
+  // Compute end time for each pada from startingPada up to pada 3 (pada 4 ends at nakshatra end)
+  for (let p = startingPada; p <= 3; p++) {
+    const padaEndDeg = nakshatraStartDeg + p * padaSize
+    const padaEndJD = await findTransitTime(
+      searchFromJD,
+      (m, _s) => norm(m),
+      padaEndDeg,
+      13.2
+    )
+    transitions.push({
+      pada: p,
+      endTime: padaEndJD && padaEndJD < dayEndJD
+        ? formatLocalTime(padaEndJD, timezone, dateStr)
+        : null,
+    })
+    // If this pada end is beyond our search window or null, stop
+    if (!padaEndJD || padaEndJD >= dayEndJD) break
+    // Update search start to just past this pada boundary
+    searchFromJD = padaEndJD
+  }
+
+  return transitions
+}
+
 export async function computeNakshatras(
   dateStr: string,
   timezone: string,
@@ -130,6 +168,16 @@ export async function computeNakshatras(
     13.2 // moon speed deg/day
   )
 
+  // Compute pada transitions for entry1 (shows intermediate pada boundaries within nakshatra)
+  // Only compute if starting pada is not the last (pada 4) — pada 4 ends at nakshatra end
+  const rawPadaTransitions1 = pada < 4
+    ? await computePadaTransitions(nIdx, pada, sunriseJD, dayEndJD, dateStr, timezone)
+    : []
+  // Only use padaTransitions if at least one intermediate boundary falls within the day
+  const padaTransitions1 = rawPadaTransitions1.some(pt => pt.endTime !== null)
+    ? rawPadaTransitions1
+    : []
+
   const entry1: NakshatraEntry = {
     index: nIdx + 1,
     name: NAKSHATRA_NAMES[nIdx],
@@ -137,6 +185,8 @@ export async function computeNakshatras(
     endTime: endJD && endJD < dayEndJD
       ? formatLocalTime(endJD, timezone, dateStr)
       : null,
+    // Include padaTransitions when there are intermediate pada boundaries before nakshatra end
+    padaTransitions: padaTransitions1.length > 0 ? padaTransitions1 : undefined,
   }
 
   const entries: NakshatraEntry[] = [entry1]
@@ -152,6 +202,15 @@ export async function computeNakshatras(
       targetEnd2,
       13.2
     )
+
+    // Compute pada transitions for entry2
+    const rawPadaTransitions2 = pada2 < 4
+      ? await computePadaTransitions(nIdx2, pada2, endJD + 0.01 / 24, dayEndJD, dateStr, timezone)
+      : []
+    const padaTransitions2 = rawPadaTransitions2.some(pt => pt.endTime !== null)
+      ? rawPadaTransitions2
+      : []
+
     entries.push({
       index: nIdx2 + 1,
       name: NAKSHATRA_NAMES[nIdx2],
@@ -159,6 +218,7 @@ export async function computeNakshatras(
       endTime: end2JD && end2JD < dayEndJD
         ? formatLocalTime(end2JD, timezone, dateStr)
         : null,
+      padaTransitions: padaTransitions2.length > 0 ? padaTransitions2 : undefined,
     })
   }
 

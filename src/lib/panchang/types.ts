@@ -13,11 +13,17 @@ export interface TithiEntry {
   endTime: LocalTime | null // null = extends past midnight
 }
 
+export interface NakshatraPadaTransition {
+  pada: number             // 1–4
+  endTime: LocalTime | null // null = last pada extends past end of display window
+}
+
 export interface NakshatraEntry {
   index: number            // 1–27
   name: string
-  pada: number             // 1–4
+  pada: number             // starting pada at sunrise (or at nakshatra start)
   endTime: LocalTime | null
+  padaTransitions?: NakshatraPadaTransition[] // intra-nakshatra pada end times (if multiple padas in day)
 }
 
 export interface YogaEntry {
@@ -109,6 +115,9 @@ export interface AnandadiYogaData {
   endTime: LocalTime | null  // changes with nakshatra
   jeevanama: string          // "1 Full Life"
   netrama: string            // "2 Two Eyes"
+  tamilYogaName: string      // next yoga in 28-cycle (concurrent parallel system)
+  tamilYogaAuspicious: boolean
+  tamilYogaEndTime: LocalTime | null // same as anandadi endTime (same nakshatra boundary)
 }
 
 // Section 10: Nivas and Shool

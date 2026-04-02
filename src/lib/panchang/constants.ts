@@ -438,14 +438,14 @@ export const PANCHAKA_TYPE: Array<'good' | 'roga' | 'mrityu' | 'agni' | 'raja' |
   'good',   // Vrishabha (1)
   'good',   // Mithuna (2)
   'good',   // Karka (3)
-  'raja',   // Simha (4) — Raja Panchaka
+  'good',   // Simha (4) — verified drikpanchang: Good
   'good',   // Kanya (5)
   'good',   // Tula (6)
   'good',   // Vrishchika (7)
   'good',   // Dhanu (8)
-  'agni',   // Makara (9) — Agni Panchaka
+  'good',   // Makara (9) — verified drikpanchang: Good
   'chora',  // Kumbha (10) — Chora Panchaka
-  'mrityu', // Meena (11) — Mrityu Panchaka (when combined with specific nakshatras)
+  'good',   // Meena (11) — verified drikpanchang: Good
 ]
 
 // Sarvartha Siddhi Yoga: weekday → nakshatras (0-indexed)
