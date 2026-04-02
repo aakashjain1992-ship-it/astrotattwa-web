@@ -1,4 +1,6 @@
 import type { Metadata } from 'next'
+import { Header } from '@/components/layout/Header'
+import { Footer } from '@/components/layout/Footer'
 import PanchangClient from './PanchangClient'
 
 export const metadata: Metadata = {
@@ -9,8 +11,12 @@ export const metadata: Metadata = {
 
 export default function PanchangPage() {
   return (
-    <main>
-      <PanchangClient />
-    </main>
+    <>
+      <Header />
+      <main>
+        <PanchangClient />
+      </main>
+      <Footer />
+    </>
   )
 }
