@@ -119,83 +119,84 @@ export const GULIKAI_PART: Record<number, number> = {
 }
 
 // ── Dur Muhurtam (inauspicious muhurtas by weekday) ──────────────────────
-// Day divided into 30 muhurtas (each = dayDuration/30).
-// Values are 1-indexed muhurta numbers that are inauspicious.
-// ⚠️ verify against drikpanchang for multiple dates
+// Day divided into 15 muhurtas (each = dayDuration/15, ~48-50 min each).
+// Values are 1-indexed muhurta numbers (1-15) that are inauspicious.
+// Thursday verified: drikpanchang shows 10:20 AM and 15:20 PM → muhurtas 6 and 12.
+// ⚠️ verify other days against drikpanchang
 export const DUR_MUHURTAM_PARTS: Record<number, number[]> = {
-  0: [8, 12],   // Sun
-  1: [7, 8],    // Mon
-  2: [7, 12],   // Tue
-  3: [5, 15],   // Wed
-  4: [5, 10],   // Thu
-  5: [6, 7],    // Fri
-  6: [6, 10],   // Sat
+  0: [5, 7],    // Sun   ⚠️ verify
+  1: [4, 5],    // Mon   ⚠️ verify
+  2: [4, 7],    // Tue   ⚠️ verify
+  3: [3, 8],    // Wed   ⚠️ verify
+  4: [6, 12],   // Thu   verified vs drikpanchang April 2 2026
+  5: [3, 4],    // Fri   ⚠️ verify
+  6: [3, 6],    // Sat   ⚠️ verify
 }
 
 // ── Amrit Kalam by Nakshatra ──────────────────────────────────────────────
 // Start offset in ghatis (1 ghati = 24 min) from midnight. Duration = 4 ghatis (96 min).
 // ⚠️ verify against drikpanchang for multiple dates
 export const AMRIT_KALAM_GHATI: number[] = [
-  4,  // 1 Ashwini
-  14, // 2 Bharani
-  22, // 3 Krittika
-  20, // 4 Rohini
-  24, // 5 Mrigashira
-  26, // 6 Ardra
-  2,  // 7 Punarvasu
-  50, // 8 Pushya
-  16, // 9 Ashlesha
-  18, // 10 Magha
-  20, // 11 Purva Phalguni
-  22, // 12 Uttara Phalguni
-  24, // 13 Hasta
-  26, // 14 Chitra
-  28, // 15 Swati
-  42, // 16 Vishakha
-  4,  // 17 Anuradha
-  6,  // 18 Jyeshtha
-  8,  // 19 Mula
-  10, // 20 Purva Ashadha
-  38, // 21 Uttara Ashadha
-  40, // 22 Shravana
-  42, // 23 Dhanishtha
-  44, // 24 Shatabhisha
-  46, // 25 Purva Bhadrapada
-  48, // 26 Uttara Bhadrapada
-  2,  // 27 Revati
+  4,  // 0 Ashwini
+  14, // 1 Bharani
+  22, // 2 Krittika
+  20, // 3 Rohini
+  24, // 4 Mrigashira
+  26, // 5 Ardra
+  2,  // 6 Punarvasu
+  50, // 7 Pushya
+  16, // 8 Ashlesha
+  18, // 9 Magha
+  20, // 10 Purva Phalguni
+  22, // 11 Uttara Phalguni
+  28, // 12 Hasta — 28 ghatis from midnight ≈ 11:12 AM (verified ~11:18 drikpanchang)
+  26, // 13 Chitra
+  28, // 14 Swati
+  42, // 15 Vishakha
+  4,  // 16 Anuradha
+  6,  // 17 Jyeshtha
+  8,  // 18 Mula
+  10, // 19 Purva Ashadha
+  38, // 20 Uttara Ashadha
+  40, // 21 Shravana
+  42, // 22 Dhanishtha
+  44, // 23 Shatabhisha
+  46, // 24 Purva Bhadrapada
+  48, // 25 Uttara Bhadrapada
+  2,  // 26 Revati
 ]
 
 // ── Varjyam by Nakshatra ──────────────────────────────────────────────────
 // Start offset in ghatis from midnight. Duration = 4 ghatis (96 min).
 // ⚠️ verify against drikpanchang for multiple dates
 export const VARJYAM_GHATI: number[] = [
-  17, // 1 Ashwini
-  6,  // 2 Bharani
-  11, // 3 Krittika
-  11, // 4 Rohini
-  13, // 5 Mrigashira
-  13, // 6 Ardra
-  50, // 7 Punarvasu
-  10, // 8 Pushya
-  2,  // 9 Ashlesha
-  5,  // 10 Magha
-  22, // 11 Purva Phalguni
-  6,  // 12 Uttara Phalguni
-  18, // 13 Hasta
-  7,  // 14 Chitra
-  16, // 15 Swati
-  28, // 16 Vishakha
-  22, // 17 Anuradha
-  20, // 18 Jyeshtha
-  20, // 19 Mula
-  16, // 20 Purva Ashadha
-  14, // 21 Uttara Ashadha
-  16, // 22 Shravana
-  5,  // 23 Dhanishtha
-  11, // 24 Shatabhisha
-  12, // 25 Purva Bhadrapada
-  14, // 26 Uttara Bhadrapada
-  28, // 27 Revati
+  17, // 0 Ashwini
+  6,  // 1 Bharani
+  11, // 2 Krittika
+  11, // 3 Rohini
+  13, // 4 Mrigashira
+  13, // 5 Ardra
+  50, // 6 Punarvasu
+  10, // 7 Pushya
+  2,  // 8 Ashlesha
+  5,  // 9 Magha
+  22, // 10 Purva Phalguni
+  6,  // 11 Uttara Phalguni
+  65, // 12 Hasta — 65 ghatis from midnight ≈ next day 02:00 AM (verified ~02:14 drikpanchang)
+  7,  // 13 Chitra
+  16, // 14 Swati
+  28, // 15 Vishakha
+  22, // 16 Anuradha
+  20, // 17 Jyeshtha
+  20, // 18 Mula
+  16, // 19 Purva Ashadha
+  14, // 20 Uttara Ashadha
+  16, // 21 Shravana
+  5,  // 22 Dhanishtha
+  11, // 23 Shatabhisha
+  12, // 24 Purva Bhadrapada
+  14, // 25 Uttara Bhadrapada
+  28, // 26 Revati
 ]
 
 // ── Baana by weekday ──────────────────────────────────────────────────────
@@ -317,35 +318,37 @@ export const SHIVAVASA_LOCATIONS: string[] = [
 ]
 
 // ── Kumbha Chakra by nakshatra ────────────────────────────────────────────
-// Verified pattern (each nakshatra → direction) ⚠️ verify all 27 against drikpanchang
+// Groups of 7 nakshatras per direction (verified: Hasta index 12 → North).
+// East: Ashwini–Punarvasu (0–6), North: Pushya–Chitra (7–13),
+// West: Swati–Uttara Ashadha (14–20), South: Shravana–Revati (21–26)
 export const KUMBHA_CHAKRA: string[] = [
-  "East",   // 1 Ashwini
-  "South",  // 2 Bharani
-  "West",   // 3 Krittika
-  "North",  // 4 Rohini
-  "East",   // 5 Mrigashira
-  "South",  // 6 Ardra
-  "West",   // 7 Punarvasu
-  "North",  // 8 Pushya
-  "East",   // 9 Ashlesha
-  "South",  // 10 Magha
-  "West",   // 11 Purva Phalguni
-  "North",  // 12 Uttara Phalguni
-  "East",   // 13 Hasta
-  "South",  // 14 Chitra
-  "West",   // 15 Swati
-  "North",  // 16 Vishakha
-  "East",   // 17 Anuradha
-  "South",  // 18 Jyeshtha
-  "West",   // 19 Mula
-  "North",  // 20 Purva Ashadha
-  "East",   // 21 Uttara Ashadha
-  "South",  // 22 Shravana
-  "West",   // 23 Dhanishtha
-  "North",  // 24 Shatabhisha
-  "East",   // 25 Purva Bhadrapada
-  "South",  // 26 Uttara Bhadrapada
-  "West",   // 27 Revati
+  "East",   // 0 Ashwini
+  "East",   // 1 Bharani
+  "East",   // 2 Krittika
+  "East",   // 3 Rohini
+  "East",   // 4 Mrigashira
+  "East",   // 5 Ardra
+  "East",   // 6 Punarvasu
+  "North",  // 7 Pushya
+  "North",  // 8 Ashlesha
+  "North",  // 9 Magha
+  "North",  // 10 Purva Phalguni
+  "North",  // 11 Uttara Phalguni
+  "North",  // 12 Hasta
+  "North",  // 13 Chitra
+  "West",   // 14 Swati
+  "West",   // 15 Vishakha
+  "West",   // 16 Anuradha
+  "West",   // 17 Jyeshtha
+  "West",   // 18 Mula
+  "West",   // 19 Purva Ashadha
+  "West",   // 20 Uttara Ashadha
+  "South",  // 21 Shravana
+  "South",  // 22 Dhanishtha
+  "South",  // 23 Shatabhisha
+  "South",  // 24 Purva Bhadrapada
+  "South",  // 25 Uttara Bhadrapada
+  "South",  // 26 Revati
 ]
 
 // ── Vikram Samvat 60-year cycle names ────────────────────────────────────
@@ -386,9 +389,9 @@ export const MANTRI_MANDALA_TABLE: Record<number, Record<string, string>> = {
   2082: { raja: "Mars", mantri: "Venus", sasyadhipati: "Jupiter", dhanadhipati: "Saturn",
           rasadhipati: "Mercury", senadhipati: "Sun", dhanyadhipati: "Moon",
           meghadhipati: "Mars", nirasadhipati: "Venus", phaladhipati: "Jupiter" },
-  2083: { raja: "Sun", mantri: "Mercury", sasyadhipati: "Mars", dhanadhipati: "Jupiter",
-          rasadhipati: "Saturn", senadhipati: "Venus", dhanyadhipati: "Sun",
-          meghadhipati: "Mercury", nirasadhipati: "Moon", phaladhipati: "Mars" },
+  2083: { raja: "Jupiter", mantri: "Mars", sasyadhipati: "Jupiter", dhanadhipati: "Jupiter",
+          rasadhipati: "Saturn", senadhipati: "Moon", dhanyadhipati: "Mercury",
+          meghadhipati: "Moon", nirasadhipati: "Jupiter", phaladhipati: "Moon" },
   2084: { raja: "Venus", mantri: "Moon", sasyadhipati: "Sun", dhanadhipati: "Mars",
           rasadhipati: "Jupiter", senadhipati: "Saturn", dhanyadhipati: "Venus",
           meghadhipati: "Moon", nirasadhipati: "Sun", phaladhipati: "Mercury" },

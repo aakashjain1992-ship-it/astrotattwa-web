@@ -17,8 +17,10 @@ export function getVikramSamvat(gregorianYear: number, month: number): number {
 }
 
 export function getSamvatsaraName(vsYear: number): string {
-  // Cycle of 60 names. 0-indexed. (vsYear - 1) % 60
-  const idx = (vsYear - 1) % 60
+  // Cycle of 60 names. 0-indexed.
+  // Empirical offset: VS 2083 = Siddharthi (index 52 in standard array).
+  // (2083 + 9) % 60 = 52. Verified against drikpanchang.
+  const idx = (vsYear + 9) % 60
   return SAMVATSARA_NAMES[idx] ?? 'Unknown'
 }
 
@@ -35,19 +37,19 @@ export function getGujaratiSamvat(gregorianYear: number, month: number): number 
 
 // ── Chandramasa (Lunar Month) ──────────────────────────────────────────────
 /**
- * Chandramasa is determined by the Sun's rashi at New Moon.
- * Approximate: map Sun's rashi (0-based Mesha=0) to lunar month name.
- * Chaitra = Sun in Meena/Aries (March/April)
+ * Chandramasa is determined by the Sun's rashi and current paksha.
+ * Purnimanta: month starts at Purnima. Amanta: month starts at Amavasya.
+ * In Shukla paksha: Amanta month = Purnimanta month + 1 (Sun rashi + 1).
+ * In Krishna paksha: Amanta month = Purnimanta month (Sun rashi).
+ * April 2 2026: Sun in Meena (11), Shukla paksha → Purnimanta=Phalguna(11), Amanta=Chaitra(0).
  */
-export function getChandramasa(sunRashiIndex: number): { purnimanta: string; amanta: string } {
-  // In Purnimanta system, month starts at full moon
-  // In Amanta system, month starts at new moon
-  // Both use the same names; Purnimanta is one name ahead of Amanta during certain period
-  // Simplified: use Sun rashi to determine current month
-  // Chaitra begins when Sun enters Meena (index 11 = Meena in 0-based from Aries)
-  // Actually: Mesha=0 → Chaitra, Vrishabha=1 → Vaishakha, etc.
-  const amantaIdx = sunRashiIndex % 12
-  const purnimantaIdx = (sunRashiIndex + 1) % 12
+export function getChandramasa(sunRashiIndex: number, tithiNumber?: number): { purnimanta: string; amanta: string } {
+  // Purnimanta month = Sun's rashi (Meena=11 → Phalguna=11, Mesha=0 → Chaitra=0, etc.)
+  const purnimantaIdx = sunRashiIndex % 12
+  // Amanta: in Shukla paksha (tithi 1-15), one month ahead of Purnimanta
+  // In Krishna paksha (tithi 16-30), same as Purnimanta
+  const isShukla = tithiNumber === undefined || tithiNumber <= 15
+  const amantaIdx = isShukla ? (sunRashiIndex + 1) % 12 : sunRashiIndex % 12
   return {
     purnimanta: CHANDRAMASA_NAMES[purnimantaIdx],
     amanta: CHANDRAMASA_NAMES[amantaIdx],
@@ -55,13 +57,14 @@ export function getChandramasa(sunRashiIndex: number): { purnimanta: string; ama
 }
 
 /**
- * Pravishte/Gate: days elapsed in current lunar month.
- * Tithi 1 = day 1, Tithi 15 = day 15, etc.
- * For Krishna paksha: tithiNumber - 15 + 15 = tithiNumber
+ * Pravishte/Gate: days elapsed in current Purnimanta lunar month.
+ * Purnimanta month starts after Purnima (Krishna Pratipada = day 1).
+ * Krishna paksha (tithi 16-30): day 1-15 → tithiNumber - 15
+ * Shukla paksha (tithi 1-15): day 16-30 → 15 + tithiNumber
  */
 export function getPravishte(tithiNumber: number): number {
-  if (tithiNumber <= 15) return tithiNumber
-  return tithiNumber - 15
+  if (tithiNumber <= 15) return 15 + tithiNumber   // Shukla: day 16-30
+  return tithiNumber - 15                           // Krishna: day 1-15
 }
 
 // ── Ritu (Season) ─────────────────────────────────────────────────────────
@@ -71,12 +74,12 @@ export function getPravishte(tithiNumber: number): number {
  * Standard mapping: pairs of rashis = one ritu.
  */
 const RITU_NAMES = [
-  'Vasant (Spring)',     // Mesha (0) + Vrishabha (1)
-  'Grishma (Summer)',    // Mithuna (2) + Karka (3)
-  'Varsha (Monsoon)',    // Simha (4) + Kanya (5)
-  'Sharad (Autumn)',     // Tula (6) + Vrishchika (7)
-  'Hemanta (Pre-Winter)', // Dhanu (8) + Makara (9)
-  'Shishira (Winter)',   // Kumbha (10) + Meena (11)
+  'Vasant (Spring)',      // Meena (11) + Mesha (0)
+  'Grishma (Summer)',     // Vrishabha (1) + Mithuna (2)
+  'Varsha (Monsoon)',     // Karka (3) + Simha (4)
+  'Sharad (Autumn)',      // Kanya (5) + Tula (6)
+  'Hemanta (Pre-Winter)', // Vrishchika (7) + Dhanu (8)
+  'Shishira (Winter)',    // Makara (9) + Kumbha (10)
 ]
 
 const VEDIC_RITU_NAMES = [
@@ -84,9 +87,10 @@ const VEDIC_RITU_NAMES = [
 ]
 
 export function getRitu(sunRashiIndex: number): { drik: string; vedic: string } {
-  // Vedic Ritu: Vasant starts when Sun enters Mesha
-  // Mesha(0),Vrishabha(1) → Vasant; Mithuna(2),Karka(3) → Grishma; etc.
-  const rituIdx = Math.floor(sunRashiIndex / 2)
+  // Drik Ritu: Vasant starts when Sun enters Meena (index 11).
+  // Meena(11)+Mesha(0)→Vasant; Vrishabha(1)+Mithuna(2)→Grishma; etc.
+  // Formula: shift by 1 so Meena maps to index 0.
+  const rituIdx = Math.floor(((sunRashiIndex + 1) % 12) / 2)
   return {
     drik: RITU_NAMES[rituIdx] ?? 'Unknown',
     vedic: VEDIC_RITU_NAMES[rituIdx] ?? 'Unknown',
@@ -183,7 +187,7 @@ export function buildLunarCalendar(
   tithiNumber: number
 ): LunarCalendar {
   const vsYear = getVikramSamvat(gregorianYear, month)
-  const chandramasa = getChandramasa(sunRashiIndex)
+  const chandramasa = getChandramasa(sunRashiIndex, tithiNumber)
   return {
     vikramSamvat: vsYear,
     vikramSamvatName: getSamvatsaraName(vsYear),

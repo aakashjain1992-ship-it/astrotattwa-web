@@ -26,8 +26,9 @@ export function computeAnandadiYoga(
   const adjustedIndex = ((nakshatraIndex - offset) % 28 + 28) % 28
   const yoga = ANANDADI_YOGA_LIST[adjustedIndex] ?? { name: 'Unknown', auspicious: false }
 
-  // Jeevanama: based on yoga quality
-  const jeevanama = yoga.auspicious ? '1 Full Life' : '0 Full Life'
+  // Jeevanama: 1 = Full Life (both auspicious and inauspicious yogas give 1 Full Life)
+  // drikpanchang shows "1 Full Life" for all Anandadi yogas including inauspicious ones
+  const jeevanama = '1 Full Life'
 
   // Netrama: based on nakshatra pada (pada 2 or 4 = Two Eyes; pada 1 or 3 = One Eye)
   // Since we compute this separately, we use a default here

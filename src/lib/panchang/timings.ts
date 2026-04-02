@@ -174,9 +174,9 @@ export function durMuhurtam(
   tz: string,
   date: string
 ): InauspiciousTiming[] {
-  const parts = DUR_MUHURTAM_PARTS[weekday] ?? [8, 12]
+  const parts = DUR_MUHURTAM_PARTS[weekday] ?? [5, 7]
   const dayDur = sunsetJD - sunriseJD
-  const muhurtaDur = dayDur / 30
+  const muhurtaDur = dayDur / 15  // Day has 15 muhurtas (each ~48 min = 2 ghatis)
 
   return parts.map(partNum => {
     const start = sunriseJD + (partNum - 1) * muhurtaDur
