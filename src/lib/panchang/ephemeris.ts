@@ -7,17 +7,21 @@ import { getSwe, sweCalcSidereal, sweJuldayUTC } from '@/lib/astrology/swissEph'
 import { getTimezoneOffsetMinutes } from '@/lib/astrology/time'
 
 // Extended swisseph interface to access rise_trans (not in base type)
+// Note: node swisseph binding uses callback style with separate lat/lng/alt params
 type SweExt = Awaited<ReturnType<typeof getSwe>> & {
   swe_rise_trans?: (
     jdstart: number,
     ipl: number,
-    starname: string | null,
+    starname: string,
     epheflag: number,
     rsmi: number,
-    geopos: [number, number, number],
+    longitude: number,
+    latitude: number,
+    altitude: number,
     atpress: number,
-    attemp: number
-  ) => { retval: number; tret: number[]; serr: string }
+    attemp: number,
+    callback: (result: { transitTime?: number; error?: string }) => void
+  ) => void
 }
 
 // Rise/set flags (numeric constants from swisseph spec)
@@ -75,18 +79,28 @@ async function getRiseTrans(
   }
   const sweFlags = (s as unknown as Record<string, unknown>)['SEFLG_SWIEPH']
   const ephFlag = typeof sweFlags === 'number' ? sweFlags : 2
-  const result = s.swe_rise_trans(
-    jdStart,
-    body,
-    null,
-    ephFlag,
-    rsmi,
-    [lng, lat, 0], // NOTE: longitude first
-    1013.25,       // standard atmospheric pressure
-    15             // standard temperature
-  )
-  if (result.retval < 0) return null   // event doesn't occur (e.g. polar region)
-  return result.tret[0]
+
+  return new Promise((resolve) => {
+    s.swe_rise_trans!(
+      jdStart,
+      body,
+      '',           // star name (empty for planets)
+      ephFlag,
+      rsmi,
+      lng,          // longitude (separate param)
+      lat,          // latitude (separate param)
+      0,            // altitude in meters
+      1013.25,      // standard atmospheric pressure
+      15,           // standard temperature
+      (result) => {
+        if (result.error || result.transitTime === undefined) {
+          resolve(null)
+        } else {
+          resolve(result.transitTime)
+        }
+      }
+    )
+  })
 }
 
 export interface RiseSetResult {
