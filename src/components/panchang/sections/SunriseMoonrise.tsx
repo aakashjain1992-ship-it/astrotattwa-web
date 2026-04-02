@@ -1,4 +1,4 @@
-import { Sunrise, Sunset, Moon, MoonOff } from 'lucide-react'
+import { Sunrise, Sunset, Moon, MoonStar } from 'lucide-react'
 import { CollapsibleSection } from '../CollapsibleSection'
 import type { PanchangData } from '@/lib/panchang/types'
 
@@ -7,7 +7,7 @@ export function SunriseMoonriseSection({ data }: { data: PanchangData }) {
     { icon: <Sunrise className="h-5 w-5 text-amber-500" />, label: 'Sunrise', value: data.sunrise },
     { icon: <Sunset className="h-5 w-5 text-orange-500" />, label: 'Sunset', value: data.sunset },
     { icon: <Moon className="h-5 w-5 text-blue-400" />, label: 'Moonrise', value: data.moonrise ?? '—' },
-    { icon: <MoonOff className="h-5 w-5 text-slate-400" />, label: 'Moonset', value: data.moonset ?? 'No Moonset' },
+    { icon: <MoonStar className="h-5 w-5 text-slate-400" />, label: 'Moonset', value: data.moonset ?? 'No Moonset' },
   ]
   return (
     <CollapsibleSection id="sunrise" title="Sunrise and Moonrise">
