@@ -1,3 +1,4 @@
+'use client'
 import { CollapsibleSection } from '../CollapsibleSection'
 import type { PanchangData } from '@/lib/panchang/types'
 import { cn } from '@/lib/utils'
@@ -12,46 +13,101 @@ const PANCHAKA_STYLE: Record<string, string> = {
 }
 
 const PANCHAKA_LABEL: Record<string, string> = {
-  good: '✓ Good', roga: 'Roga', mrityu: 'Mrityu', agni: 'Agni', raja: '⚠ Raja', chora: 'Chora',
+  good:   '✓ Good',
+  roga:   'Roga',
+  mrityu: 'Mrityu',
+  agni:   'Agni',
+  raja:   '⚠ Raja',
+  chora:  'Chora',
+}
+
+function Badge({ type }: { type: string }) {
+  return (
+    <span className={cn(
+      'text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap',
+      PANCHAKA_STYLE[type] ?? PANCHAKA_STYLE.good
+    )}>
+      {PANCHAKA_LABEL[type] ?? type}
+    </span>
+  )
 }
 
 export function UdayaLagnaSection({ data }: { data: PanchangData }) {
   const slots = data.udayaLagnaSlots
+  const pSlots = data.panchakaSlots ?? []
+
   return (
     <CollapsibleSection id="udayalagna" title="Panchaka Rahita Muhurta and Udaya Lagna">
-      <div className="pt-2 overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border">
-              <th className="text-left pb-2 text-muted-foreground font-medium">Lagna</th>
-              <th className="text-left pb-2 text-muted-foreground font-medium">Time Range</th>
-              <th className="text-left pb-2 text-muted-foreground font-medium">Muhurta</th>
-            </tr>
-          </thead>
-          <tbody>
-            {slots.map((slot, i) => (
-              <tr key={i} className="border-b border-border/30 last:border-0">
-                <td className="py-2 font-medium">{slot.lagnaName}</td>
-                <td className="py-2 text-muted-foreground font-mono text-xs">
-                  {slot.startTime} – {slot.endTime}
-                </td>
-                <td className="py-2">
-                  <span className={cn(
-                    'text-xs px-2 py-0.5 rounded-full font-medium',
-                    PANCHAKA_STYLE[slot.panchakaType]
-                  )}>
-                    {PANCHAKA_LABEL[slot.panchakaType]}
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {slots.length === 0 && (
-          <p className="text-sm text-muted-foreground text-center py-4">
-            Lagna data unavailable for this date/location.
+      <div className="pt-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+        {/* ── Left: Panchaka Rahita Muhurta ─────────────────────────── */}
+        <div>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+            Panchaka Rahita Muhurta
           </p>
-        )}
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="text-left pb-2 text-muted-foreground font-medium">Time</th>
+                  <th className="text-left pb-2 text-muted-foreground font-medium">Type</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pSlots.map((s, i) => (
+                  <tr key={i} className="border-b border-border/30 last:border-0">
+                    <td className="py-1.5 font-mono text-xs text-muted-foreground whitespace-nowrap">
+                      {s.startTime}{s.endTime ? ` – ${s.endTime}` : '+'}
+                    </td>
+                    <td className="py-1.5 pl-2">
+                      <Badge type={s.panchakaType} />
+                    </td>
+                  </tr>
+                ))}
+                {pSlots.length === 0 && (
+                  <tr><td colSpan={2} className="py-4 text-xs text-muted-foreground text-center">No data</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* ── Right: Udaya Lagna ────────────────────────────────────── */}
+        <div>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+            Udaya Lagna
+          </p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="text-left pb-2 text-muted-foreground font-medium">Lagna</th>
+                  <th className="text-left pb-2 text-muted-foreground font-medium">Time</th>
+                  <th className="text-left pb-2 text-muted-foreground font-medium">Quality</th>
+                </tr>
+              </thead>
+              <tbody>
+                {slots.map((slot, i) => (
+                  <tr key={i} className="border-b border-border/30 last:border-0">
+                    <td className="py-1.5 font-medium">{slot.lagnaName}</td>
+                    <td className="py-1.5 font-mono text-xs text-muted-foreground whitespace-nowrap">
+                      {slot.startTime} – {slot.endTime}
+                    </td>
+                    <td className="py-1.5 pl-2">
+                      <Badge type={slot.panchakaType} />
+                    </td>
+                  </tr>
+                ))}
+                {slots.length === 0 && (
+                  <tr><td colSpan={3} className="py-4 text-xs text-muted-foreground text-center">
+                    Lagna data unavailable
+                  </td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
       </div>
     </CollapsibleSection>
   )

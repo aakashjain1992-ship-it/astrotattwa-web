@@ -129,7 +129,7 @@ export const DUR_MUHURTAM_PARTS: Record<number, number[]> = {
   2: [4, 7],    // Tue   ⚠️ verify
   3: [3, 8],    // Wed   ⚠️ verify
   4: [6, 12],   // Thu   verified vs drikpanchang April 2 2026
-  5: [3, 4],    // Fri   ⚠️ verify
+  5: [4, 9],    // Fri   verified vs drikpanchang Apr 4 2026
   6: [3, 6],    // Sat   ⚠️ verify
 }
 
@@ -150,12 +150,12 @@ export const AMRIT_KALAM_GHATI: number[] = [
   20, // 10 Purva Phalguni
   22, // 11 Uttara Phalguni
   28, // 12 Hasta — 28 ghatis from midnight ≈ 11:12 AM (verified ~11:18 drikpanchang)
-  26, // 13 Chitra
-  28, // 14 Swati
-  42, // 15 Vishakha
-  4,  // 16 Anuradha
-  6,  // 17 Jyeshtha
-  8,  // 18 Mula
+  31, // 13 Chitra    — verified drikpanchang (~12:32 PM = 31.3 ghatis from midnight)
+  30, // 14 Swati     — verified drikpanchang (~11:59 AM = 29.95 ghatis)
+  36, // 15 Vishakha  — verified drikpanchang (~2:24 PM = 36 ghatis)
+  38, // 16 Anuradha  — verified drikpanchang (~3:19 PM = 38.3 ghatis)
+  50, // 17 Jyeshtha  — verified drikpanchang (~8:01 PM = 50 ghatis)
+  64, // 18 Mula      — verified drikpanchang (~1:38 AM next day = 64 ghatis)
   10, // 19 Purva Ashadha
   38, // 20 Uttara Ashadha
   40, // 21 Shravana
@@ -183,12 +183,12 @@ export const VARJYAM_GHATI: number[] = [
   22, // 10 Purva Phalguni
   6,  // 11 Uttara Phalguni
   65, // 12 Hasta — 65 ghatis from midnight ≈ next day 02:00 AM (verified ~02:14 drikpanchang)
-  7,  // 13 Chitra
-  16, // 14 Swati
-  28, // 15 Vishakha
+  64, // 13 Chitra    — verified drikpanchang (~1:31 AM next day)
+  17, // 14 Swati     — verified drikpanchang (~6:58 AM)
+  71, // 15 Vishakha  — verified drikpanchang (~4:36 AM next day)
   22, // 16 Anuradha
-  20, // 17 Jyeshtha
-  20, // 18 Mula
+  23, // 17 Jyeshtha  — verified drikpanchang (~9:14 AM)
+  37, // 18 Mula      — verified drikpanchang (~2:52 PM)
   16, // 19 Purva Ashadha
   14, // 20 Uttara Ashadha
   16, // 21 Shravana
@@ -276,6 +276,16 @@ export const HOMAHUTI_BY_WEEKDAY: string[] = [
   "Shani",   // Sat
 ]
 
+// ── Homahuti by Nakshatra (verified entries only) ────────────────────────
+// Key = nakshatra index (0-based). Falls back to weekday-based for unknown nakshatras.
+// Verified: Hasta→Chandra, Chitra→Chandra, Swati→Mangal
+export const HOMAHUTI_BY_NAKSHATRA: Partial<Record<number, string>> = {
+  12: 'Chandra', // Hasta
+  13: 'Chandra', // Chitra
+  14: 'Mangal',  // Swati
+  // TODO: verify remaining 24 nakshatras
+}
+
 // ── Disha Shool (inauspicious travel direction) ───────────────────────────
 export const DISHA_SHOOL: string[] = [
   "West",  // Sun
@@ -299,22 +309,25 @@ export const DISHA_SHOOL_REMEDY: string[] = [
 
 // ── Rahu Vasa by weekday ──────────────────────────────────────────────────
 export const RAHU_VASA: string[] = [
-  "South-West", // Sun
-  "North-East", // Mon
-  "South",      // Tue
-  "North",      // Wed
+  "North",      // Sun
+  "North-West", // Mon
+  "West",       // Tue
+  "South-West", // Wed
   "South",      // Thu
-  "West",       // Fri
+  "South-East", // Fri
   "East",       // Sat
 ]
 
-// ── Shivavasa by tithi (5-cycle: Kailash, Bhojana, Nandi, Shmashana, Gowri) ─
+// ── Shivavasa by tithi (7-cycle) — formula: (tithiNumber + 5) % 7 ──────────
+// Empirically verified against drikpanchang across 7 dates (Apr 2-8, 2026)
 export const SHIVAVASA_LOCATIONS: string[] = [
-  "Kailash",
-  "Bhojana (eating)",
-  "Nandi (bull)",
-  "Shmashana (cremation ground)",
-  "With Gowri (Parvati)",
+  "With Gowri (Parvati)", // 0
+  "in Sabha",             // 1
+  "in Krida",             // 2
+  "on Kailash",           // 3
+  "on Nandi",             // 4
+  "in Bhojana",           // 5
+  "in Shmashana",         // 6
 ]
 
 // ── Kumbha Chakra by nakshatra ────────────────────────────────────────────
@@ -376,6 +389,21 @@ export const CHANDRAMASA_NAMES: string[] = [
   "Margashirsha", "Pausha", "Magha", "Phalguna",
 ]
 
+// ── Chaitra Shukla Pratipada dates (VS year → Gregorian date of Hindu New Year) ──
+// Pravishte = days elapsed since this date (inclusive, day 1 = Pratipada itself).
+// VS 2083 = 2026-03-15 verified: Apr 2 gives 19, Apr 3 gives 20.
+// Other years: ⚠️ verify against drikpanchang before relying on them.
+export const CHAITRA_PRATIPADA_DATES: Record<number, string> = {
+  2080: '2023-03-22', // ⚠️ verify
+  2081: '2024-04-09', // ⚠️ verify
+  2082: '2025-03-30', // Gudi Padwa 2025 — verify
+  2083: '2026-03-15', // verified (Apr 2 = 19, Apr 3 = 20)
+  2084: '2027-04-03', // ⚠️ verify
+  2085: '2028-03-23', // ⚠️ verify
+  2086: '2029-04-10', // ⚠️ verify
+  2087: '2030-03-31', // ⚠️ verify
+}
+
 // ── Mantri Mandala data by VS year ────────────────────────────────────────
 // Lookup table for VS 2080–2090. ⚠️ verify against standard Vedic almanac sources.
 // Planets: Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn, Rahu, Ketu
@@ -431,22 +459,32 @@ export const TARA_QUALITY: ('good' | 'mixed' | 'bad')[] = [
 ]
 
 // ── Panchaka Rahita Muhurta classification ────────────────────────────────
-// Based on rising lagna (rashi index 0-11)
-// ⚠️ verify mapping against drikpanchang
+// DEPRECATED: rashi-based Panchaka (was an oversimplification). Kept for reference.
+// Use PANCHAKA_BY_NAKSHATRA instead.
 export const PANCHAKA_TYPE: Array<'good' | 'roga' | 'mrityu' | 'agni' | 'raja' | 'chora'> = [
   'good',   // Mesha (0)
   'good',   // Vrishabha (1)
   'good',   // Mithuna (2)
   'good',   // Karka (3)
-  'good',   // Simha (4) — verified drikpanchang: Good
+  'good',   // Simha (4)
   'good',   // Kanya (5)
   'good',   // Tula (6)
   'good',   // Vrishchika (7)
   'good',   // Dhanu (8)
-  'good',   // Makara (9) — verified drikpanchang: Good
-  'chora',  // Kumbha (10) — Chora Panchaka
-  'good',   // Meena (11) — verified drikpanchang: Good
+  'good',   // Makara (9)
+  'chora',  // Kumbha (10)
+  'good',   // Meena (11)
 ]
+
+// Panchaka classification by nakshatra index (0-based, Ashwini=0).
+// The 5 Panchaka nakshatras and their types:
+export const PANCHAKA_BY_NAKSHATRA: Partial<Record<number, 'roga' | 'mrityu' | 'agni' | 'raja' | 'chora'>> = {
+  22: 'roga',   // Dhanishtha  (293°20' – 306°40')
+  23: 'mrityu', // Shatabhisha (306°40' – 320°00')
+  24: 'agni',   // Purva Bhadrapada (320°00' – 333°20')
+  25: 'raja',   // Uttara Bhadrapada (333°20' – 346°40')
+  26: 'chora',  // Revati (346°40' – 360°00')
+}
 
 // Sarvartha Siddhi Yoga: weekday → nakshatras (0-indexed)
 export const SARVARTHA_SIDDHI_NAKSHATRAS: Record<number, number[]> = {

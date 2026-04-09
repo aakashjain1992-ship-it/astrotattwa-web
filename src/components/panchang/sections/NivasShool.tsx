@@ -1,5 +1,5 @@
 import { CollapsibleSection } from '../CollapsibleSection'
-import type { PanchangData } from '@/lib/panchang/types'
+import type { PanchangData, TimedEntry } from '@/lib/panchang/types'
 
 function Row({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
@@ -8,6 +8,39 @@ function Row({ label, value, sub }: { label: string; value: string; sub?: string
       <div className="text-right max-w-[55%]">
         <span className="font-medium">{value}</span>
         {sub && <div className="text-xs text-muted-foreground">{sub}</div>}
+      </div>
+    </div>
+  )
+}
+
+/** Collapse consecutive entries with the same value into one (keep the last endTime). */
+function dedupeTimedEntries(entries: TimedEntry[]): TimedEntry[] {
+  const result: TimedEntry[] = []
+  for (const entry of entries) {
+    const last = result[result.length - 1]
+    if (last && last.value === entry.value) {
+      result[result.length - 1] = { value: last.value, endTime: entry.endTime }
+    } else {
+      result.push(entry)
+    }
+  }
+  return result
+}
+
+function TimedRow({ label, entries }: { label: string; entries: TimedEntry[] }) {
+  if (entries.length === 1) {
+    return <Row label={label} value={entries[0].value} sub={entries[0].endTime ? `upto ${entries[0].endTime}` : undefined} />
+  }
+  return (
+    <div className="flex justify-between items-start py-2 border-b border-border/40 last:border-0 text-sm">
+      <span className="text-muted-foreground">{label}</span>
+      <div className="text-right max-w-[55%] space-y-0.5">
+        {entries.map((e, i) => (
+          <div key={i}>
+            <span className="font-medium">{e.value}</span>
+            {e.endTime && <span className="text-xs text-muted-foreground ml-1">upto {e.endTime}</span>}
+          </div>
+        ))}
       </div>
     </div>
   )
@@ -24,22 +57,10 @@ export function NivasShoolSection({ data }: { data: PanchangData }) {
           value={ns.dishashool}
           sub={`Avoid travel. Remedy: ${ns.dishashoolRemedy}`}
         />
-        <Row
-          label="Agnivasa"
-          value={ns.agnivasa}
-          sub={ns.agnivisaEndTime ? `upto ${ns.agnivisaEndTime}` : undefined}
-        />
-        <Row
-          label="Chandra Vasa"
-          value={ns.chandravasa}
-          sub={ns.chandravaisaEndTime ? `upto ${ns.chandravaisaEndTime}` : undefined}
-        />
+        <TimedRow label="Agnivasa" entries={dedupeTimedEntries(ns.agnivasa)} />
+        <TimedRow label="Chandra Vasa" entries={ns.chandravasa} />
         <Row label="Rahu Vasa" value={ns.rahuvasa} />
-        <Row
-          label="Shivavasa"
-          value={ns.shivavasa}
-          sub={ns.shivavasaEndTime ? `upto ${ns.shivavasaEndTime}` : undefined}
-        />
+        <TimedRow label="Shivavasa" entries={ns.shivavasa} />
         <Row label="Kumbha Chakra" value={ns.kumbhachakra} />
       </div>
     </CollapsibleSection>

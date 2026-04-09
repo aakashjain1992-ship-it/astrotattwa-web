@@ -5,10 +5,11 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import {
   ANANDADI_YOGA_LIST, ANANDADI_DAY_OFFSET,
-  HOMAHUTI_BY_WEEKDAY, DISHA_SHOOL, DISHA_SHOOL_REMEDY,
+  DISHA_SHOOL, DISHA_SHOOL_REMEDY,
   RAHU_VASA, SHIVAVASA_LOCATIONS, KUMBHA_CHAKRA,
+  HOMAHUTI_BY_NAKSHATRA, HOMAHUTI_BY_WEEKDAY,
 } from './constants'
-import type { AnandadiYogaData, NivasShoolData } from './types'
+import type { AnandadiYogaData, NivasShoolData, TithiEntry, TimedEntry } from './types'
 
 // ── Anandadi Yoga ─────────────────────────────────────────────────────────
 /**
@@ -67,41 +68,60 @@ export function getAgnivasa(tithiNumber: number): string {
   return locations[group] ?? 'Unknown'
 }
 
-// Chandra Vasa: based on tithi number
-export function getChandraVasa(tithiNumber: number): string {
-  // Tithis 1-5→East, 6-10→South, 11-15→West, 16-20→North, 21-25→East, 26-30→South
+// Chandra Vasa: based on Moon's rashi index (NOT tithi)
+// Empirically verified: rashiIndex % 4 → East/South/West/North
+export function getChandraVasa(moonRashiIndex: number): string {
   const directions = ['East', 'South', 'West', 'North']
-  const groupIdx = Math.floor((tithiNumber - 1) / 5) % 4
-  return directions[groupIdx]
+  return directions[moonRashiIndex % 4]
 }
 
-// Shivavasa: based on tithi number (5-cycle: Kailash, Bhojana, Nandi, Shmashana, Gowri)
+// Shivavasa: 7-location cycle. Formula: (tithiNumber + 5) % 7
+// Empirically verified against drikpanchang across 7 dates (Apr 2-8, 2026)
 export function getShivavasa(tithiNumber: number): string {
-  const idx = (tithiNumber - 1) % 5
+  const idx = (tithiNumber + 5) % 7
   return SHIVAVASA_LOCATIONS[idx]
 }
 
 export function computeNivasShool(
-  weekday: number,       // 0=Sun
-  tithiNumber: number,   // 1-30
-  nakshatraIndex: number, // 0-based
-  tithiEndTime: string | null,
+  weekday: number,              // 0=Sun
+  nakshatraIndex: number,       // 0-based
+  tithis: TithiEntry[],         // all tithis active during the day (1 or 2)
+  moonRashiIndex: number,       // at sunrise
+  moonRashiChangeTime: string | null,  // local time when Moon changes rashi (null = no change today)
+  moonRashiAfterChange: number, // rashi index after the change (ignored if no change)
 ): NivasShoolData {
-  const agnivasa = getAgnivasa(tithiNumber)
-  const chandravasa = getChandraVasa(tithiNumber)
-  const shivavasa = getShivavasa(tithiNumber)
+  // Agnivasa: one entry per tithi
+  const agnivasa: TimedEntry[] = tithis.map((t, i) => ({
+    value: getAgnivasa(t.number),
+    endTime: i < tithis.length - 1 ? t.endTime : null,
+  }))
+
+  // Chandra Vasa: changes when Moon changes rashi (BUG-04)
+  const chandravasa: TimedEntry[] = []
+  if (moonRashiChangeTime) {
+    chandravasa.push({ value: getChandraVasa(moonRashiIndex), endTime: moonRashiChangeTime })
+    chandravasa.push({ value: getChandraVasa(moonRashiAfterChange), endTime: null })
+  } else {
+    chandravasa.push({ value: getChandraVasa(moonRashiIndex), endTime: null })
+  }
+
+  // Shivavasa: one entry per tithi (BUG-05)
+  const shivavasa: TimedEntry[] = tithis.map((t, i) => ({
+    value: getShivavasa(t.number),
+    endTime: i < tithis.length - 1 ? t.endTime : null,
+  }))
+
+  // Homahuti: nakshatra-based where verified, weekday fallback otherwise
+  const homahuti = HOMAHUTI_BY_NAKSHATRA[nakshatraIndex] ?? HOMAHUTI_BY_WEEKDAY[weekday] ?? 'Unknown'
 
   return {
-    homahuti: HOMAHUTI_BY_WEEKDAY[weekday] ?? 'Unknown',
+    homahuti,
     dishashool: DISHA_SHOOL[weekday] ?? 'Unknown',
     dishashoolRemedy: DISHA_SHOOL_REMEDY[weekday] ?? '',
     agnivasa,
-    agnivisaEndTime: tithiEndTime,
     chandravasa,
-    chandravaisaEndTime: tithiEndTime,
     rahuvasa: RAHU_VASA[weekday] ?? 'Unknown',
     shivavasa,
-    shivavasaEndTime: tithiEndTime,
     kumbhachakra: KUMBHA_CHAKRA[nakshatraIndex] ?? 'Unknown',
   }
 }

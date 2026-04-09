@@ -3,7 +3,7 @@
 // Calls all sub-modules in order and assembles the full PanchangData object.
 // This is the single entry point called by the API route.
 // ─────────────────────────────────────────────────────────────────────────────
-import { computeRiseSet, localMidnightJD, getPlanetPositions, getAyanamsha } from './ephemeris'
+import { computeRiseSet, localMidnightJD, getPlanetPositions, getAyanamsha, findTransitTime, formatLocalTime } from './ephemeris'
 import { computeTithis, computeNakshatras, computeYogas, computeKaranas, computeVara, getWeekday, buildPosition } from './core'
 import {
   brahmaMuhurta, pratahSandhya, abhijitMuhurta, vijayaMuhurta,
@@ -15,7 +15,7 @@ import { computeChandrabalam, computeTarabalam } from './chandrabalam'
 import { buildLunarCalendar, buildRituAyana, buildOtherCalendars } from './calendar'
 import { computeAnandadiYoga, getNetrama, computeNivasShool } from './anandadi'
 import { computeUdayaLagna } from './udayaLagna'
-import { MANTRI_MANDALA_TABLE } from './constants'
+import { MANTRI_MANDALA_TABLE, RASHI_NAMES, NAKSHATRA_NAMES } from './constants'
 import type { PanchangData, PanchangInput, MantriMandala } from './types'
 
 export async function computePanchang(input: PanchangInput): Promise<PanchangData> {
@@ -56,7 +56,7 @@ export async function computePanchang(input: PanchangInput): Promise<PanchangDat
     brahmaMuhurta: brahmaMuhurta(sunriseJD, timezone, date),
     pratahSandhya: pratahSandhya(sunriseJD, timezone, date),
     abhijitMuhurta: abhijitMuhurta(sunriseJD, sunsetJD, timezone, date),
-    vijayaMuhurta: vijayaMuhurta(sunsetJD, timezone, date),
+    vijayaMuhurta: vijayaMuhurta(sunriseJD, sunsetJD, timezone, date),
     godhuliMuhurta: godhuliMuhurta(sunsetJD, timezone, date),
     sayahnaSandhya: sayahnaSandhya(sunsetJD, timezone, date),
     nishitaMuhurta: nishitaMuhurta(sunsetJD, nextSunriseJD, timezone, date),
@@ -117,10 +117,57 @@ export async function computePanchang(input: PanchangInput): Promise<PanchangDat
   }
 
   // ── 10. Nivas and Shool (Section 10) ──────────────────────────────────
-  const nivasShool = computeNivasShool(weekday, tithiNumber, moonPos.nakshatraIndex, tithis[0]?.endTime ?? null)
+  // Detect Moon rashi change during the day (for Chandra Vasa, BUG-04)
+  // Next rashi boundary in degrees. Use 360 (not 0) for the Meena→Mesha wrap
+  // so findTransitTime can converge correctly (target must be > current moon lon).
+  const nextRashiIdx = (moonPos.rashiIndex + 1) % 12
+  const moonRashiChangeBoundary = nextRashiIdx === 0 ? 360 : nextRashiIdx * 30
+  const moonRashiChangeJD = await findTransitTime(
+    sunriseJD,
+    (m, _s) => ((m % 360) + 360) % 360,
+    moonRashiChangeBoundary,
+    13.2
+  )
+  const dayEndJD = sunriseJD + 1
+  const moonRashiChangeTime = (moonRashiChangeJD && moonRashiChangeJD < dayEndJD)
+    ? formatLocalTime(moonRashiChangeJD, timezone, date)
+    : null
+  const moonRashiAfterChange = (moonPos.rashiIndex + 1) % 12
+  const moonRashiAfterChangeName = moonRashiChangeTime
+    ? (RASHI_NAMES[moonRashiAfterChange] ?? null)
+    : null
 
-  // ── 11. Udaya Lagna ───────────────────────────────────────────────────
-  const udayaLagnaSlots = await computeUdayaLagna(date, sunriseJD, lat, lng, timezone)
+  // ── Sun pada transition ───────────────────────────────────────────────────
+  // Each pada = 10/3 degrees (360° / 108 padas). Search up to 2 days ahead.
+  const SUN_PADA_WIDTH = 10 / 3
+  const sunPadaIdx = Math.floor(sunPos.longitude / SUN_PADA_WIDTH)
+  const sunNextPadaBoundary = (sunPadaIdx + 1) * SUN_PADA_WIDTH  // always > sunPos.longitude
+  const sunPadaChangeJD = await findTransitTime(
+    sunriseJD,
+    (_m, s) => s,
+    sunNextPadaBoundary,
+    1.0  // sun moves ~1°/day
+  )
+  const sunNextPadaTime = sunPadaChangeJD
+    ? formatLocalTime(sunPadaChangeJD, timezone, date)
+    : null
+  const sunNextPadaLabel: string | null = sunNextPadaTime
+    ? (sunPos.pada === 4
+        ? `${NAKSHATRA_NAMES[(sunPos.nakshatraIndex + 1) % 27]}, Pada 1`
+        : `Pada ${sunPos.pada + 1}`)
+    : null
+
+  const nivasShool = computeNivasShool(
+    weekday,
+    moonPos.nakshatraIndex,
+    tithis,
+    moonPos.rashiIndex,
+    moonRashiChangeTime,
+    moonRashiAfterChange,
+  )
+
+  // ── 11. Udaya Lagna & Panchaka Rahita Muhurta ────────────────────────
+  const { lagnaSlots: udayaLagnaSlots, panchakaSlots } = await computeUdayaLagna(date, sunriseJD, lat, lng, timezone)
 
   // ── Assemble ──────────────────────────────────────────────────────────
   return {
@@ -144,6 +191,11 @@ export async function computePanchang(input: PanchangInput): Promise<PanchangDat
 
     sunPosition: sunPos,
     moonPosition: moonPos,
+
+    moonRashiChangeTime,
+    moonRashiAfterChangeName,
+    sunNextPadaTime,
+    sunNextPadaLabel,
 
     brahmaMuhurta: timings.brahmaMuhurta,
     pratahSandhya: timings.pratahSandhya,
@@ -172,6 +224,7 @@ export async function computePanchang(input: PanchangInput): Promise<PanchangDat
     chandrabalam,
     tarabalam,
     udayaLagnaSlots,
+    panchakaSlots,
     festivals: [], // populated by API route from DB
   }
 }
