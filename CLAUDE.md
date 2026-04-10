@@ -43,6 +43,17 @@ Note: `next.config.js` sets `ignoreBuildErrors: true` for TypeScript — type er
 3. Returns planet positions, houses, KP data (star lord, sub-lord, sub-sub-lord)
 4. Client stores result in localStorage (`lastChart` key), redirects to `/chart`
 5. `ChartClient.tsx` reads localStorage and renders tabbed chart view
+   - `/chart` and `/chart/[id]` both render `ChartClient` — the `[id]` variant is set via `window.history.replaceState` when switching saved charts, not via Next.js navigation
+
+### Saved Charts Flow
+
+- `src/hooks/useSavedCharts.ts` — drives all CRUD: `saveChart`, `updateChart`, `deleteChart`, `refresh`. Uses `supabase.auth.getSession()` (cookie, no network) for instant auth check.
+- `BirthDataFormWrapper` consumes `useSavedCharts` and passes `savedCharts` + `showSavedCharts` into `BirthDataForm` — the dropdown pre-fills the form when a saved chart is selected.
+- On the chart page, selecting a saved chart calls `handleSelectSavedChart` → recalculates via `handleEditSubmit` → updates URL to `/chart/[id]` via `window.history.replaceState` (no remount).
+- Tab switching uses `window.history.replaceState` (not `router.replace`) to append `?tab=…` — this avoids a full-page reload when the URL has been moved to `/chart/[id]` by replaceState but Next.js still considers the route to be `/chart`.
+- `is_favorite` = the user's default "My Chart". API enforces uniqueness: clears all others before setting a new default. Header "My Chart" click finds the favorite, recalculates, and navigates via `window.location.href = '/chart'`.
+- `ChartLabelModal` — save/edit label + is_favorite checkbox (Radix Dialog)
+- `DeleteChartDialog` — confirm-delete modal (Radix AlertDialog)
 
 ### Key Directories
 
@@ -55,7 +66,9 @@ Note: `next.config.js` sets `ignoreBuildErrors: true` for TypeScript — type er
 - `src/lib/panchang/` — Daily Panchang engine (12 files) — see section below
 - `src/lib/utils/divisional/` — Individual D2-D60 chart calculation files (legacy, mostly superseded by divisionalChartBuilder)
 - `src/lib/utils/chartHelpers.ts` — House building functions (Lagna, Moon, Navamsa)
-- `src/components/chart/` — Chart display: `ChartClient.tsx` (main page), `PlanetsTab.tsx` (planet data), `DashaNavigator.tsx`, `SadeSatiTableView.tsx`, `DivisionalChartsTab.tsx`, `ChartLabelModal.tsx` (rename/label saved charts), `DeleteChartDialog.tsx` (confirm delete)
+- `src/components/chart/` — Chart display components: `PlanetaryTable.tsx` (sorted in KP order), `PlanetsTab.tsx`, `DashaNavigator.tsx`, `AvakhadaTable.tsx`, `ChartFocusMode.tsx` (D1/Moon/D9 visual charts), `ChartLabelModal.tsx` (save/rename + is_favorite), `DeleteChartDialog.tsx`
+- `src/components/chart/sadesati/` — `SadeSatiTableView.tsx` + supporting components
+- `src/components/chart/divisional/` — `DivisionalChartsTab.tsx` + config/selector/insights
 - `src/components/forms/` — Birth data forms with city autocomplete
 - `src/components/panchang/` — Panchang display sections (15 files): `DateNavigator`, `PanchangHeader`, `sections/` (14 section components for each panchang element)
 - `src/components/ui/` — shadcn/ui components (do not manually edit, use `npx shadcn-ui@latest add`)
@@ -104,7 +117,8 @@ Cache key: `${CACHE_VERSION}_${dateParam}_${lat.toFixed(2)}_${lng.toFixed(2)}`
 | `/api/avakahada` | Divisional strength analysis |
 | `/api/transits/saturn/sadesati`, `/period-analysis` | Saturn transit (Sade Sati) |
 | `/api/panchang` | Daily Panchang data (date + lat/lng); `/api/panchang/ip-location` for auto-location |
-| `/api/save-chart` | Chart CRUD (requires auth) |
+| `/api/save-chart` | Chart CRUD (GET list, POST create — requires auth) |
+| `/api/save-chart/[id]` | PATCH update, DELETE — requires auth; PATCH clears other `is_favorite` when setting new default |
 | `/api/cities/search` | City autocomplete (uses HERE Maps API) |
 | `/api/auth/login`, `/logout`, `/me` | Authentication |
 | `/api/test/run-calculations`, `/history`, `/delete-runs` | Manual regression testing (requires `ADMIN_SECRET_TOKEN`) |
@@ -112,6 +126,8 @@ Cache key: `${CACHE_VERSION}_${dateParam}_${lat.toFixed(2)}_${lng.toFixed(2)}`
 ### Auth & Middleware
 
 `middleware.ts` handles Supabase session refresh, protects `/settings` and `/reports`, and passes user info to API routes via `x-user-*` headers. Uses chunked cookies for large auth tokens.
+
+**Client-side auth pattern:** Always use `supabase.auth.getSession()` (reads cookie instantly, no network) for UI state. Never use `fetch('/api/auth/me')` for UI — that adds a 2–3s delay on page load. `/api/auth/me` exists but is only for server-to-server use.
 
 ### Error Handling
 
