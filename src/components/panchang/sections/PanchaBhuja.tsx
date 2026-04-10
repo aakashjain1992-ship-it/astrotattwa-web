@@ -40,7 +40,11 @@ export function PanchaBhujaSection({ data }: { data: PanchangData }) {
           <div className="space-y-0.5">
             {data.nakshatra.map((n, ni) => {
               // If pada transitions exist, render each pada separately
-              if (n.padaTransitions && n.padaTransitions.length > 1) {
+              if (n.padaTransitions && n.padaTransitions.length > 0) {
+                const lastPt = n.padaTransitions[n.padaTransitions.length - 1]
+                // Only append Pada 4 if padas 1–3 all completed within the day
+                // (last transition was pada 3 and has a non-null end time)
+                const showFinalPada4 = lastPt.pada === 3 && lastPt.endTime !== null
                 return (
                   <div key={ni} className="space-y-0.5">
                     {n.padaTransitions.map((pt, pi) => (
@@ -51,13 +55,14 @@ export function PanchaBhujaSection({ data }: { data: PanchangData }) {
                         )}
                       </div>
                     ))}
-                    {/* Final pada (pada 4) ends at nakshatra end */}
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-medium">{n.name} Pada 4</span>
-                      {n.endTime && (
-                        <span className="text-xs text-muted-foreground whitespace-nowrap">upto {n.endTime}</span>
-                      )}
-                    </div>
+                    {showFinalPada4 && (
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-medium">{n.name} Pada 4</span>
+                        {n.endTime && (
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">upto {n.endTime}</span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )
               }

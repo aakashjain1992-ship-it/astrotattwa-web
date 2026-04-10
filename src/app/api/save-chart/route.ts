@@ -155,6 +155,7 @@ export async function POST(req: NextRequest) {
   const latitude = Number(body?.latitude)
   const longitude = Number(body?.longitude)
   const timezone = String(body?.timezone ?? '').trim()
+  const isFavorite = body?.is_favorite === true
 
   if (!name || !birthDate || !birthTime || !timePeriod || !birthPlace || !timezone) {
     return NextResponse.json({ error: 'Missing required fields.' }, { status: 400 })
@@ -165,6 +166,15 @@ export async function POST(req: NextRequest) {
 
   const birthTime24 = convert12to24(birthTime, timePeriod)
   const utc_offset = getUtcOffsetMinutes(timezone, birthDate, birthTime24)
+
+  // If setting as favorite, clear any existing favorite for this user first
+  if (isFavorite) {
+    await supabase
+      .from('charts')
+      .update({ is_favorite: false })
+      .eq('user_id', userId)
+      .eq('is_favorite', true)
+  }
 
   const insertRow = {
     user_id: userId,
@@ -178,6 +188,7 @@ export async function POST(req: NextRequest) {
     longitude,
     timezone,
     utc_offset,
+    is_favorite: isFavorite,
 
     // Ensure "chart output" is NOT stored
     ayanamsa: null,

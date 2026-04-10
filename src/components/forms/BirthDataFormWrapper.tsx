@@ -1,16 +1,17 @@
 'use client'
 
-import { useEffect, useState  } from 'react'
+import { useState } from 'react'
 import { BirthDataForm } from './BirthDataForm'
 import { ChartLoader } from '@/components/ui/ChartLoader'
 import { useRouter } from 'next/navigation'
+import { useSavedCharts, type SavedChart } from '@/hooks/useSavedCharts'
 
 export interface ChartFormValues {
   name: string
   gender?: string
-  birthDate: string     
-  birthTime: string    
-  timePeriod: string 
+  birthDate: string
+  birthTime: string
+  timePeriod: string
   birthPlace: string
   latitude: number
   longitude: number
@@ -20,31 +21,13 @@ export interface ChartFormValues {
 export default function BirthDataFormWrapper() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
- const [isAdmin, setIsAdmin] = useState(false)
-
-  useEffect(() => {
-    let cancelled = false
-    ;(async () => {
-      try {
-        const res = await fetch('/api/auth/me', { credentials: 'include' })
-        if (!res.ok) return
-        const data = await res.json()
-        if (!cancelled) setIsAdmin(!!data?.user?.isAdmin)
-      } catch {
-        // ignore
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  
   const router = useRouter()
+
+  const { isLoggedIn, hasSavedCharts, charts } = useSavedCharts()
 
   async function handleSubmit(values: ChartFormValues) {
     setLoading(true)
+    setError(null)
     try {
       const res = await fetch('/api/calculate', {
         method: 'POST',
@@ -56,26 +39,28 @@ export default function BirthDataFormWrapper() {
 
       const data = await res.json()
 
-      // Temporarily store result until DB saving is implemented
       localStorage.setItem('lastChart', JSON.stringify({
         ...data.data,
-        birthPlace: values.birthPlace,  // preserve city name for display & edit form
+        birthPlace: values.birthPlace,
       }))
       await new Promise(resolve => setTimeout(resolve, 3000))
       router.push('/chart')
     } catch (err) {
       console.error('Chart calculation error:', err)
       setError('Failed to calculate chart. Please check your details and try again.')
-    } finally {
-      setLoading(true)
-//      setError(null)
+      setLoading(false)
     }
   }
 
   return (
     <>
       <ChartLoader visible={loading} />
-      <BirthDataForm onSubmit={handleSubmit} cardError={error ?? undefined} isAdmin={isAdmin} />
+      <BirthDataForm
+        onSubmit={handleSubmit}
+        cardError={error ?? undefined}
+        showSavedCharts={isLoggedIn && hasSavedCharts}
+        savedCharts={charts}
+      />
     </>
   )
 }

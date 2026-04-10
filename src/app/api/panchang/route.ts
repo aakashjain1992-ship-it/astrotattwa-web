@@ -31,9 +31,11 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
   const timezone = timezoneParam ?? 'Asia/Kolkata'
 
   // ── Cache key ──────────────────────────────────────────────────────
+  // v6: Vijaya Muhurta fixed to 11th of 15 proportional day muhurtas (Apr 2026)
+  const CACHE_VERSION = 'v6'
   const latR = lat.toFixed(2)
   const lngR = lng.toFixed(2)
-  const cacheKey = `${dateParam}_${latR}_${lngR}`
+  const cacheKey = `${CACHE_VERSION}_${dateParam}_${latR}_${lngR}`
 
   // ── Check cache ────────────────────────────────────────────────────
   const { data: cached } = await supabaseAdmin

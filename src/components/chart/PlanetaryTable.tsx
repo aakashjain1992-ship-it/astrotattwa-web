@@ -47,7 +47,14 @@ export function PlanetaryTable({ planets }: PlanetaryTableProps) {
               </tr>
             </thead>
             <tbody>
-              {Object.entries(planets).map(([name, data]) => (
+              {((() => {
+                const ORDER = ['Ascendant','Sun','Moon','Mercury','Venus','Mars','Jupiter','Saturn','Rahu','Ketu'];
+                const entries = Object.entries(planets);
+                return [
+                  ...ORDER.filter(k => planets[k]).map(k => [k, planets[k]] as [string, Planet]),
+                  ...entries.filter(([k]) => !ORDER.includes(k)),
+                ];
+              })()).map(([name, data]) => (
                 <tr key={name} className="border-b hover:bg-muted/50 transition-colors">
                   <td className="p-2 font-semibold">{name}</td>
                   <td className="p-2">{data.sign}</td>

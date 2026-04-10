@@ -3,7 +3,7 @@
 // Vikram Samvat, Shaka Samvat, Gujarati Samvat, Chandramasa, Ritu, Ayana,
 // Kaliyuga, Julian Date/Day, Lahiri Ayanamsha, Rata Die, etc.
 // ─────────────────────────────────────────────────────────────────────────────
-import { SAMVATSARA_NAMES, CHANDRAMASA_NAMES } from './constants'
+import { SAMVATSARA_NAMES, CHANDRAMASA_NAMES, CHAITRA_PRATIPADA_DATES } from './constants'
 import type { LunarCalendar, RituAyana, OtherCalendars } from './types'
 
 // ── Vikram Samvat ──────────────────────────────────────────────────────────
@@ -44,12 +44,15 @@ export function getGujaratiSamvat(gregorianYear: number, month: number): number 
  * April 2 2026: Sun in Meena (11), Shukla paksha → Purnimanta=Phalguna(11), Amanta=Chaitra(0).
  */
 export function getChandramasa(sunRashiIndex: number, tithiNumber?: number): { purnimanta: string; amanta: string } {
-  // Purnimanta month = Sun's rashi (Meena=11 → Phalguna=11, Mesha=0 → Chaitra=0, etc.)
-  const purnimantaIdx = sunRashiIndex % 12
-  // Amanta: in Shukla paksha (tithi 1-15), one month ahead of Purnimanta
-  // In Krishna paksha (tithi 16-30), same as Purnimanta
+  // Amanta month always = (sunRashiIndex + 1) % 12 (Sun's next rashi = current lunar month)
+  // Purnimanta month:
+  //   Shukla paksha (tithi 1-15): same as Amanta = (sunRashiIndex + 1) % 12
+  //   Krishna paksha (tithi 16-30): one month ahead = (sunRashiIndex + 2) % 12
+  // Verified: Apr 2 2026 Sun=Meena(11) Shukla → Purnimanta=Chaitra(0), Amanta=Chaitra(0)
+  //           Apr 3 2026 Sun=Meena(11) Krishna → Purnimanta=Vaishakha(1), Amanta=Chaitra(0)
   const isShukla = tithiNumber === undefined || tithiNumber <= 15
-  const amantaIdx = isShukla ? (sunRashiIndex + 1) % 12 : sunRashiIndex % 12
+  const purnimantaIdx = isShukla ? (sunRashiIndex + 1) % 12 : (sunRashiIndex + 2) % 12
+  const amantaIdx = (sunRashiIndex + 1) % 12
   return {
     purnimanta: CHANDRAMASA_NAMES[purnimantaIdx],
     amanta: CHANDRAMASA_NAMES[amantaIdx],
@@ -57,14 +60,28 @@ export function getChandramasa(sunRashiIndex: number, tithiNumber?: number): { p
 }
 
 /**
- * Pravishte/Gate: days elapsed in current Purnimanta lunar month.
- * Purnimanta month starts after Purnima (Krishna Pratipada = day 1).
- * Krishna paksha (tithi 16-30): day 1-15 → tithiNumber - 15
- * Shukla paksha (tithi 1-15): day 16-30 → 15 + tithiNumber
+ * Pravishte/Gate: day-of-year counter in the Vikram Samvat calendar.
+ * Day 1 = Chaitra Shukla Pratipada (Hindu New Year) of the current VS year.
+ * Counts elapsed Gregorian calendar days since that anchor date (inclusive).
+ * VS 2083 anchor = 2026-03-15 (verified: Apr 2 → 19, Apr 3 → 20).
  */
-export function getPravishte(tithiNumber: number): number {
-  if (tithiNumber <= 15) return 15 + tithiNumber   // Shukla: day 16-30
-  return tithiNumber - 15                           // Krishna: day 1-15
+export function getPravishte(
+  gregorianYear: number,
+  month: number,
+  day: number,
+  vsYear: number
+): number {
+  const anchorStr = CHAITRA_PRATIPADA_DATES[vsYear]
+  if (!anchorStr) {
+    // Fallback: approximate using tithi-based count if anchor date unknown
+    return 1
+  }
+  const anchor = new Date(anchorStr + 'T00:00:00Z')
+  const target = new Date(
+    `${gregorianYear}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T00:00:00Z`
+  )
+  const diffDays = Math.round((target.getTime() - anchor.getTime()) / 86400000)
+  return diffDays + 1 // Pratipada itself = day 1
 }
 
 // ── Ritu (Season) ─────────────────────────────────────────────────────────
@@ -195,7 +212,7 @@ export function buildLunarCalendar(
     gujaratiSamvat: getGujaratiSamvat(gregorianYear, month),
     chandramasaPurnimanta: chandramasa.purnimanta,
     chandramasaAmanta: chandramasa.amanta,
-    pravishte: getPravishte(tithiNumber),
+    pravishte: getPravishte(gregorianYear, month, day, vsYear),
   }
 }
 

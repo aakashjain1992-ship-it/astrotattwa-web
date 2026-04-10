@@ -63,7 +63,7 @@ export function PanchangHeader({ data, dateObj }: PanchangHeaderProps) {
             {/* Left: Lunar info */}
             <div>
               <div className="text-sm text-muted-foreground">
-                {lc.pravishte}, {lc.chandramasaAmanta}
+                {lc.pravishte}, {lc.chandramasaPurnimanta}
               </div>
               <div className="font-semibold text-base leading-tight">
                 {tithi?.paksha} Paksha, {tithi?.name}

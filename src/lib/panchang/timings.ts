@@ -51,10 +51,16 @@ export function abhijitMuhurta(sunriseJD: number, sunsetJD: number, tz: string, 
 }
 
 // ── Vijaya Muhurta ────────────────────────────────────────────────────────
-/** 48 min before sunset → sunset */
-export function vijayaMuhurta(sunsetJD: number, tz: string, date: string): AuspiciousTiming {
-  const start = sunsetJD - (48 / 1440)
-  return auspTime(start, sunsetJD, tz, date)
+/**
+ * 11th of 15 proportional day muhurtas (sunrise to sunset).
+ * Day is divided into 15 equal parts; Vijaya = part 11.
+ * Verified against drikpanchang: matches within 1 minute (sunrise offset).
+ */
+export function vijayaMuhurta(sunriseJD: number, sunsetJD: number, tz: string, date: string): AuspiciousTiming {
+  const muhurtaDuration = (sunsetJD - sunriseJD) / 15
+  const start = sunriseJD + 10 * muhurtaDuration
+  const end   = start + muhurtaDuration
+  return auspTime(start, end, tz, date)
 }
 
 // ── Godhuli Muhurta ───────────────────────────────────────────────────────

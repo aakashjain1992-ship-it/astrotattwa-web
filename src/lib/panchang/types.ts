@@ -120,18 +120,21 @@ export interface AnandadiYogaData {
   tamilYogaEndTime: LocalTime | null // same as anandadi endTime (same nakshatra boundary)
 }
 
+/** A value that holds until endTime, then transitions to the next entry */
+export interface TimedEntry {
+  value: string
+  endTime: LocalTime | null  // null = lasts through end of day
+}
+
 // Section 10: Nivas and Shool
 export interface NivasShoolData {
-  homahuti: string           // weekday-based planet
+  homahuti: string           // nakshatra-based planet (primary value at sunrise)
   dishashool: string         // inauspicious travel direction
   dishashoolRemedy: string   // remedy
-  agnivasa: string           // tithi-based: Swarga/Prithvi/Patala + endTime
-  agnivisaEndTime: LocalTime | null
-  chandravasa: string        // tithi-based direction
-  chandravaisaEndTime: LocalTime | null
+  agnivasa: TimedEntry[]     // tithi-based: one entry per tithi active during the day
+  chandravasa: TimedEntry[]  // Moon-rashi-based: transitions when Moon changes rashi
   rahuvasa: string           // weekday-based direction
-  shivavasa: string          // tithi-based location
-  shivavasaEndTime: LocalTime | null
+  shivavasa: TimedEntry[]    // tithi-based: one entry per tithi active during the day
   kumbhachakra: string       // nakshatra-based direction
 }
 
@@ -154,6 +157,13 @@ export interface UdayaLagnaSlot {
   lagnaName: string     // Sanskrit rashi name
   startTime: LocalTime
   endTime: LocalTime
+  panchakaType: 'good' | 'roga' | 'mrityu' | 'agni' | 'raja' | 'chora'
+}
+
+/** A time slot classified by Panchaka type (nakshatra-based, independent of lagna boundaries). */
+export interface PanchakaSlot {
+  startTime: LocalTime
+  endTime: LocalTime | null  // null = last slot, extends to end of display window
   panchakaType: 'good' | 'roga' | 'mrityu' | 'agni' | 'raja' | 'chora'
 }
 
@@ -194,6 +204,12 @@ export interface PanchangData {
   sunPosition: SunMoonPosition
   moonPosition: SunMoonPosition
 
+  // Intra-day transitions (for display in Rashi & Nakshatra section)
+  moonRashiChangeTime: LocalTime | null    // time Moon changes rashi today, null if no change
+  moonRashiAfterChangeName: string | null  // rashi name after change (e.g. "Tula")
+  sunNextPadaTime: LocalTime | null        // time Sun crosses next pada boundary (may be next day)
+  sunNextPadaLabel: string | null          // label for next pada (e.g. "Pada 2" or "Ashwini, Pada 1")
+
   // Timings
   brahmaMuhurta: AuspiciousTiming
   pratahSandhya: AuspiciousTiming
@@ -230,6 +246,7 @@ export interface PanchangData {
 
   // Udaya Lagna
   udayaLagnaSlots: UdayaLagnaSlot[]
+  panchakaSlots: PanchakaSlot[]
 
   // Festivals
   festivals: FestivalData[]
