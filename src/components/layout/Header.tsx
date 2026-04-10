@@ -301,29 +301,51 @@ export function Header({ showNav = true }: HeaderProps) {
     return () => window.removeEventListener('scroll', handler)
   }, [])
 
-  // Auth state
+  // Auth state — use getSession() (reads cookie, no network) for instant display
   useEffect(() => {
-    fetch('/api/auth/me')
-    .then(r => {
-    if (r.status === 401) return { user: null }
-    return r.json()
-  })
-    .then(({user}) => {
-      setUser(user)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        const u = session.user
+        setUser({
+          id: u.id,
+          email: u.email ?? undefined,
+          fullName: u.user_metadata?.full_name ?? u.user_metadata?.name ?? null,
+          avatarUrl: u.user_metadata?.avatar_url ?? null,
+          createdAt: u.created_at,
+        })
+      }
       setAuthLoading(false)
     })
-    .catch(() => setAuthLoading(false))
+
+    // Keep in sync when session changes in another tab
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        const u = session.user
+        setUser({
+          id: u.id,
+          email: u.email ?? undefined,
+          fullName: u.user_metadata?.full_name ?? u.user_metadata?.name ?? null,
+          avatarUrl: u.user_metadata?.avatar_url ?? null,
+          createdAt: u.created_at,
+        })
+      } else {
+        setUser(null)
+      }
+      setAuthLoading(false)
+    })
 
     // Multi-tab logout sync
-
-   const handleStorage = (e: StorageEvent) => {
-    if (e.key === 'astrotattwa:logout') {
-      window.location.href = '/login'
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'astrotattwa:logout') {
+        window.location.href = '/login'
+      }
     }
-  }
-  window.addEventListener('storage', handleStorage)
-  return () => window.removeEventListener('storage', handleStorage)
-}, [])
+    window.addEventListener('storage', handleStorage)
+    return () => {
+      subscription.unsubscribe()
+      window.removeEventListener('storage', handleStorage)
+    }
+  }, [supabase])
 
 
   const handleSignOut = async () => {
@@ -332,19 +354,63 @@ export function Header({ showNav = true }: HeaderProps) {
     router.refresh()
   }
 
-  const handleMyChartClick = () => {
+  const handleMyChartClick = async () => {
     try {
-      const hasChart = !!localStorage.getItem('lastChart')
-      if (!hasChart) {
+      // Fetch the user's saved charts and find the default (is_favorite)
+      const res = await fetch('/api/save-chart', { credentials: 'include' })
+      if (!res.ok) throw new Error('fetch failed')
+      const { charts } = await res.json()
+      const favorite = (charts ?? []).find((c: any) => c.is_favorite)
+
+      if (!favorite) {
         toast({
-          title: '✨ No chart yet',
-          description: 'Calculate your Kundli first, then save it as "My Chart" to access it here.',
+          title: '✨ No default chart set',
+          description: 'Open a chart, save it, and check "Set as My Chart" to use this shortcut.',
           variant: 'dark',
         })
         return
       }
-    } catch {}
-    router.push('/chart?loadFavorite=true')
+
+      // Convert DB 24h time → 12h + period for the calculate API
+      const [hStr, mStr] = (favorite.birth_time as string).split(':')
+      const h24 = parseInt(hStr, 10)
+      const period = h24 >= 12 ? 'PM' : 'AM'
+      const h12 = h24 === 0 ? 12 : h24 > 12 ? h24 - 12 : h24
+      const birthTime12 = `${String(h12).padStart(2, '0')}:${mStr}`
+
+      // Calculate the chart from saved birth data
+      const calcRes = await fetch('/api/calculate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name:       favorite.name,
+          gender:     favorite.gender,
+          birthDate:  favorite.birth_date,
+          birthTime:  birthTime12,
+          timePeriod: period,
+          birthPlace: favorite.birth_place,
+          latitude:   favorite.latitude,
+          longitude:  favorite.longitude,
+          timezone:   favorite.timezone,
+        }),
+      })
+      if (!calcRes.ok) throw new Error('calculation failed')
+      const calcData = await calcRes.json()
+
+      localStorage.setItem('lastChart', JSON.stringify({
+        ...calcData.data,
+        birthPlace: favorite.birth_place,
+      }))
+      // Use full navigation so ChartClient always remounts and re-reads localStorage,
+      // even when the user is already on /chart (router.push would be a no-op there).
+      window.location.href = '/chart'
+    } catch {
+      toast({
+        title: 'Could not load chart',
+        description: 'Please try again in a moment.',
+        variant: 'dark',
+      })
+    }
   }
 
   return (

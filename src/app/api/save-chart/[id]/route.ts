@@ -113,6 +113,9 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   const latitude = Number(body?.latitude)
   const longitude = Number(body?.longitude)
   const timezone = String(body?.timezone ?? '').trim()
+  // is_favorite: undefined means "don't change", true/false means "set explicitly"
+  const isFavorite: boolean | undefined =
+    body?.is_favorite === true ? true : body?.is_favorite === false ? false : undefined
 
   if (!name || !birthDate || !birthTime || !timePeriod || !birthPlace || !timezone) {
     return NextResponse.json({ error: 'Missing required fields.' }, { status: 400 })
@@ -124,7 +127,17 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   const birthTime24 = convert12to24(birthTime, timePeriod)
   const utc_offset = getUtcOffsetMinutes(timezone, birthDate, birthTime24)
 
-  const updateRow = {
+  // If setting as favorite, clear any existing favorite for this user first
+  if (isFavorite === true) {
+    await supabase
+      .from('charts')
+      .update({ is_favorite: false })
+      .eq('user_id', userId)
+      .eq('is_favorite', true)
+      .neq('id', id)
+  }
+
+  const updateRow: Record<string, any> = {
     name,
     label,
     gender,
@@ -148,6 +161,10 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     houses: null,
     dashas: null,
     yogas: null,
+  }
+
+  if (isFavorite !== undefined) {
+    updateRow.is_favorite = isFavorite
   }
 
   const { data: updated, error: e } = await supabase

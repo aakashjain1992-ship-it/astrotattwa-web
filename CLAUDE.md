@@ -49,7 +49,7 @@ Note: `next.config.js` sets `ignoreBuildErrors: true` for TypeScript — type er
 - `src/lib/astrology/` — Core calculation engine (~42 files): KP system (`kp/`), planet strength (`strength/` — 18 files), Saturn transits (`sadesati/` — 8 files), divisional chart builder
 - `src/lib/astrology/kp/calculate.ts` — Main birth chart calculation entry point
 - `src/lib/astrology/kp/dasa.ts` — Vimshottari Dasha: 4 levels (Mahadasha → Antardasha → Pratyantar → Sookshma)
-- `src/lib/astrology/divisionalChartBuilder.ts` — Unified builder for all 20 divisional charts (D1-D60, 664 lines)
+- `src/lib/astrology/divisionalChartBuilder.ts` — Unified builder for all 20 divisional charts (D1–D60; 19 sub-files in `src/lib/utils/divisional/`)
 - `src/lib/astrology/strength/` — Planetary strength analysis engine (functional nature, dignity, varga, domain engines)
 - `src/lib/astrology/sadesati/` — Saturn transit (Sade Sati) analysis: `periodAnalyzer.ts` (1545 lines), `calculator-PROFESSIONAL.ts` (1183 lines)
 - `src/lib/panchang/` — Daily Panchang engine (12 files) — see section below
@@ -57,6 +57,7 @@ Note: `next.config.js` sets `ignoreBuildErrors: true` for TypeScript — type er
 - `src/lib/utils/chartHelpers.ts` — House building functions (Lagna, Moon, Navamsa)
 - `src/components/chart/` — Chart display: `ChartClient.tsx` (main page), `PlanetsTab.tsx` (planet data), `DashaNavigator.tsx`, `SadeSatiTableView.tsx`, `DivisionalChartsTab.tsx`, `ChartLabelModal.tsx` (rename/label saved charts), `DeleteChartDialog.tsx` (confirm delete)
 - `src/components/forms/` — Birth data forms with city autocomplete
+- `src/components/panchang/` — Panchang display sections (15 files): `DateNavigator`, `PanchangHeader`, `sections/` (14 section components for each panchang element)
 - `src/components/ui/` — shadcn/ui components (do not manually edit, use `npx shadcn-ui@latest add`)
 - `src/types/astrology.ts` — Central type definitions for all astrology entities (PlanetData, ChartData, HouseInfo, KPData, etc.)
 - `src/types/chart-calculation.ts` — API request/response types
@@ -78,7 +79,7 @@ Note: `next.config.js` sets `ignoreBuildErrors: true` for TypeScript — type er
 | `calendar.ts` | Vikram Samvat, Shaka Samvat, Ritu, Ayana, other calendar epochs |
 | `constants.ts` | Lookup tables: rashi/nakshatra/karana names, Mantri Mandala (500+ VS years), Homahuti, Panchaka |
 | `types.ts` | All Panchang interfaces: `PanchangData`, `NakshatraEntry`, `TimedEntry`, `PanchakaSlot`, etc. |
-| `festivals.ts` | Festival lookups — **always fetched fresh, never cached** |
+| `festivals.ts` | Festival lookups — **always fetched fresh, never cached** (fetched from `festival_calendar` table on every request to avoid stale data when festival records change) |
 
 **`TimedEntry` pattern:** `{ value: string, endTime: LocalTime | null }` — used for tithi, nakshatra, yoga, karana, and other day-spanning values that can transition mid-day. A `null` endTime means the value extends past the display window.
 
@@ -127,30 +128,11 @@ Centralized in `src/lib/api/errorHandling.ts` — use `successResponse()`, `erro
 
 ## Known Issues
 
-### Removed Dependencies (were installed but unused — uninstalled March 2026)
-- `zustand` — zero imports; all state is useState + custom hooks
-- `@tanstack/react-query` — zero imports; API calls use raw fetch
-- `@sentry/nextjs` — only commented-out integration in errorLogger.ts
-- `@storybook/nextjs` — never configured, no stories
-
 ### Active but non-obvious dependency
 - `resend` — used in `scripts/send-audit-email.ts` for admin audit emails, and via direct HTTP in `scripts/transit-db/*.js` for notifications. NOT used in src/ (forgot-password uses `supabase.auth.resetPasswordForEmail()`).
 
-### Documentation Notes (updated March 29, 2026)
-Root .md files were bulk-updated on March 29, 2026. Key fixes applied: Next.js version, phase status, LOC counts, table counts, auth status. Remaining known gaps:
-
-| File | Status | Remaining Issues |
-|------|--------|-----------------|
-| **README.md** | Updated | package.json version still 0.1.0 vs documented 0.2.0; directory tree doesn't show all current dirs |
-| **DEVELOPMENT_ROADMAP.md** | Partially updated | Header/status updated; detailed Phase 2/3 task sections still have old "Week N" estimates |
-| **PROGRESS_TRACKER.md** | Updated | Saturn Transit and Planetary Strength features still not tracked as separate P-items |
-| **COMPONENT_LIBRARY.md** | Minor gaps | Missing PlanetsTab, SadeSati components |
-| **DELIVERY_SUMMARY.md** | Intentionally frozen | Phase 1 delivery doc — metrics are historical (Feb 7, 2026) |
-| **CODE_REFACTORING_GUIDE.md** | Accurate | No issues |
-| **SETUP_CHECKLIST.md** | Accurate | No issues |
-
-### Database Tables (12 in Supabase)
-`profiles`, `charts`, `cities`, `reports`, `payments`, `test_cases`, `test_case_runs`, `astronomical_events`, `auth_login_attempts_v2`, `auth_login_events`, `planet_daily_positions`, `planet_retrograde_periods`, `planet_sign_transits`, `transit_generation_log`. Note: the migration file (`supabase/migrations/001_initial_schema.sql`) only defines 4 tables — the rest were created directly in Supabase.
+### Database Tables (16 in Supabase)
+`profiles`, `charts`, `cities`, `reports`, `payments`, `test_cases`, `test_case_runs`, `astronomical_events`, `auth_login_attempts_v2`, `auth_login_events`, `planet_daily_positions`, `planet_retrograde_periods`, `planet_sign_transits`, `transit_generation_log`, `panchang_cache`, `festival_calendar`. Note: `supabase/migrations/001_initial_schema.sql` only defines 4 tables; `supabase/panchang_tables.sql` defines 2 more — the rest were created directly in Supabase.
 
 ## Environment Variables
 

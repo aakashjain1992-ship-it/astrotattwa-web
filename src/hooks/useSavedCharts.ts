@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { createClient } from '@/lib/supabase/client';
 
 export interface SavedChart {
   id: string;
@@ -9,6 +10,9 @@ export interface SavedChart {
 
   // Optional label (you asked: Friend/Family/Wife/Client etc.)
   label: string | null;
+
+  // Whether this is the user's default "My Chart"
+  is_favorite: boolean | null;
 
   // Birth details only (no chart payload storage)
   gender: string; // 'male' | 'female' | 'Male' | 'Female' (API can normalize)
@@ -62,23 +66,27 @@ export function useSavedCharts() {
     setError(null);
 
     try {
-      // 1) auth status (and admin flag) from /me
-      const meRes = await fetch('/api/auth/me', { credentials: 'include' });
-      if (meRes.status === 401) {
+      const supabase = createClient();
+      // getSession() reads from cookie — no network round-trip, instant
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session?.user) {
         setIsLoggedIn(false);
         setIsAdmin(false);
         setCharts([]);
         return;
       }
 
-      const me = await safeJson(meRes);
-      const u = me?.user;
-      setIsLoggedIn(Boolean(u));
-      setIsAdmin(Boolean(u?.isAdmin)); // from DB /me
+      setIsLoggedIn(true);
 
-      // 2) list saved charts
+      // Fetch saved charts (network call, but auth check above was instant)
       const listRes = await fetch('/api/save-chart', { credentials: 'include' });
       if (!listRes.ok) {
+        if (listRes.status === 401) {
+          setIsLoggedIn(false);
+          setCharts([]);
+          return;
+        }
         const j = await safeJson(listRes);
         throw new Error(j?.error || 'Failed to load saved charts.');
       }
@@ -97,12 +105,12 @@ export function useSavedCharts() {
 
   const hasSavedCharts = useMemo(() => charts.length > 0, [charts.length]);
 
-  const saveChart = useCallback(async (payload: any): Promise<SavedChart> => {
+  const saveChart = useCallback(async (payload: any, isFavorite = false): Promise<SavedChart> => {
     const res = await fetch('/api/save-chart', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ ...payload, is_favorite: isFavorite }),
     });
 
     const j = await safeJson(res);
@@ -114,12 +122,15 @@ export function useSavedCharts() {
     return j?.chart as SavedChart;
   }, []);
 
-  const updateChart = useCallback(async (id: string, payload: any): Promise<SavedChart> => {
+  const updateChart = useCallback(async (id: string, payload: any, isFavorite?: boolean): Promise<SavedChart> => {
+    const body = isFavorite !== undefined
+      ? { ...payload, is_favorite: isFavorite }
+      : payload;
     const res = await fetch(`/api/save-chart/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify(payload),
+      body: JSON.stringify(body),
     });
 
     const j = await safeJson(res);

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2, Stars } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ChartFocusMode, type ChartConfig } from '@/components/chart/ChartFocusMode';
@@ -36,6 +36,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { ChartLabelModal } from '@/components/chart/ChartLabelModal';
+import { DeleteChartDialog } from '@/components/chart/DeleteChartDialog';
 
 
 
@@ -205,7 +207,6 @@ export default function ChartClient() {
   useIdleLogout()
 
   const router = useRouter();
-  const pathname = usePathname();
   const searchParams = useSearchParams();
 
   // Data state
@@ -219,7 +220,23 @@ export default function ChartClient() {
   const [, setIsRecalculating] = useState(false);
 
   const saved = useSavedCharts();
-  const [selectedSavedChartId, setSelectedSavedChartId] = useState<string | null>(null);
+  const [selectedSavedChartId, setSelectedSavedChartId] = useState<string | null>(() => {
+    // Initialise from URL path /chart/[id] so dropdown reflects state on direct visit
+    if (typeof window !== 'undefined') {
+      const segments = window.location.pathname.split('/')
+      const id = segments[2] // /chart/[id]
+      return id || null
+    }
+    return null
+  });
+
+  // Modal state
+  const [saveModalOpen, setSaveModalOpen] = useState(false);
+  const [editLabelModalOpen, setEditLabelModalOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [modalLoading, setModalLoading] = useState(false);
+  // Holds formData while modal is open waiting for user input
+  const [pendingFormData, setPendingFormData] = useState<any>(null);
 
   // ✅ TAB URL SYNC
   const tabParam = searchParams.get('tab') as TabType | null;
@@ -239,15 +256,24 @@ export default function ChartClient() {
 
       const params = new URLSearchParams(searchParams.toString());
       if (tab === 'overview') {
-        params.delete('tab'); // keep /chart clean
+        params.delete('tab');
       } else {
         params.set('tab', tab);
       }
 
       const qs = params.toString();
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+      // After replaceState('/chart/[id]'), Next.js's pathname is still '/chart'
+      // but the browser URL is '/chart/[id]'. Using router.replace('/chart?tab=…')
+      // would navigate away from /chart/[id] causing a full remount.
+      // Instead, always use window.history.replaceState for tab URL updates so
+      // we stay on whichever path the browser is currently showing.
+      if (typeof window !== 'undefined') {
+        const currentPath = window.location.pathname;
+        const nextUrl = qs ? `${currentPath}?${qs}` : currentPath;
+        window.history.replaceState(null, '', nextUrl);
+      }
     },
-    [router, pathname, searchParams]
+    [searchParams]
   );
 
   // Load chart data from localStorage
@@ -364,6 +390,9 @@ export default function ChartClient() {
 
       setSelectedSavedChartId(c.id);
 
+      // Always return to overview so Dasha/SadeSati tabs re-fetch on next visit
+      setTab('overview');
+
       // Fill + Trigger recalculation (as you requested)
       await handleEditSubmit({
         name: c.name,
@@ -376,6 +405,9 @@ export default function ChartClient() {
         timezone: c.timezone,
         cityName: c.birth_place,
       });
+
+      // Update URL to /chart/[id] without remounting the component
+      window.history.replaceState(null, '', '/chart/' + c.id);
     },
     [handleEditSubmit, saved.charts]
   );
@@ -398,13 +430,28 @@ export default function ChartClient() {
 
   const handleSaveChart = useCallback(
     async (formData: any) => {
-      const label = window.prompt('Add a label (Friend, Family, Wife, Client, etc.)', '');
-      const payload = buildSavePayloadFromEditForm(formData, label ? label.trim() : null);
-      const created = await saved.saveChart(payload);
-      await saved.refresh();
-      setSelectedSavedChartId(created.id);
+      setPendingFormData(formData);
+      setSaveModalOpen(true);
     },
-    [buildSavePayloadFromEditForm, saved]
+    []
+  );
+
+  const handleSaveModalConfirm = useCallback(
+    async (label: string | null, isFavorite: boolean) => {
+      if (!pendingFormData) return;
+      setModalLoading(true);
+      try {
+        const payload = buildSavePayloadFromEditForm(pendingFormData, label);
+        const created = await saved.saveChart(payload, isFavorite);
+        await saved.refresh();
+        setSelectedSavedChartId(created.id);
+        setSaveModalOpen(false);
+        setPendingFormData(null);
+      } finally {
+        setModalLoading(false);
+      }
+    },
+    [pendingFormData, buildSavePayloadFromEditForm, saved]
   );
 
   const handleUpdateChart = useCallback(
@@ -419,25 +466,54 @@ export default function ChartClient() {
 
   const handleDeleteChart = useCallback(
     async (chartId: string) => {
-      const ok = window.confirm('Delete this saved chart?');
-      if (!ok) return;
-      await saved.deleteChart(chartId);
-      await saved.refresh();
-      setSelectedSavedChartId(null);
+      setPendingFormData(chartId); // reuse pendingFormData to store chartId for delete
+      setDeleteDialogOpen(true);
     },
-    [saved]
+    []
+  );
+
+  const handleDeleteConfirm = useCallback(
+    async () => {
+      if (!pendingFormData) return;
+      setModalLoading(true);
+      try {
+        await saved.deleteChart(pendingFormData);
+        await saved.refresh();
+        setSelectedSavedChartId(null);
+        setDeleteDialogOpen(false);
+        setPendingFormData(null);
+      } finally {
+        setModalLoading(false);
+      }
+    },
+    [saved, pendingFormData]
   );
 
   const handleEditLabel = useCallback(
     async (chartId: string, formData: any) => {
-      const next = window.prompt('Update label', selectedSavedChart?.label ?? '');
-      if (next == null) return;
-      const payload = buildSavePayloadFromEditForm(formData, next.trim() ? next.trim() : null);
-      await saved.updateChart(chartId, payload);
-      await saved.refresh();
-      setSelectedSavedChartId(chartId);
+      setPendingFormData({ chartId, formData });
+      setEditLabelModalOpen(true);
     },
-    [buildSavePayloadFromEditForm, saved, selectedSavedChart?.label]
+    []
+  );
+
+  const handleEditLabelConfirm = useCallback(
+    async (label: string | null, isFavorite: boolean) => {
+      if (!pendingFormData) return;
+      const { chartId, formData } = pendingFormData;
+      setModalLoading(true);
+      try {
+        const payload = buildSavePayloadFromEditForm(formData, label);
+        await saved.updateChart(chartId, payload, isFavorite);
+        await saved.refresh();
+        setSelectedSavedChartId(chartId);
+        setEditLabelModalOpen(false);
+        setPendingFormData(null);
+      } finally {
+        setModalLoading(false);
+      }
+    },
+    [pendingFormData, buildSavePayloadFromEditForm, saved]
   );
   
 
@@ -604,7 +680,7 @@ export default function ChartClient() {
             />
 
              {/* Two-column section: Planets + Avakahada */}
-            <div className="grid grid-cols-1 lg:grid-cols-[70%_30%] gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
               <div className={cn('lg:block', mobileSubTab === 'planets' ? 'block' : 'hidden')}>
                 <PlanetaryTable planets={chartData.planets} />
               </div>
@@ -671,6 +747,41 @@ export default function ChartClient() {
 
       {/* Footer */}
       <Footer />
+
+      {/* Save chart modal */}
+      <ChartLabelModal
+        open={saveModalOpen}
+        onOpenChange={setSaveModalOpen}
+        mode="save"
+        initialLabel=""
+        initialIsFavorite={false}
+        currentFavoriteChartName={saved.charts.find(c => c.is_favorite)?.name ?? null}
+        onConfirm={handleSaveModalConfirm}
+        isLoading={modalLoading}
+      />
+
+      {/* Edit label modal */}
+      <ChartLabelModal
+        open={editLabelModalOpen}
+        onOpenChange={setEditLabelModalOpen}
+        mode="edit-label"
+        initialLabel={selectedSavedChart?.label ?? ''}
+        initialIsFavorite={selectedSavedChart?.is_favorite ?? false}
+        currentFavoriteChartName={
+          saved.charts.find(c => c.is_favorite && c.id !== selectedSavedChartId)?.name ?? null
+        }
+        onConfirm={handleEditLabelConfirm}
+        isLoading={modalLoading}
+      />
+
+      {/* Delete confirm dialog */}
+      <DeleteChartDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        chartName={selectedSavedChart?.name ?? ''}
+        onConfirm={handleDeleteConfirm}
+        isLoading={modalLoading}
+      />
     </div>
   );
 }
