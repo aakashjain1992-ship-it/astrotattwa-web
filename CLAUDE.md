@@ -104,7 +104,7 @@ Cache key: `${CACHE_VERSION}_${dateParam}_${lat.toFixed(2)}_${lng.toFixed(2)}`
 
 - Stored in Supabase `panchang_cache` table; TTL 24 hours
 - `CACHE_VERSION` in `src/app/api/panchang/route.ts` — **bump this constant whenever the data shape or calculation logic changes**, otherwise stale Supabase rows are returned to clients
-- Current version: `v6` (Vijaya Muhurta fixed to 11th of 15 proportional day muhurtas, Apr 2026)
+- Current version: `v7` (Anandadi/Tamil Yoga formula rewritten + all lookup tables corrected, Apr 2026)
 - Coordinates rounded to 2 decimal places (~1.2 km precision) — locations within ~1 km share a cache entry
 - Festivals are fetched separately from `festival_calendar` table on every request (not cached)
 
@@ -121,13 +121,19 @@ Cache key: `${CACHE_VERSION}_${dateParam}_${lat.toFixed(2)}_${lng.toFixed(2)}`
 | `/api/save-chart/[id]` | PATCH update, DELETE — requires auth; PATCH clears other `is_favorite` when setting new default |
 | `/api/cities/search` | City autocomplete (uses HERE Maps API) |
 | `/api/auth/login`, `/logout`, `/me` | Authentication |
-| `/api/test/run-calculations`, `/history`, `/delete-runs` | Manual regression testing (requires `ADMIN_SECRET_TOKEN`) |
+| `/auth/callback` | Supabase OAuth callback handler |
+| `/api/test/run-calculations`, `/history`, `/delete-runs` | Manual regression testing (requires `ADMIN_SECRET_TOKEN`); UI at `/admin/tests` |
 
 ### Auth & Middleware
 
 `middleware.ts` handles Supabase session refresh, protects `/settings` and `/reports`, and passes user info to API routes via `x-user-*` headers. Uses chunked cookies for large auth tokens.
 
-**Client-side auth pattern:** Always use `supabase.auth.getSession()` (reads cookie instantly, no network) for UI state. Never use `fetch('/api/auth/me')` for UI — that adds a 2–3s delay on page load. `/api/auth/me` exists but is only for server-to-server use.
+**Client-side auth pattern:** Use `useAuth()` hook (`src/hooks/useAuth.ts`) for component-level auth state — it calls `supabase.auth.getUser()` on mount and subscribes to `onAuthStateChange`. For a one-shot auth check inside a non-component context (e.g. inside `useSavedCharts`), use `supabase.auth.getSession()` (reads cookie instantly, no network). Never use `fetch('/api/auth/me')` for UI — that adds a 2–3s delay. `/api/auth/me` is server-to-server only.
+
+**Other client hooks:**
+- `useIdleLogout` — auto-logout after inactivity; mount once in the root layout
+- `useVargottama(d1Houses, d9Houses)` — returns Vargottama planet list + insights
+- `useDateTimeSync` — syncs date/time picker state across components
 
 ### Error Handling
 
