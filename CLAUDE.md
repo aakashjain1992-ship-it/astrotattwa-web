@@ -21,7 +21,7 @@ pm2 restart astrotattwa-web  # Restart production process
 
 Note: `next.config.js` sets `ignoreBuildErrors: true` for TypeScript — type errors won't fail the build. Run `npm run type-check` separately.
 
-**Deploy sequence (production):** `pm2 stop astrotattwa-web && rm -rf .next && npm run build && pm2 restart astrotattwa-web` — stop PM2 first (only 957MB RAM on the server).
+**Deploy sequence (production):** `pm2 stop astrotattwa-web && rm -rf .next && NODE_OPTIONS='--max-old-space-size=512' npx next build --webpack && pm2 restart astrotattwa-web && pm2 save` — stop PM2 first (only 957MB RAM on the server). A running PM2 + Next.js build = OOM kill.
 
 ## Tech Stack
 
@@ -140,7 +140,7 @@ Cache key: `${CACHE_VERSION}_${dateParam}_${lat.toFixed(2)}_${lng.toFixed(2)}`
 
 ### Error Handling
 
-Centralized in `src/lib/api/errorHandling.ts` — use `successResponse()`, `errorResponse()`, `validationError()`, etc. Rate limiting presets in `src/lib/api/rateLimit.ts`: strict (5/min), normal (20/min), loose (100/min), lenient (60/min — used for Panchang).
+Centralized in `src/lib/api/errorHandling.ts` — use `successResponse()`, `errorResponse()`, `validationError()`, etc. Rate limiting presets in `src/lib/api/rateLimit.ts`: `strict` (5/min), `standard` (20/min), `lenient` (60/min — used for Panchang and horoscope), `auth` (very strict). There is no `loose` preset.
 
 ## Conventions
 
@@ -151,35 +151,39 @@ Centralized in `src/lib/api/errorHandling.ts` — use `successResponse()`, `erro
 - Commit style: `type(scope): description` (e.g., `fix(panchang): correct vijaya muhurta to 11th of 15-muhurta system`)
 - The owner uses both Claude and ChatGPT — see `AI_HANDOFF_GUIDE.md` for session handoff protocol
 
+### Horoscope Module (`src/lib/horoscope/`)
+
+General (non-user-specific) horoscopes for all 12 rashis — daily, weekly, monthly. Moon sign only (sun sign disabled).
+
+- `config.ts` — AI provider + per-type model (`daily: haiku`, `weekly/monthly: sonnet`)
+- `rashiMap.ts` — 12 rashis with slug, sign number, EN/HI names, symbol; `getHouseFromTransit()` for house calculations
+- `prompts.ts` — builds `PromptParts { system, dataBlock, langBlock }` per type; system+dataBlock marked cacheable; type-specific field guides (daily=full detail, weekly=insight, monthly=strategy)
+- `generator.ts` — 4 parallel AI calls: 2×EN generation (6 rashis each) + 2×HI translation (6 rashis each); upserts to `horoscopes` table
+
+**Generation schedule** (cron runs as PM2 `horoscope-cron`):
+- Daily: midnight IST (18:30 UTC) → generates for IST date
+- Weekly: Sunday noon IST (06:30 UTC) → generates for next week (Monday date)
+- Monthly: 25th midnight IST (18:30 UTC on 24th) → generates for next month
+
+**Manual trigger:** `node scripts/horoscope/generate.js [daily|weekly|monthly] [YYYY-MM-DD]`
+
+**`horoscopes` table:** `rashi, type, sign_type, period_start, period_end, content_en (jsonb), content_hi (jsonb), planet_context (jsonb)` — UNIQUE on `(rashi, type, sign_type, period_start)`
+
+**`horoscope_generation_log` table:** per-run token usage, cost, duration, errors, prompt preview.
+
+**Planet data used:** `planet_sign_transits`, `planet_retrograde_periods` (columns: `retrograde_start`, `direct_start`), `computePanchang` at Delhi reference coords, `festival_calendar`
+
+**URLs:** `/horoscope/[type]/[rashi]` — SSR with SEO metadata. Redirects: `/horoscope` → `/horoscope/daily/aries`; logged-in users with a favorite chart auto-redirect to their Moon rashi.
+
+**UI:** `HoroscopeShell` — lang preference in `localStorage` (`horoscope_lang`); Prev/Next nav inline with type tabs; history loaded on mount.
+
+### Database Tables (18 in Supabase)
+`profiles`, `charts`, `cities`, `reports`, `payments`, `test_cases`, `test_case_runs`, `astronomical_events`, `auth_login_attempts_v2`, `auth_login_events`, `planet_daily_positions`, `planet_retrograde_periods`, `planet_sign_transits`, `transit_generation_log`, `panchang_cache`, `festival_calendar`, `horoscopes`, `horoscope_generation_log`. Note: `supabase/migrations/001_initial_schema.sql` only defines 4 tables; `supabase/panchang_tables.sql` defines 2 more — the rest were created directly in Supabase.
+
 ## Known Issues
 
 ### Active but non-obvious dependency
 - `resend` — used in `scripts/send-audit-email.ts` for admin audit emails, and via direct HTTP in `scripts/transit-db/*.js` for notifications. NOT used in src/ (forgot-password uses `supabase.auth.resetPasswordForEmail()`).
-
-### Horoscope Module (`src/lib/horoscope/`)
-
-General (non-user-specific) horoscopes for all 12 rashis — daily, weekly, monthly.
-
-- `config.ts` — single constant to switch AI provider (`anthropic` | `openai`) and model
-- `rashiMap.ts` — 12 rashis with slug, sign number, EN/HI names, symbol; `getHouseFromTransit()` for house calculations
-- `prompts.ts` — prompt template builder for all types; produces structured JSON for moon + sun × EN + HI
-- `generator.ts` — fetches planet context from DB, calls AI in parallel batches of 6, upserts to `horoscopes` table
-
-**Generation schedule** (cron runs as PM2 `horoscope-cron`):
-- Daily: midnight IST (18:30 UTC)
-- Weekly: Sunday noon IST (06:30 UTC)  
-- Monthly: 25th midnight IST → generates for next month
-
-**Manual trigger:** `node scripts/horoscope/generate.js daily [YYYY-MM-DD]`
-
-**`horoscopes` table:** `rashi, type, sign_type (moon|sun), period_start, period_end, content_en (jsonb), content_hi (jsonb), planet_context (jsonb)` — UNIQUE on `(rashi, type, sign_type, period_start)`
-
-**Planet data used:** `planet_sign_transits` (active transits), `planet_retrograde_periods` (columns: `retrograde_start`, `direct_start`), `panchang_cache` (via `computePanchang` at Delhi reference coords), `festival_calendar`
-
-**URLs:** `/horoscope/[type]/[rashi]` — SSR with SEO metadata. Redirects: `/horoscope` → `/horoscope/daily/aries`; logged-in users with a favorite chart auto-redirect to their Moon rashi.
-
-### Database Tables (17 in Supabase)
-`profiles`, `charts`, `cities`, `reports`, `payments`, `test_cases`, `test_case_runs`, `astronomical_events`, `auth_login_attempts_v2`, `auth_login_events`, `planet_daily_positions`, `planet_retrograde_periods`, `planet_sign_transits`, `transit_generation_log`, `panchang_cache`, `festival_calendar`, `horoscopes`. Note: `supabase/migrations/001_initial_schema.sql` only defines 4 tables; `supabase/panchang_tables.sql` defines 2 more — the rest were created directly in Supabase.
 
 ## Environment Variables
 
@@ -191,4 +195,6 @@ Required in `.env.local`:
 - `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` — Upstash Redis for rate limiting
 - `RESEND_API_KEY` — Email service (scripts only, not used in src/)
 - `HERE_MAPS_API_KEY` — Location/geocoding for city search (optional)
-- `ADMIN_SECRET_TOKEN` — Bypasses rate limits for server→server calls (test endpoints)
+- `ADMIN_SECRET_TOKEN` — Protects `/api/horoscope/generate` and test endpoints
+- `ANTHROPIC_API_KEY` — AI generation for horoscopes
+- `APP_INTERNAL_URL` — Internal URL for cron→app HTTP calls (default: `http://localhost:3000`)
