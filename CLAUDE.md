@@ -104,7 +104,7 @@ Cache key: `${CACHE_VERSION}_${dateParam}_${lat.toFixed(2)}_${lng.toFixed(2)}`
 
 - Stored in Supabase `panchang_cache` table; TTL 24 hours
 - `CACHE_VERSION` in `src/app/api/panchang/route.ts` — **bump this constant whenever the data shape or calculation logic changes**, otherwise stale Supabase rows are returned to clients
-- Current version: `v7` (Anandadi/Tamil Yoga formula rewritten + all lookup tables corrected, Apr 2026)
+- Current version: `v8` (Anandadi/Tamil Yoga formula rewritten + all lookup tables corrected, Homahuti/Dur Muhurtam/Shivavasa/Agnivasa fixes, Apr 2026)
 - Coordinates rounded to 2 decimal places (~1.2 km precision) — locations within ~1 km share a cache entry
 - Festivals are fetched separately from `festival_calendar` table on every request (not cached)
 
@@ -123,6 +123,9 @@ Cache key: `${CACHE_VERSION}_${dateParam}_${lat.toFixed(2)}_${lng.toFixed(2)}`
 | `/api/auth/login`, `/logout`, `/me` | Authentication |
 | `/auth/callback` | Supabase OAuth callback handler |
 | `/api/test/run-calculations`, `/history`, `/delete-runs` | Manual regression testing (requires `ADMIN_SECRET_TOKEN`); UI at `/admin/tests` |
+| `/api/horoscope` | GET: fetch horoscope by type/rashi/sign_type/date; fallback to latest if not found |
+| `/api/horoscope/history` | GET: past N horoscopes (7 daily / 4 weekly / 6 monthly) |
+| `/api/horoscope/generate` | POST: generate all 12 rashis for a type/date (protected by `ADMIN_SECRET_TOKEN`) |
 
 ### Auth & Middleware
 
@@ -153,8 +156,30 @@ Centralized in `src/lib/api/errorHandling.ts` — use `successResponse()`, `erro
 ### Active but non-obvious dependency
 - `resend` — used in `scripts/send-audit-email.ts` for admin audit emails, and via direct HTTP in `scripts/transit-db/*.js` for notifications. NOT used in src/ (forgot-password uses `supabase.auth.resetPasswordForEmail()`).
 
-### Database Tables (16 in Supabase)
-`profiles`, `charts`, `cities`, `reports`, `payments`, `test_cases`, `test_case_runs`, `astronomical_events`, `auth_login_attempts_v2`, `auth_login_events`, `planet_daily_positions`, `planet_retrograde_periods`, `planet_sign_transits`, `transit_generation_log`, `panchang_cache`, `festival_calendar`. Note: `supabase/migrations/001_initial_schema.sql` only defines 4 tables; `supabase/panchang_tables.sql` defines 2 more — the rest were created directly in Supabase.
+### Horoscope Module (`src/lib/horoscope/`)
+
+General (non-user-specific) horoscopes for all 12 rashis — daily, weekly, monthly.
+
+- `config.ts` — single constant to switch AI provider (`anthropic` | `openai`) and model
+- `rashiMap.ts` — 12 rashis with slug, sign number, EN/HI names, symbol; `getHouseFromTransit()` for house calculations
+- `prompts.ts` — prompt template builder for all types; produces structured JSON for moon + sun × EN + HI
+- `generator.ts` — fetches planet context from DB, calls AI in parallel batches of 6, upserts to `horoscopes` table
+
+**Generation schedule** (cron runs as PM2 `horoscope-cron`):
+- Daily: midnight IST (18:30 UTC)
+- Weekly: Sunday noon IST (06:30 UTC)  
+- Monthly: 25th midnight IST → generates for next month
+
+**Manual trigger:** `node scripts/horoscope/generate.js daily [YYYY-MM-DD]`
+
+**`horoscopes` table:** `rashi, type, sign_type (moon|sun), period_start, period_end, content_en (jsonb), content_hi (jsonb), planet_context (jsonb)` — UNIQUE on `(rashi, type, sign_type, period_start)`
+
+**Planet data used:** `planet_sign_transits` (active transits), `planet_retrograde_periods` (columns: `retrograde_start`, `direct_start`), `panchang_cache` (via `computePanchang` at Delhi reference coords), `festival_calendar`
+
+**URLs:** `/horoscope/[type]/[rashi]` — SSR with SEO metadata. Redirects: `/horoscope` → `/horoscope/daily/aries`; logged-in users with a favorite chart auto-redirect to their Moon rashi.
+
+### Database Tables (17 in Supabase)
+`profiles`, `charts`, `cities`, `reports`, `payments`, `test_cases`, `test_case_runs`, `astronomical_events`, `auth_login_attempts_v2`, `auth_login_events`, `planet_daily_positions`, `planet_retrograde_periods`, `planet_sign_transits`, `transit_generation_log`, `panchang_cache`, `festival_calendar`, `horoscopes`. Note: `supabase/migrations/001_initial_schema.sql` only defines 4 tables; `supabase/panchang_tables.sql` defines 2 more — the rest were created directly in Supabase.
 
 ## Environment Variables
 
