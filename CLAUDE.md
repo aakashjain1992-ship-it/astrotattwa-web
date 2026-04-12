@@ -21,7 +21,7 @@ pm2 restart astrotattwa-web  # Restart production process
 
 Note: `next.config.js` sets `ignoreBuildErrors: true` for TypeScript — type errors won't fail the build. Run `npm run type-check` separately.
 
-**Deploy sequence (production):** `pm2 stop astrotattwa-web && rm -rf .next && npm run build && pm2 restart astrotattwa-web` — stop PM2 first (only 957MB RAM on the server).
+**Deploy sequence (production):** `NODE_OPTIONS='--max-old-space-size=512' npx next build --webpack && pm2 reload astrotattwa-web && pm2 save` — do NOT `rm -rf .next` first (old server keeps serving from memory while new build writes in-place). Use `pm2 reload` not `pm2 restart` — reload starts new instance before killing old one (near-zero downtime).
 
 ## Tech Stack
 
@@ -104,7 +104,7 @@ Cache key: `${CACHE_VERSION}_${dateParam}_${lat.toFixed(2)}_${lng.toFixed(2)}`
 
 - Stored in Supabase `panchang_cache` table; TTL 24 hours
 - `CACHE_VERSION` in `src/app/api/panchang/route.ts` — **bump this constant whenever the data shape or calculation logic changes**, otherwise stale Supabase rows are returned to clients
-- Current version: `v6` (Vijaya Muhurta fixed to 11th of 15 proportional day muhurtas, Apr 2026)
+- Current version: `v8` (Anandadi/Tamil Yoga formula rewritten + all lookup tables corrected, Homahuti/Dur Muhurtam/Shivavasa/Agnivasa fixes, Apr 2026)
 - Coordinates rounded to 2 decimal places (~1.2 km precision) — locations within ~1 km share a cache entry
 - Festivals are fetched separately from `festival_calendar` table on every request (not cached)
 
@@ -121,17 +121,26 @@ Cache key: `${CACHE_VERSION}_${dateParam}_${lat.toFixed(2)}_${lng.toFixed(2)}`
 | `/api/save-chart/[id]` | PATCH update, DELETE — requires auth; PATCH clears other `is_favorite` when setting new default |
 | `/api/cities/search` | City autocomplete (uses HERE Maps API) |
 | `/api/auth/login`, `/logout`, `/me` | Authentication |
-| `/api/test/run-calculations`, `/history`, `/delete-runs` | Manual regression testing (requires `ADMIN_SECRET_TOKEN`) |
+| `/auth/callback` | Supabase OAuth callback handler |
+| `/api/test/run-calculations`, `/history`, `/delete-runs` | Manual regression testing (requires `ADMIN_SECRET_TOKEN`); UI at `/admin/tests` |
+| `/api/horoscope` | GET: fetch horoscope by type/rashi/sign_type/date; fallback to latest if not found |
+| `/api/horoscope/history` | GET: past N horoscopes (7 daily / 4 weekly / 6 monthly) |
+| `/api/horoscope/generate` | POST: generate all 12 rashis for a type/date (protected by `ADMIN_SECRET_TOKEN`) |
 
 ### Auth & Middleware
 
 `middleware.ts` handles Supabase session refresh, protects `/settings` and `/reports`, and passes user info to API routes via `x-user-*` headers. Uses chunked cookies for large auth tokens.
 
-**Client-side auth pattern:** Always use `supabase.auth.getSession()` (reads cookie instantly, no network) for UI state. Never use `fetch('/api/auth/me')` for UI — that adds a 2–3s delay on page load. `/api/auth/me` exists but is only for server-to-server use.
+**Client-side auth pattern:** Use `useAuth()` hook (`src/hooks/useAuth.ts`) for component-level auth state — it calls `supabase.auth.getUser()` on mount and subscribes to `onAuthStateChange`. For a one-shot auth check inside a non-component context (e.g. inside `useSavedCharts`), use `supabase.auth.getSession()` (reads cookie instantly, no network). Never use `fetch('/api/auth/me')` for UI — that adds a 2–3s delay. `/api/auth/me` is server-to-server only.
+
+**Other client hooks:**
+- `useIdleLogout` — auto-logout after inactivity; mount once in the root layout
+- `useVargottama(d1Houses, d9Houses)` — returns Vargottama planet list + insights
+- `useDateTimeSync` — syncs date/time picker state across components
 
 ### Error Handling
 
-Centralized in `src/lib/api/errorHandling.ts` — use `successResponse()`, `errorResponse()`, `validationError()`, etc. Rate limiting presets in `src/lib/api/rateLimit.ts`: strict (5/min), normal (20/min), loose (100/min), lenient (60/min — used for Panchang).
+Centralized in `src/lib/api/errorHandling.ts` — use `successResponse()`, `errorResponse()`, `validationError()`, etc. Rate limiting presets in `src/lib/api/rateLimit.ts`: `strict` (5/min), `standard` (20/min), `lenient` (60/min — used for Panchang and horoscope), `auth` (very strict). There is no `loose` preset.
 
 ## Conventions
 
@@ -142,13 +151,39 @@ Centralized in `src/lib/api/errorHandling.ts` — use `successResponse()`, `erro
 - Commit style: `type(scope): description` (e.g., `fix(panchang): correct vijaya muhurta to 11th of 15-muhurta system`)
 - The owner uses both Claude and ChatGPT — see `AI_HANDOFF_GUIDE.md` for session handoff protocol
 
+### Horoscope Module (`src/lib/horoscope/`)
+
+General (non-user-specific) horoscopes for all 12 rashis — daily, weekly, monthly. Moon sign only (sun sign disabled).
+
+- `config.ts` — AI provider + per-type model (`daily: haiku`, `weekly/monthly: sonnet`)
+- `rashiMap.ts` — 12 rashis with slug, sign number, EN/HI names, symbol; `getHouseFromTransit()` for house calculations
+- `prompts.ts` — builds `PromptParts { system, dataBlock, langBlock }` per type; system+dataBlock marked cacheable; type-specific field guides (daily=full detail, weekly=insight, monthly=strategy)
+- `generator.ts` — 4 parallel AI calls: 2×EN generation (6 rashis each) + 2×HI translation (6 rashis each); upserts to `horoscopes` table
+
+**Generation schedule** (cron runs as PM2 `horoscope-cron`):
+- Daily: midnight IST (18:30 UTC) → generates for IST date
+- Weekly: Sunday noon IST (06:30 UTC) → generates for next week (Monday date)
+- Monthly: 25th midnight IST (18:30 UTC on 24th) → generates for next month
+
+**Manual trigger:** `node scripts/horoscope/generate.js [daily|weekly|monthly] [YYYY-MM-DD]`
+
+**`horoscopes` table:** `rashi, type, sign_type, period_start, period_end, content_en (jsonb), content_hi (jsonb), planet_context (jsonb)` — UNIQUE on `(rashi, type, sign_type, period_start)`
+
+**`horoscope_generation_log` table:** per-run token usage, cost, duration, errors, prompt preview.
+
+**Planet data used:** `planet_sign_transits`, `planet_retrograde_periods` (columns: `retrograde_start`, `direct_start`), `computePanchang` at Delhi reference coords, `festival_calendar`
+
+**URLs:** `/horoscope/[type]/[rashi]` — SSR with SEO metadata. Redirects: `/horoscope` → `/horoscope/daily/aries`; logged-in users with a favorite chart auto-redirect to their Moon rashi.
+
+**UI:** `HoroscopeShell` — lang preference in `localStorage` (`horoscope_lang`); Prev/Next nav inline with type tabs; history loaded on mount.
+
+### Database Tables (18 in Supabase)
+`profiles`, `charts`, `cities`, `reports`, `payments`, `test_cases`, `test_case_runs`, `astronomical_events`, `auth_login_attempts_v2`, `auth_login_events`, `planet_daily_positions`, `planet_retrograde_periods`, `planet_sign_transits`, `transit_generation_log`, `panchang_cache`, `festival_calendar`, `horoscopes`, `horoscope_generation_log`. Note: `supabase/migrations/001_initial_schema.sql` only defines 4 tables; `supabase/panchang_tables.sql` defines 2 more — the rest were created directly in Supabase.
+
 ## Known Issues
 
 ### Active but non-obvious dependency
 - `resend` — used in `scripts/send-audit-email.ts` for admin audit emails, and via direct HTTP in `scripts/transit-db/*.js` for notifications. NOT used in src/ (forgot-password uses `supabase.auth.resetPasswordForEmail()`).
-
-### Database Tables (16 in Supabase)
-`profiles`, `charts`, `cities`, `reports`, `payments`, `test_cases`, `test_case_runs`, `astronomical_events`, `auth_login_attempts_v2`, `auth_login_events`, `planet_daily_positions`, `planet_retrograde_periods`, `planet_sign_transits`, `transit_generation_log`, `panchang_cache`, `festival_calendar`. Note: `supabase/migrations/001_initial_schema.sql` only defines 4 tables; `supabase/panchang_tables.sql` defines 2 more — the rest were created directly in Supabase.
 
 ## Environment Variables
 
@@ -160,4 +195,6 @@ Required in `.env.local`:
 - `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` — Upstash Redis for rate limiting
 - `RESEND_API_KEY` — Email service (scripts only, not used in src/)
 - `HERE_MAPS_API_KEY` — Location/geocoding for city search (optional)
-- `ADMIN_SECRET_TOKEN` — Bypasses rate limits for server→server calls (test endpoints)
+- `ADMIN_SECRET_TOKEN` — Protects `/api/horoscope/generate` and test endpoints
+- `ANTHROPIC_API_KEY` — AI generation for horoscopes
+- `APP_INTERNAL_URL` — Internal URL for cron→app HTTP calls (default: `http://localhost:3000`)

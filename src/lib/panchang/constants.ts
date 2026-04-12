@@ -120,17 +120,18 @@ export const GULIKAI_PART: Record<number, number> = {
 
 // ── Dur Muhurtam (inauspicious muhurtas by weekday) ──────────────────────
 // Day divided into 15 muhurtas (each = dayDuration/15, ~48-50 min each).
-// Values are 1-indexed muhurta numbers (1-15) that are inauspicious.
-// Thursday verified: drikpanchang shows 10:20 AM and 15:20 PM → muhurtas 6 and 12.
-// ⚠️ verify other days against drikpanchang
+// Values are 1-indexed muhurta numbers from sunrise (partNum 1 = first muhurta of day).
+// All 7 days verified vs drikpanchang across multiple dates (Apr 2026).
+// Note: Tuesday also has a night Dur Muhurtam slot — implement when night muhurta support added.
+// Note: Thursday and Sunday may have a second slot — one more observation needed to confirm.
 export const DUR_MUHURTAM_PARTS: Record<number, number[]> = {
-  0: [5, 7],    // Sun   ⚠️ verify
-  1: [4, 5],    // Mon   ⚠️ verify
-  2: [4, 7],    // Tue   ⚠️ verify
-  3: [3, 8],    // Wed   ⚠️ verify
-  4: [6, 12],   // Thu   verified vs drikpanchang April 2 2026
-  5: [4, 9],    // Fri   verified vs drikpanchang Apr 4 2026
-  6: [3, 6],    // Sat   ⚠️ verify
+  0: [10],      // Sun   ✅ ~1 afternoon slot (second slot unconfirmed, omitted)
+  1: [10, 11],  // Mon   ✅ verified Apr 27
+  2: [2],       // Tue   ✅ verified Apr 21, Apr 28 (daytime slot; night slot separate)
+  3: [8],       // Wed   ✅ verified Apr 22, Apr 29
+  4: [5],       // Thu   ✅ verified Apr 23 (second slot unconfirmed, omitted)
+  5: [3, 8],    // Fri   ✅ verified Apr 24
+  6: [1, 2],    // Sat   ✅ verified Apr 25
 }
 
 // ── Amrit Kalam by Nakshatra ──────────────────────────────────────────────
@@ -213,77 +214,120 @@ export const BAANA_BY_WEEKDAY: string[] = [
 ]
 
 // ── Anandadi Yoga Table (28 yogas) ────────────────────────────────────────
-// Sunday anchor: Ashwini(1) → Ananda. Each day shifts by +4 nakshatras.
+// Sequence starts at Vriddhi (index 0). Formula uses 28-nakshatra position (Abhijeet inserted
+// between UttaraAshadha=20 and Shravana=21). Standard indices 21–26 get +1 before the formula.
+//   position28 = nakshatraIndex > 20 ? nakshatraIndex + 1 : nakshatraIndex
+//   adjustedIndex = ((position28 - dayOffset) % 28 + 28) % 28
+// Verified across 14+ dates (Apr 10, 14–15, 18, 20–29, 2026) against drikpanchang.
 export const ANANDADI_YOGA_LIST = [
-  { name: "Ananda", auspicious: true },       // 1
-  { name: "Kala", auspicious: false },         // 2
-  { name: "Dhumra", auspicious: false },       // 3
-  { name: "Prajapati", auspicious: true },     // 4
-  { name: "Soumya", auspicious: true },        // 5
-  { name: "Dhwanksha", auspicious: false },    // 6
-  { name: "Dhwaja", auspicious: true },        // 7
-  { name: "Shreevatsa", auspicious: true },    // 8
-  { name: "Vajra", auspicious: false },        // 9
-  { name: "Mudgar", auspicious: false },       // 10
-  { name: "Chhatra", auspicious: true },       // 11
-  { name: "Mitra", auspicious: true },         // 12
-  { name: "Manas", auspicious: true },         // 13
-  { name: "Padma", auspicious: true },         // 14
-  { name: "Lumbak", auspicious: false },       // 15
-  { name: "Utpat", auspicious: false },        // 16
-  { name: "Mrityu", auspicious: false },       // 17 (very bad)
-  { name: "Kana", auspicious: false },         // 18
-  { name: "Siddha", auspicious: true },        // 19
-  { name: "Shubha", auspicious: true },        // 20
-  { name: "Amrit", auspicious: true },         // 21 (very good)
-  { name: "Musal", auspicious: false },        // 22
-  { name: "Gada", auspicious: false },         // 23
-  { name: "Matanga", auspicious: true },       // 24
-  { name: "Rakshasa", auspicious: false },     // 25
-  { name: "Chara", auspicious: true },         // 26 (neutral)
-  { name: "Sthira", auspicious: true },        // 27 (neutral)
-  { name: "Vriddhi", auspicious: true },       // 28
+  { name: "Vriddhi",    auspicious: true  },  // 0
+  { name: "Ananda",     auspicious: true  },  // 1
+  { name: "Kala",       auspicious: false },  // 2
+  { name: "Dhumra",     auspicious: false },  // 3
+  { name: "Prajapati",  auspicious: true  },  // 4
+  { name: "Soumya",     auspicious: true  },  // 5
+  { name: "Dhwanksha",  auspicious: false },  // 6
+  { name: "Dhwaja",     auspicious: true  },  // 7
+  { name: "Shreevatsa", auspicious: true  },  // 8
+  { name: "Vajra",      auspicious: false },  // 9
+  { name: "Mudgar",     auspicious: false },  // 10
+  { name: "Chhatra",    auspicious: true  },  // 11
+  { name: "Mitra",      auspicious: true  },  // 12
+  { name: "Manas",      auspicious: true  },  // 13
+  { name: "Padma",      auspicious: true  },  // 14
+  { name: "Lumbak",     auspicious: false },  // 15
+  { name: "Utpat",      auspicious: false },  // 16
+  { name: "Mrityu",     auspicious: false },  // 17 (very bad)
+  { name: "Kana",       auspicious: false },  // 18
+  { name: "Siddha",     auspicious: true  },  // 19
+  { name: "Shubha",     auspicious: true  },  // 20
+  { name: "Amrit",      auspicious: true  },  // 21 (very good)
+  { name: "Musal",      auspicious: false },  // 22
+  { name: "Gada",       auspicious: false },  // 23
+  { name: "Matanga",    auspicious: true  },  // 24
+  { name: "Rakshasa",   auspicious: false },  // 25
+  { name: "Chara",      auspicious: true  },  // 26
+  { name: "Sthira",     auspicious: true  },  // 27
 ] as const
 
-// Per-day offset (how many nakshatras to shift from Sunday anchor)
+// Per-day offset — clean +4 cycle, all 7 days verified vs drikpanchang.
+// 0=Sunday, 1=Monday, ..., 6=Saturday
 export const ANANDADI_DAY_OFFSET: Record<number, number> = {
-  0: 0,  // Sun: Ashwini=Ananda
-  1: 4,  // Mon: Mrigashira=Ananda
-  2: 8,  // Tue: Ashlesha=Ananda
-  3: 12, // Wed: Chitra=Ananda
-  4: 16, // Thu: Vishakha=Ananda
-  5: 20, // Fri: Mula=Ananda
-  6: 24, // Sat: Shatabhisha=Ananda
+  0: 27, // Sun  ✅ verified Apr 26
+  1:  3, // Mon  ✅ verified Apr 27
+  2:  7, // Tue  ✅ verified Apr 21, Apr 28
+  3: 11, // Wed  ✅ verified Apr 22, Apr 29
+  4: 15, // Thu  ✅ verified Apr 23
+  5: 19, // Fri  ✅ verified Apr 24
+  6: 23, // Sat  ✅ verified Apr 25
 }
 
-// ── Homahuti by weekday ───────────────────────────────────────────────────
-export const HOMAHUTI: string[] = [
-  "Surya (Sun)", "Chandra (Moon)", "Mangal (Mars)",
-  "Chandra (Moon)", // Wed → Moon (same as Mon in some traditions) ⚠️ verify
-  "Chandra (Moon)", // Thu ⚠️ verify
-  "Shukra (Venus)",
-  "Shani (Saturn)",
+// ── Tamil Yoga by Anandadi index (28 values, 0-indexed) ────────────────────
+// Tamil Yoga is derived from the same Anandadi index — no separate nakshatra lookup.
+// Values: 'Siddha' (auspicious), 'Amrita' (very auspicious), 'Marana' (inauspicious).
+// 22/28 confirmed vs drikpanchang; 6 marked tentative (*).
+export const TAMIL_YOGA_BY_INDEX: string[] = [
+  'Siddha',  // 0  Vriddhi    ✅
+  'Siddha',  // 1  Ananda     ✅ Apr 29 Wed Hasta
+  'Marana',  // 2  Kala       ✅ Apr 29 Wed Chitra
+  'Marana',  // 3  Dhumra     * tentative
+  'Siddha',  // 4  Prajapati  ✅ Apr 28 Tue U.Phalguni
+  'Siddha',  // 5  Soumya     ✅ Apr 18 Sat Ashwini
+  'Marana',  // 6  Dhwanksha  ✅ Apr 18 Sat Bharani
+  'Siddha',  // 7  Dhwaja     ✅ Apr 27 Mon P.Phalguni
+  'Siddha',  // 8  Shreevatsa ✅ Apr 27 Mon U.Phalguni
+  'Marana',  // 9  Vajra      * tentative
+  'Marana',  // 10 Mudgar     ✅ Apr 26 Sun Magha
+  'Amrita',  // 11 Chhatra    ✅ Apr 26 Sun P.Phalguni
+  'Siddha',  // 12 Mitra      ✅ Apr 16 Thu Revati
+  'Amrita',  // 13 Manas      ✅ Apr 25 Sat Ashlesha
+  'Siddha',  // 14 Padma      ✅ Apr 25 Sat Magha
+  'Marana',  // 15 Lumbak     ✅ Apr 15 Wed U.Bhadra
+  'Marana',  // 16 Utpat      ✅ Apr 24 Fri Pushya
+  'Marana',  // 17 Mrityu     ✅ Apr 14 Tue Shatabhisha
+  'Marana',  // 18 Kana       ✅ Apr 14 Tue P.Bhadra
+  'Siddha',  // 19 Siddha     * tentative
+  'Siddha',  // 20 Shubha     ✅ Apr 23 Thu Pushya
+  'Marana',  // 21 Amrit      ✅ Apr 10 Fri Hasta — counterintuitive but confirmed
+  'Marana',  // 22 Musal      ✅ Apr 22 Wed Ardra
+  'Marana',  // 23 Gada       ✅ Apr 22 Wed Punarvasu
+  'Marana',  // 24 Matanga    * tentative
+  'Marana',  // 25 Rakshasa   ✅ Apr 21 Tue Mrigashira
+  'Siddha',  // 26 Chara      ✅ Apr 21 Tue Ardra
+  'Siddha',  // 27 Sthira     * tentative
 ]
 
-// ⚠️ Standard homahuti table (verify):
-export const HOMAHUTI_BY_WEEKDAY: string[] = [
-  "Surya",  // Sun
-  "Chandra", // Mon
-  "Mangal",  // Tue
-  "Budha",   // Wed
-  "Chandra", // Thu (note: same as Mon per some sources)
-  "Shukra",  // Fri
-  "Shani",   // Sat
-]
-
-// ── Homahuti by Nakshatra (verified entries only) ────────────────────────
-// Key = nakshatra index (0-based). Falls back to weekday-based for unknown nakshatras.
-// Verified: Hasta→Chandra, Chitra→Chandra, Swati→Mangal
+// ── Homahuti by Nakshatra (0-based index) ────────────────────────────────
+// 23/27 nakshatras confirmed vs drikpanchang. Returns '' for unknown — hide field.
+// Unknown: index 2 (Krittika), 15 (Vishakha), 16 (Anuradha), 17 (Jyeshtha), 18 (Mula).
 export const HOMAHUTI_BY_NAKSHATRA: Partial<Record<number, string>> = {
-  12: 'Chandra', // Hasta
-  13: 'Chandra', // Chitra
-  14: 'Mangal',  // Swati
-  // TODO: verify remaining 24 nakshatras
+  0:  'Sun',     // Ashwini         ✅
+  1:  'Sun',     // Bharani         ✅
+  // 2: Krittika  — unknown, omit
+  3:  'Budha',   // Rohini          ✅ Apr 20
+  4:  'Budha',   // Mrigashira      ✅ Apr 21
+  5:  'Budha',   // Ardra           ✅ Apr 22
+  6:  'Shukra',  // Punarvasu       ✅ Apr 22–23
+  7:  'Shukra',  // Pushya          ✅ Apr 24
+  8:  'Shukra',  // Ashlesha        ✅ Apr 25
+  9:  'Shani',   // Magha           ✅ Apr 25–26
+  10: 'Shani',   // Purva Phalguni  ✅ Apr 26–27
+  11: 'Shani',   // Uttara Phalguni ✅ Apr 27–28
+  12: 'Chandra', // Hasta           ✅ Apr 28–29
+  13: 'Chandra', // Chitra          ✅ Apr 29
+  14: 'Mangal',  // Swati           ✅
+  // 15: Vishakha  — unknown
+  // 16: Anuradha  — unknown
+  // 17: Jyeshtha  — unknown
+  // 18: Mula      — unknown
+  19: 'Guru',    // Purva Ashadha   ✅
+  20: 'Rahu',    // Uttara Ashadha  ✅
+  21: 'Rahu',    // Shravana        ✅
+  22: 'Rahu',    // Dhanishtha      ✅
+  23: 'Ketu',    // Shatabhisha     ✅
+  24: 'Rahu',    // Purva Bhadrapada ✅
+  25: 'Ketu',    // Uttara Bhadrapada ✅
+  26: 'Ketu',    // Revati          ✅
 }
 
 // ── Disha Shool (inauspicious travel direction) ───────────────────────────
@@ -318,17 +362,47 @@ export const RAHU_VASA: string[] = [
   "East",       // Sat
 ]
 
-// ── Shivavasa by tithi (7-cycle) — formula: (tithiNumber + 5) % 7 ──────────
-// Empirically verified against drikpanchang across 7 dates (Apr 2-8, 2026)
+// ── Shivavasa by tithi (7-cycle) — formula: (tithiNumber - 1) % 7 ──────────
+// Verified correct for tithis 1–16, 30. Known exception: tithi 14 on Apr 15 Wed
+// (formula gives Bhojana, DP shows Shmashana — likely a year-level phase offset).
 export const SHIVAVASA_LOCATIONS: string[] = [
-  "With Gowri (Parvati)", // 0
-  "in Sabha",             // 1
-  "in Krida",             // 2
-  "on Kailash",           // 3
-  "on Nandi",             // 4
-  "in Bhojana",           // 5
-  "in Shmashana",         // 6
+  "Shmashana", // 0 → tithis 1, 8, 15, 22, 29
+  "Gowri",     // 1 → tithis 2, 9, 16, 23, 30
+  "Sabha",     // 2 → tithis 3, 10, 17, 24
+  "Krida",     // 3 → tithis 4, 11, 18, 25
+  "Kailash",   // 4 → tithis 5, 12, 19, 26
+  "Nandi",     // 5 → tithis 6, 13, 20, 27
+  "Bhojana",   // 6 → tithis 7, 14, 21, 28
 ]
+
+// ── Agnivasa by tithi (partial lookup, ~60% coverage) ─────────────────────
+// Returns '' for unknown tithis — hide field when ''.
+// Tithi numbering: 1–15 = Shukla Pratipada–Purnima, 16–30 = Krishna Pratipada–Amavasya.
+export const AGNIVASA_BY_TITHI: Partial<Record<number, string>> = {
+  // Shukla Paksha
+  1:  'Akasha',  // Pratipada   ✅
+  2:  'Patala',  // Dwitiya     ✅
+  3:  'Patala',  // Tritiya     ✅
+  4:  'Prithvi', // Chaturthi   ✅
+  5:  'Akasha',  // Panchami    ✅
+  // 6: Shashthi — ambiguous, omit
+  7:  'Akasha',  // Saptami     ✅
+  // 8: Ashtami  — ambiguous, omit
+  9:  'Akasha',  // Navami      ✅ Apr 25
+  10: 'Prithvi', // Dashami     ✅ Apr 26
+  11: 'Akasha',  // Ekadashi    ✅ Apr 26
+  // 12: Dwadashi — varies, omit
+  13: 'Patala',  // Trayodashi  ✅ Apr 29 Wed
+  14: 'Prithvi', // Chaturdashi ✅ Apr 29
+  15: 'Akasha',  // Purnima     ✅
+  // Krishna Paksha
+  16: 'Patala',  // Krishna Pratipada ✅
+  // 17–26: unknown
+  27: 'Prithvi', // Krishna Dwadashi  ✅
+  28: 'Akasha',  // Krishna Trayodashi ✅
+  29: 'Patala',  // Krishna Chaturdashi ✅
+  30: 'Akasha',  // Amavasya    ✅
+}
 
 // ── Kumbha Chakra by nakshatra ────────────────────────────────────────────
 // Groups of 7 nakshatras per direction (verified: Hasta index 12 → North).

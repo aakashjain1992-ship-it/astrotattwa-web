@@ -48,16 +48,23 @@ function TimedRow({ label, entries }: { label: string; entries: TimedEntry[] }) 
 
 export function NivasShoolSection({ data }: { data: PanchangData }) {
   const ns = data.nivasShool
+  const agnivasa = dedupeTimedEntries(ns.agnivasa)
   return (
     <CollapsibleSection id="nivasshool" title="Nivas and Shool">
       <div className="pt-1">
-        <Row label="Homahuti" value={ns.homahuti} sub="Planet for fire ritual" />
+        {/* Hide Homahuti when nakshatra is unknown (returns '') */}
+        {ns.homahuti && (
+          <Row label="Homahuti" value={ns.homahuti} sub="Planet for fire ritual" />
+        )}
         <Row
           label="Disha Shool"
           value={ns.dishashool}
           sub={`Avoid travel. Remedy: ${ns.dishashoolRemedy}`}
         />
-        <TimedRow label="Agnivasa" entries={dedupeTimedEntries(ns.agnivasa)} />
+        {/* Hide Agnivasa when tithi is unknown (empty array) */}
+        {agnivasa.length > 0 && (
+          <TimedRow label="Agnivasa" entries={agnivasa} />
+        )}
         <TimedRow label="Chandra Vasa" entries={ns.chandravasa} />
         <Row label="Rahu Vasa" value={ns.rahuvasa} />
         <TimedRow label="Shivavasa" entries={ns.shivavasa} />

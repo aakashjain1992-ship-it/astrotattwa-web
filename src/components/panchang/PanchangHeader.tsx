@@ -49,6 +49,10 @@ export function PanchangHeader({ data, dateObj }: PanchangHeaderProps) {
   const tithi = data.tithi[0]
   const tithiNumber = tithi?.number ?? 1
 
+  // Tithi number within the paksha (1–15), used in header per drikpanchang convention.
+  // tithiNumber is 1–30 (16 = Krishna Pratipada). Within-paksha: 1–15 for both Shukla and Krishna.
+  const tithiPakshaNum = tithiNumber <= 15 ? tithiNumber : tithiNumber - 15
+
   const dayNum = dateObj.getDate()
   const monthYear = dateObj.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
   const weekday = dateObj.toLocaleDateString('en-US', { weekday: 'long' })
@@ -63,7 +67,7 @@ export function PanchangHeader({ data, dateObj }: PanchangHeaderProps) {
             {/* Left: Lunar info */}
             <div>
               <div className="text-sm text-muted-foreground">
-                {lc.pravishte}, {lc.chandramasaPurnimanta}
+                {String(tithiPakshaNum).padStart(2, '0')}, {lc.chandramasaPurnimanta}
               </div>
               <div className="font-semibold text-base leading-tight">
                 {tithi?.paksha} Paksha, {tithi?.name}
