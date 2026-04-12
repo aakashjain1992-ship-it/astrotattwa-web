@@ -58,8 +58,13 @@ export function Footer({ className }: { className?: string }) {
       </div>
 
      <style>{`
-        @media (max-width: 600px) {
-          .footer-inner { padding: 0 20px !important; }
+        @media (max-width: 1024px) {
+          .footer-inner {
+            padding: 0 20px !important;
+            flex-direction: column-reverse !important;
+            align-items: center !important;
+            text-align: center !important;
+          }
         }
       `}</style>
 

@@ -21,7 +21,7 @@ pm2 restart astrotattwa-web  # Restart production process
 
 Note: `next.config.js` sets `ignoreBuildErrors: true` for TypeScript — type errors won't fail the build. Run `npm run type-check` separately.
 
-**Deploy sequence (production):** `pm2 stop astrotattwa-web && rm -rf .next && NODE_OPTIONS='--max-old-space-size=512' npx next build --webpack && pm2 restart astrotattwa-web && pm2 save` — stop PM2 first (only 957MB RAM on the server). A running PM2 + Next.js build = OOM kill.
+**Deploy sequence (production):** `NODE_OPTIONS='--max-old-space-size=512' npx next build --webpack && pm2 reload astrotattwa-web && pm2 save` — do NOT `rm -rf .next` first (old server keeps serving from memory while new build writes in-place). Use `pm2 reload` not `pm2 restart` — reload starts new instance before killing old one (near-zero downtime).
 
 ## Tech Stack
 

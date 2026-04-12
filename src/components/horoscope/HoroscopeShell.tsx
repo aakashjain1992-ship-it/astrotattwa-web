@@ -124,10 +124,10 @@ export function HoroscopeShell({ initialType, initialRashi, initialData, today }
             <button
               onClick={() => hasPrev && handleHistorySelect(history[currentIdx + 1].period_start)}
               disabled={!hasPrev}
-              className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-colors min-w-[80px]"
+              className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-colors min-w-[32px] md:min-w-[80px]"
             >
-              <ChevronLeft className="w-4 h-4" />
-              Previous
+              <ChevronLeft className="w-4 h-4 flex-shrink-0" />
+              <span className="hidden md:inline">Previous</span>
             </button>
 
             <div className="flex rounded-xl border border-border bg-muted/30 p-1 gap-1">
@@ -136,7 +136,7 @@ export function HoroscopeShell({ initialType, initialRashi, initialData, today }
                   key={t}
                   onClick={() => startTransition(() => router.push(`/horoscope/${t}/${initialRashi}`))}
                   className={cn(
-                    'px-5 py-2 rounded-lg text-sm font-medium transition-all duration-150',
+                    'px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150',
                     initialType === t
                       ? 'bg-background shadow-sm text-foreground'
                       : 'text-muted-foreground hover:text-foreground'
@@ -150,10 +150,10 @@ export function HoroscopeShell({ initialType, initialRashi, initialData, today }
             <button
               onClick={() => hasNext && handleHistorySelect(history[currentIdx - 1].period_start)}
               disabled={!hasNext}
-              className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-colors justify-end min-w-[80px]"
+              className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-colors justify-end min-w-[32px] md:min-w-[80px]"
             >
-              Next
-              <ChevronRight className="w-4 h-4" />
+              <span className="hidden md:inline">Next</span>
+              <ChevronRight className="w-4 h-4 flex-shrink-0" />
             </button>
           </div>
         )
