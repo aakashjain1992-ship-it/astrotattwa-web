@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
-import { useTheme } from 'next-themes'
+import { useTheme } from '@/components/theme-provider'
 import { createClient } from '@/lib/supabase/client'
 import { Logo } from '@/components/ui/Logo'
 import { LogOut, Settings, User, ChevronDown, Menu, X, Sun, Calendar, BookOpen } from 'lucide-react'

@@ -5,6 +5,10 @@ import { Toaster } from '@/components/ui/toaster'
 import 'react-day-picker/dist/style.css'
 import '@/styles/globals.css'
 
+// Inline script: runs synchronously before any rendering — applies 'dark' class
+// from localStorage so there is zero flash on hard load or refresh.
+const themeScript = `try{var t=localStorage.getItem('theme')||'light';if(t==='dark'||(t==='system'&&matchMedia('(prefers-color-scheme:dark)').matches))document.documentElement.classList.add('dark')}catch(e){}`
+
 const instrumentSerif = Instrument_Serif({
   subsets: ['latin'],
   weight: ['400'],
@@ -39,14 +43,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning className={`${instrumentSerif.variable} ${dmSans.variable}`}>
+      {/* eslint-disable-next-line @next/next/no-sync-scripts */}
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body className={dmSans.className}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="light"
-          enableSystem
-          themes={['light', 'dark', 'system']}
-          disableTransitionOnChange
-        >
+        <ThemeProvider>
           {children}
           <Toaster />
         </ThemeProvider>
