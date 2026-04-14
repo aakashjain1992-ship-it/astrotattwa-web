@@ -16,12 +16,12 @@ npm run build            # Production build (512MB memory limit)
 npm run lint             # ESLint via next lint
 npm run type-check       # TypeScript check (tsc --noEmit)
 npm start                # Start production server
-pm2 restart astrotattwa-web  # Restart production process
+pm2 reload astrotattwa-web   # Reload production process (near-zero downtime)
 ```
 
 Note: `next.config.js` sets `ignoreBuildErrors: true` for TypeScript — type errors won't fail the build. Run `npm run type-check` separately.
 
-**Deploy sequence (production):** `NODE_OPTIONS='--max-old-space-size=512' npx next build --webpack && pm2 reload astrotattwa-web && pm2 save` — do NOT `rm -rf .next` first (old server keeps serving from memory while new build writes in-place). Use `pm2 reload` not `pm2 restart` — reload starts new instance before killing old one (near-zero downtime).
+**Deploy sequence (production):** `npm run build && pm2 reload astrotattwa-web && pm2 save` — do NOT `rm -rf .next` first (old server keeps serving from memory while new build writes in-place). Use `pm2 reload` not `pm2 restart` — reload starts new instance before killing old one (near-zero downtime). `npm run build` already sets `NODE_OPTIONS='--max-old-space-size=512'` — required because the Linode VPS has ~957 MB RAM total and the build will OOM without it.
 
 ## Tech Stack
 
@@ -32,7 +32,7 @@ Note: `next.config.js` sets `ignoreBuildErrors: true` for TypeScript — type er
 - **Forms:** React Hook Form + Zod validation schemas (in `src/lib/validation/`)
 - **Rate Limiting:** Upstash Redis (`@upstash/ratelimit`) — presets in `src/lib/api/rateLimit.ts`
 - **Testing:** Vitest and @testing-library/react are installed but **no tests exist** — manual testing via `/api/test/run-calculations`
-- **Deployment:** GitHub Actions → SSH to Linode → `npm install && npm run build && pm2 restart`
+- **Deployment:** GitHub Actions → SSH to Linode → `npm install && npm run build && pm2 reload astrotattwa-web`
 
 ## Architecture
 
@@ -66,7 +66,7 @@ Note: `next.config.js` sets `ignoreBuildErrors: true` for TypeScript — type er
 - `src/lib/panchang/` — Daily Panchang engine (12 files) — see section below
 - `src/lib/utils/divisional/` — Individual D2-D60 chart calculation files (legacy, mostly superseded by divisionalChartBuilder)
 - `src/lib/utils/chartHelpers.ts` — House building functions (Lagna, Moon, Navamsa)
-- `src/components/chart/` — Chart display components: `PlanetaryTable.tsx` (sorted in KP order), `PlanetsTab.tsx`, `DashaNavigator.tsx`, `AvakhadaTable.tsx`, `ChartFocusMode.tsx` (D1/Moon/D9 visual charts), `ChartLabelModal.tsx` (save/rename + is_favorite), `DeleteChartDialog.tsx`
+- `src/components/chart/` — Chart display components: `PlanetaryTable.tsx` (sorted in KP order), `PlanetsTab.tsx`, `DashaNavigator.tsx`, `AvakhadaTable.tsx`, `ChartFocusMode.tsx` (D1/Moon/D9 visual charts), `ChartLabelModal.tsx` (save/rename + is_favorite), `DeleteChartDialog.tsx`, `DiamondChart.tsx` (renders the diamond-grid chart layout — used by both ChartFocusMode and DivisionalChartsTab; accepts `showAscLabel` to toggle Asc annotation)
 - `src/components/chart/sadesati/` — `SadeSatiTableView.tsx` + supporting components
 - `src/components/chart/divisional/` — `DivisionalChartsTab.tsx` + config/selector/insights
 - `src/components/forms/` — Birth data forms with city autocomplete
@@ -74,6 +74,36 @@ Note: `next.config.js` sets `ignoreBuildErrors: true` for TypeScript — type er
 - `src/components/ui/` — shadcn/ui components (do not manually edit, use `npx shadcn-ui@latest add`)
 - `src/types/astrology.ts` — Central type definitions for all astrology entities (PlanetData, ChartData, HouseInfo, KPData, etc.)
 - `src/types/chart-calculation.ts` — API request/response types
+
+### Frontend Pages
+
+| Route | Description |
+|-------|-------------|
+| `/` | Homepage with `BirthDataForm` |
+| `/chart` | Chart view — reads `lastChart` from localStorage |
+| `/chart/[id]` | Saved chart view — URL set via `replaceState`, not Next.js nav |
+| `/panchang` | Daily Panchang for user's location |
+| `/horoscope/[type]/[rashi]` | SSR horoscope page; redirects `/horoscope` → `/horoscope/daily/aries` |
+| `/settings` | Protected; user account settings |
+| `/admin/tests` | Manual regression test runner (requires `ADMIN_SECRET_TOKEN`) |
+| `/(auth)/login` | Auth pages (grouped route, no shared layout with app) |
+| `/terms` | Terms of Service (static) |
+| `/privacy-policy` | Privacy Policy (static) — note: old `/privacy` route was deleted |
+
+### PM2 Processes
+
+| Process | Description |
+|---------|-------------|
+| `astrotattwa-web` | Next.js production server |
+| `horoscope-cron` | Runs `scripts/horoscope/cron.js` — generates daily/weekly/monthly horoscopes on schedule |
+
+### Scripts (`scripts/`)
+
+- `scripts/horoscope/generate.js` — Manual horoscope generation: `node scripts/horoscope/generate.js [daily|weekly|monthly] [YYYY-MM-DD]`
+- `scripts/horoscope/cron.js` — Cron worker run by PM2 `horoscope-cron`
+- `scripts/transit-db/` — Planet transit DB population: `generate-daily-positions.js`, `generate-planet-transits.js`, `transit-cron-worker.js`, `seed-transit-log.js`
+- `scripts/seed-festivals.ts` — Seeds `festival_calendar` table
+- `scripts/send-audit-email.ts` — Admin audit emails via Resend
 
 ### Panchang Module (`src/lib/panchang/`)
 
@@ -141,6 +171,14 @@ Cache key: `${CACHE_VERSION}_${dateParam}_${lat.toFixed(2)}_${lng.toFixed(2)}`
 ### Error Handling
 
 Centralized in `src/lib/api/errorHandling.ts` — use `successResponse()`, `errorResponse()`, `validationError()`, etc. Rate limiting presets in `src/lib/api/rateLimit.ts`: `strict` (5/min), `standard` (20/min), `lenient` (60/min — used for Panchang and horoscope), `auth` (very strict). There is no `loose` preset.
+
+## Workflow Discipline
+
+- **Complex features** (>2 files, new API + UI, or unclear approach): run `/plan` first, get approval before writing any code
+- **Any bug or unexpected behavior**: run `/debug` — diagnose root cause before attempting a fix
+- **Any completed task**: run `/verify` — re-read changed files, trace the logic end-to-end, then declare done
+- **New pages vs existing pages**: when a feature could live on an existing page or a new page, always ask the user which they prefer — never create a new page without confirming first
+- TypeScript errors don't fail the build (`ignoreBuildErrors: true`) — run `npm run type-check` separately after changes
 
 ## Conventions
 

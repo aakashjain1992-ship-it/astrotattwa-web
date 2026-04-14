@@ -99,8 +99,13 @@ export const CHATURTHAMSA_CONFIG: DivisionConfig = {
   },
 };
 /**
- * Panchamamsa (D5) Configuration - NEW
+ * Panchamamsa (D5) Configuration
  * Shows fame, power, authority, and influence
+ *
+ * Per BPHS: Movable signs count from Aries, Fixed from Leo, Dual from Sagittarius
+ * Movable: Aries(0), Cancer(3), Libra(6), Capricorn(9)  → start Aries (0)
+ * Fixed:   Taurus(1), Leo(4), Scorpio(7), Aquarius(10)  → start Leo (4)
+ * Dual:    Gemini(2), Virgo(5), Sagittarius(8), Pisces(11) → start Sagittarius (8)
  */
 export const PANCHAMAMSA_CONFIG: DivisionConfig = {
   type: 'D5',
@@ -111,8 +116,9 @@ export const PANCHAMAMSA_CONFIG: DivisionConfig = {
     const signIndex = Math.floor(longitude / 30);
     const degreeInSign = longitude % 30;
     const panchamamsaPart = Math.floor(degreeInSign / 6); // 0-4
-    const isOddSign = signIndex % 2 === 0;
-    const startSign = isOddSign ? signIndex : (signIndex + 8) % 12;
+    const signType = signIndex % 3; // 0=movable, 1=fixed, 2=dual
+    const startSigns = [0, 4, 8]; // Aries, Leo, Sagittarius
+    const startSign = startSigns[signType];
     const resultSignIndex = (startSign + panchamamsaPart) % 12;
     return resultSignIndex + 1;
   },

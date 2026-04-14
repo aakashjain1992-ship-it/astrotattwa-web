@@ -103,7 +103,7 @@ export function DivisionalChartsTab({ planets, ascendant, className }: Divisiona
           {!error && houses.length > 0 && (
             <div className="flex justify-center">
               <div className="w-full max-w-2xl">
-                <DiamondChart houses={houses} size="lg" className="mx-auto" />
+                <DiamondChart houses={houses} size="lg" className="mx-auto" showAscLabel={selectedChartId === 'd1'} />
               </div>
             </div>
           )}
