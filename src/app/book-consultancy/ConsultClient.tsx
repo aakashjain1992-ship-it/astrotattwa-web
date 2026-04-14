@@ -1224,7 +1224,6 @@ export default function ConsultClient() {
     <>
       <div style={{ paddingTop: '64px' }}>
         {Hero}
-        {Domains}
         {Marquee}
         {Pricing}
         {HowItWorks}

@@ -1,7 +1,29 @@
 {
   "permissions": {
     "allow": [
-      "Bash(wc -l /Users/aajai/Documents/astrotattwa-web-dev/src/**/*.ts /Users/aajai/Documents/astrotattwa-web-dev/src/**/*.tsx)"
+      "Bash(wc -l /Users/aajai/Documents/astrotattwa-web-dev/src/**/*.ts /Users/aajai/Documents/astrotattwa-web-dev/src/**/*.tsx)",
+      "Bash(pm2 list:*)",
+      "Bash(grep -v \"^$\")",
+      "Bash(pm2 logs:*)",
+      "Bash(npm show:*)",
+      "Bash(NODE_OPTIONS='--max-old-space-size=512' npx next build --webpack)",
+      "Bash(pm2 reload:*)",
+      "Bash(pm2 save:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m ':*)",
+      "Bash(git push:*)",
+      "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")",
+      "Bash(npm run:*)",
+      "Bash(grep -n \"DivisionalChartsTab\" /var/www/astrotattwa-web/src/components/chart/*.tsx)",
+      "Bash(curl -s \"http://localhost:3000/api/test/run-calculations\" -H \"x-admin-token: $\\(grep ADMIN_SECRET_TOKEN /var/www/astrotattwa-web/.env.local)",
+      "Bash(pm2 stop:*)",
+      "Bash(pm2 start:*)",
+      "Skill(update-config)",
+      "Skill(update-config:*)",
+      "Bash(npx tsx:*)",
+      "Bash(pm2 status:*)",
+      "Bash(curl -s \"http://localhost:3000/api/festivals?year=2026&month=4\")",
+      "Bash(python3 -m json.tool)"
     ]
   }
 }

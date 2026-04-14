@@ -21,7 +21,7 @@ pm2 reload astrotattwa-web   # Reload production process (near-zero downtime)
 
 Note: `next.config.js` sets `ignoreBuildErrors: true` for TypeScript — type errors won't fail the build. Run `npm run type-check` separately.
 
-**Deploy sequence (production):** `npm run build && pm2 reload astrotattwa-web && pm2 save` — do NOT `rm -rf .next` first (old server keeps serving from memory while new build writes in-place). Use `pm2 reload` not `pm2 restart` — reload starts new instance before killing old one (near-zero downtime). `npm run build` already sets `NODE_OPTIONS='--max-old-space-size=512'` — required because the Linode VPS has ~957 MB RAM total and the build will OOM without it.
+**Deploy sequence (production):** `npm run build && pm2 reload astrotattwa-web && pm2 save` — **NEVER stop PM2 before building.** Build first while the old server keeps serving from memory, then reload after. Do NOT `rm -rf .next` first. Use `pm2 reload` not `pm2 restart` — reload starts new instance before killing old one (near-zero downtime). `npm run build` already sets `NODE_OPTIONS='--max-old-space-size=512'` — required because the Linode VPS has ~957 MB RAM total.
 
 ## Tech Stack
 

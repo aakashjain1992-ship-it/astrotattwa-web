@@ -3,12 +3,14 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
+import { useTheme } from 'next-themes'
 import { createClient } from '@/lib/supabase/client'
 import { Logo } from '@/components/ui/Logo'
 import { LogOut, Settings, User, ChevronDown, Menu, X, Sun, Calendar, BookOpen } from 'lucide-react'
 import type { AuthUser } from '@/hooks/useAuth'
 import { performLogout } from '@/lib/auth/logout'
 import { useToast } from '@/hooks/use-toast'
+import { ThemeSwitcher } from '@/components/theme/ThemeSwitcher'
 
 
 // ─── Avatar ──────────────────────────────────────────────────────────────────
@@ -194,6 +196,7 @@ function UserDropdown({
   user: AuthUser
   onSignOut: () => void
   onMyChartClick: () => void
+  // userId is read from user.id inside
 }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -294,6 +297,9 @@ function UserDropdown({
               label="My Chart"
               onClick={() => { setOpen(false); onMyChartClick(); }}
             />
+            <div style={{ height: 1, background: 'var(--border2)', margin: '2px 0' }} />
+            <ThemeSwitcher variant="menu" userId={user.id} />
+            <div style={{ height: 1, background: 'var(--border2)', margin: '2px 0' }} />
             <DropdownItem
               href="/settings"
               icon={<Settings size={14} />}
@@ -406,6 +412,7 @@ export function Header({ showNav = true }: HeaderProps) {
   const pathname = usePathname()
   const supabase = createClient()
   const { toast } = useToast()
+  const { setTheme } = useTheme()
 
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 10)
@@ -429,6 +436,11 @@ export function Header({ showNav = true }: HeaderProps) {
           avatarUrl: u.user_metadata?.avatar_url ?? null,
           createdAt: u.created_at,
         })
+        // Sync theme preference from DB on initial load
+        fetch('/api/user/theme', { credentials: 'include' })
+          .then(r => r.json())
+          .then(d => { if (d.theme) setTheme(d.theme) })
+          .catch(() => { /* best-effort */ })
       }
       setAuthLoading(false)
     })
@@ -443,6 +455,13 @@ export function Header({ showNav = true }: HeaderProps) {
           avatarUrl: u.user_metadata?.avatar_url ?? null,
           createdAt: u.created_at,
         })
+        // Sync theme from DB on explicit sign-in
+        if (_event === 'SIGNED_IN') {
+          fetch('/api/user/theme', { credentials: 'include' })
+            .then(r => r.json())
+            .then(d => { if (d.theme) setTheme(d.theme) })
+            .catch(() => { /* best-effort */ })
+        }
       } else {
         setUser(null)
       }
@@ -576,6 +595,8 @@ export function Header({ showNav = true }: HeaderProps) {
                   <UserDropdown user={user} onSignOut={handleSignOut} onMyChartClick={handleMyChartClick} />
                 ) : (
                   <>
+                    {/* Theme toggle — icon cycling, hidden on mobile via CSS */}
+                    <ThemeSwitcher variant="icon" />
                     <Link
                       href="/login"
                       style={{
@@ -738,6 +759,13 @@ export function Header({ showNav = true }: HeaderProps) {
           >
             Book Consultancy
           </Link>
+
+          <div style={{ height: 1, background: 'var(--border2)', margin: '8px 20px' }} />
+
+          {/* Theme switcher in mobile drawer */}
+          <div style={{ padding: '0 12px 4px' }}>
+            <ThemeSwitcher variant="menu" userId={user?.id ?? null} />
+          </div>
         </div>
       )}
     </>

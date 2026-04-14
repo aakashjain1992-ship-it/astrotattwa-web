@@ -1,6 +1,5 @@
 'use client'
 
-import { useEffect } from 'react'
 import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
 import { NavagrahaSection } from '@/components/landing/NavagrahaSection'
@@ -29,14 +28,6 @@ const GOLD = '#D4A017'
 const GOLD_RGBA = (a: number) => `rgba(212,160,23,${a})`
 
 export default function PreviewPage() {
-  // Apply cosmic theme class to <html> for this page only
-  useEffect(() => {
-    document.documentElement.classList.add('cosmic-theme')
-    return () => {
-      document.documentElement.classList.remove('cosmic-theme')
-    }
-  }, [])
-
   return (
     <div style={{ display: 'flex', minHeight: '100vh', flexDirection: 'column' }}>
       <Header />

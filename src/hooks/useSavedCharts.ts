@@ -3,6 +3,22 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
+export interface SavedChartPlanet {
+  sign: string;        // lowercase rashi slug e.g. "aries"
+  degree: number;      // 0–30° within sign
+  house: number;       // 1–12 (Lagna chart)
+  retrograde: boolean;
+  exhausted: boolean;
+  combust: boolean;
+}
+
+export interface SavedChartDashas {
+  computed_at: string; // ISO timestamp of when this was computed
+  mahadasha:  { planet: string; start: string; end: string };
+  antardasha: { planet: string; start: string; end: string };
+  pratyantar: { planet: string; start: string; end: string };
+}
+
 export interface SavedChart {
   id: string;
   user_id: string;
@@ -23,6 +39,16 @@ export interface SavedChart {
   longitude: number;
   timezone: string;
   utc_offset: number;
+
+  // Computed snapshot (populated on save/update, may be null for old records)
+  moon_sign: number | null;       // sign number 1-12
+  sun_sign: number | null;        // sign number 1-12
+  ascendant_sign: number | null;  // sign number 1-12
+  ascendant_degree: number | null;
+  nakshatra: string | null;
+  nakshatra_pada: number | null;
+  planets: Record<string, SavedChartPlanet> | null;
+  dashas: SavedChartDashas | null;
 
   created_at?: string;
   updated_at?: string;

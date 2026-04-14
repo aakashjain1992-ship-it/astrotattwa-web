@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/var/www/astrotattwa-web/.claude/hooks/session-start.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}
