@@ -14,18 +14,6 @@ export function Yantra() {
         zIndex: 0,
       }}
     >
-      {/* Left-side mask so text stays clean */}
-      <div
-        style={{
-          position: 'absolute',
-          left: 0, top: 0, bottom: 0,
-          width: '55%',
-          background: 'linear-gradient(to right, white 55%, transparent)',
-          zIndex: 1,
-          pointerEvents: 'none',
-        }}
-      />
-
       <svg viewBox="0 0 600 600" fill="none" xmlns="http://www.w3.org/2000/svg">
 
         {/* Ring A — slow outer lotus */}

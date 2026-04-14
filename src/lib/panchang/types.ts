@@ -171,9 +171,12 @@ export interface FestivalData {
   id: string
   date: string          // "YYYY-MM-DD"
   name: string
-  type: 'major' | 'minor' | 'fast' | 'auspicious'
+  type: 'major' | 'minor' | 'fast' | 'auspicious' | 'purnima' | 'amavasya'
   description?: string
   image_url?: string
+  tithi_number?: number   // 1–30 (1=Shukla Pratipada … 15=Purnima … 30=Amavasya)
+  tithi_start?: string    // ISO UTC — when this tithi begins
+  tithi_end?: string      // ISO UTC — when this tithi ends
 }
 
 // ─── Main Panchang Output Object ───────────────────────────────────────────

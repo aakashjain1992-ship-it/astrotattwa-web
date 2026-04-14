@@ -2,10 +2,10 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Logo } from '@/components/ui/Logo'
-import { LogOut, Settings, User, ChevronDown } from 'lucide-react'
+import { LogOut, Settings, User, ChevronDown, Menu, X, Sun, Calendar, BookOpen } from 'lucide-react'
 import type { AuthUser } from '@/hooks/useAuth'
 import { performLogout } from '@/lib/auth/logout'
 import { useToast } from '@/hooks/use-toast'
@@ -59,6 +59,131 @@ function Avatar({ user }: { user: AuthUser }) {
   )
 }
 
+// ─── Horoscope Nav Dropdown ───────────────────────────────────────────────────
+
+function HoroscopeDropdown({ pathname }: { pathname: string }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const isActive = pathname.startsWith('/horoscope')
+
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+    if (open) document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  const items = [
+    { label: 'Daily', href: '/horoscope/daily/aries' },
+    { label: 'Weekly', href: '/horoscope/weekly/aries' },
+    { label: 'Monthly', href: '/horoscope/monthly/aries' },
+  ]
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        onMouseEnter={() => setOpen(true)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 4,
+          background: 'transparent',
+          border: 'none',
+          cursor: 'pointer',
+          fontSize: '13.5px',
+          fontWeight: 500,
+          color: isActive ? 'var(--blue)' : 'var(--text2)',
+          padding: '6px 10px',
+          borderRadius: 8,
+          transition: 'color .15s',
+        }}
+        onMouseLeave={() => {/* keep open while hovering panel */}}
+      >
+        Horoscope
+        <ChevronDown
+          size={13}
+          style={{
+            transform: open ? 'rotate(180deg)' : 'rotate(0)',
+            transition: 'transform .2s',
+          }}
+        />
+      </button>
+
+      {open && (
+        <div
+          onMouseEnter={() => setOpen(true)}
+          onMouseLeave={() => setOpen(false)}
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 4px)',
+            left: 0,
+            minWidth: 160,
+            background: '#fff',
+            border: '1px solid var(--border2)',
+            borderRadius: 10,
+            boxShadow: '0 8px 24px rgba(0,0,0,.10)',
+            overflow: 'hidden',
+            zIndex: 300,
+          }}
+        >
+          {items.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={() => setOpen(false)}
+              style={{
+                display: 'block',
+                padding: '10px 16px',
+                fontSize: 13,
+                color: pathname.startsWith(item.href.replace('/aries', ''))
+                  ? 'var(--blue)'
+                  : 'var(--text2)',
+                fontWeight: pathname.startsWith(item.href.replace('/aries', '')) ? 600 : 400,
+                textDecoration: 'none',
+                transition: 'background .12s',
+                background: 'transparent',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-subtle)' }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+            >
+              {item.label}
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Simple Nav Link ──────────────────────────────────────────────────────────
+
+function NavLink({ href, label, pathname }: { href: string; label: string; pathname: string }) {
+  const isActive = pathname.startsWith(href)
+  return (
+    <Link
+      href={href}
+      style={{
+        fontSize: '13.5px',
+        fontWeight: 500,
+        color: isActive ? 'var(--blue)' : 'var(--text2)',
+        textDecoration: 'none',
+        padding: '6px 10px',
+        borderRadius: 8,
+        transition: 'color .15s',
+        whiteSpace: 'nowrap',
+      }}
+      onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--blue)' }}
+      onMouseLeave={(e) => { e.currentTarget.style.color = isActive ? 'var(--blue)' : 'var(--text2)' }}
+    >
+      {label}
+    </Link>
+  )
+}
+
 // ─── User Dropdown ────────────────────────────────────────────────────────────
 
 function UserDropdown({
@@ -73,7 +198,6 @@ function UserDropdown({
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
-  // Close on outside click
   useEffect(() => {
     function handler(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) {
@@ -86,7 +210,6 @@ function UserDropdown({
 
   return (
     <div ref={ref} style={{ position: 'relative' }}>
-      {/* Trigger */}
       <button
         onClick={() => setOpen((o) => !o)}
         style={{
@@ -121,7 +244,6 @@ function UserDropdown({
         />
       </button>
 
-      {/* Dropdown panel */}
       {open && (
         <div
           style={{
@@ -137,7 +259,6 @@ function UserDropdown({
             zIndex: 999,
           }}
         >
-          {/* User info */}
           <div
             style={{
               padding: '12px 14px',
@@ -167,7 +288,6 @@ function UserDropdown({
             </p>
           </div>
 
-          {/* Menu items */}
           <nav style={{ padding: '4px 0' }}>
             <DropdownItem
               icon={<User size={14} />}
@@ -182,7 +302,6 @@ function UserDropdown({
             />
           </nav>
 
-          {/* Sign out */}
           <div style={{ padding: '4px 0', borderTop: '1px solid var(--border2)' }}>
             <button
               onClick={() => {
@@ -203,12 +322,8 @@ function UserDropdown({
                 textAlign: 'left',
                 transition: 'background .12s',
               }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = '#FEF2F2'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'transparent'
-              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = '#FEF2F2' }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
             >
               <LogOut size={14} />
               Sign out
@@ -266,12 +381,8 @@ function DropdownItem({
       href={href}
       onClick={onClick}
       style={sharedStyle}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.background = 'var(--bg-subtle)'
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.background = 'transparent'
-      }}
+      onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-subtle)' }}
+      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
     >
       <span style={{ color: 'var(--text3)' }}>{icon}</span>
       {label}
@@ -290,18 +401,23 @@ export function Header({ showNav = true }: HeaderProps) {
   const [scrolled, setScrolled] = useState(false)
   const [user, setUser] = useState<AuthUser | null>(null)
   const [authLoading, setAuthLoading] = useState(true)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const router = useRouter()
+  const pathname = usePathname()
   const supabase = createClient()
   const { toast } = useToast()
 
-  // Scroll shadow
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 10)
     window.addEventListener('scroll', handler, { passive: true })
     return () => window.removeEventListener('scroll', handler)
   }, [])
 
-  // Auth state — use getSession() (reads cookie, no network) for instant display
+  // Close mobile menu on route change
+  useEffect(() => {
+    setMobileMenuOpen(false)
+  }, [pathname])
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
@@ -317,7 +433,6 @@ export function Header({ showNav = true }: HeaderProps) {
       setAuthLoading(false)
     })
 
-    // Keep in sync when session changes in another tab
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         const u = session.user
@@ -334,7 +449,6 @@ export function Header({ showNav = true }: HeaderProps) {
       setAuthLoading(false)
     })
 
-    // Multi-tab logout sync
     const handleStorage = (e: StorageEvent) => {
       if (e.key === 'astrotattwa:logout') {
         window.location.href = '/login'
@@ -347,7 +461,6 @@ export function Header({ showNav = true }: HeaderProps) {
     }
   }, [supabase])
 
-
   const handleSignOut = async () => {
     await performLogout()
     router.push('/login')
@@ -356,7 +469,6 @@ export function Header({ showNav = true }: HeaderProps) {
 
   const handleMyChartClick = async () => {
     try {
-      // Fetch the user's saved charts and find the default (is_favorite)
       const res = await fetch('/api/save-chart', { credentials: 'include' })
       if (!res.ok) throw new Error('fetch failed')
       const { charts } = await res.json()
@@ -371,14 +483,12 @@ export function Header({ showNav = true }: HeaderProps) {
         return
       }
 
-      // Convert DB 24h time → 12h + period for the calculate API
       const [hStr, mStr] = (favorite.birth_time as string).split(':')
       const h24 = parseInt(hStr, 10)
       const period = h24 >= 12 ? 'PM' : 'AM'
       const h12 = h24 === 0 ? 12 : h24 > 12 ? h24 - 12 : h24
       const birthTime12 = `${String(h12).padStart(2, '0')}:${mStr}`
 
-      // Calculate the chart from saved birth data
       const calcRes = await fetch('/api/calculate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -401,8 +511,6 @@ export function Header({ showNav = true }: HeaderProps) {
         ...calcData.data,
         birthPlace: favorite.birth_place,
       }))
-      // Use full navigation so ChartClient always remounts and re-reads localStorage,
-      // even when the user is already on /chart (router.push would be a no-op there).
       window.location.href = '/chart'
     } catch {
       toast({
@@ -414,102 +522,224 @@ export function Header({ showNav = true }: HeaderProps) {
   }
 
   return (
-    <header
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        zIndex: 200,
-        height: 64,
-        background: 'rgba(255,255,255,0.92)',
-        backdropFilter: 'blur(14px)',
-        WebkitBackdropFilter: 'blur(14px)',
-        borderBottom: '1px solid rgba(0,0,0,0.08)',
-        transition: 'box-shadow .25s',
-        boxShadow: scrolled ? '0 2px 16px rgba(0,0,0,.06)' : 'none',
-      }}
-    >
-      <div
+    <>
+      <header
         style={{
-          maxWidth: 1280,
-          margin: '0 auto',
-          height: '100%',
-          padding: '0 24px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 16,
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 200,
+          height: 64,
+          background: 'rgba(255,255,255,0.92)',
+          backdropFilter: 'blur(14px)',
+          WebkitBackdropFilter: 'blur(14px)',
+          borderBottom: '1px solid rgba(0,0,0,0.08)',
+          transition: 'box-shadow .25s',
+          boxShadow: scrolled ? '0 2px 16px rgba(0,0,0,.06)' : 'none',
         }}
       >
-        <Logo variant="header" />
+        <div
+          style={{
+            maxWidth: 1280,
+            margin: '0 auto',
+            height: '100%',
+            padding: '0 24px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 16,
+          }}
+        >
+          <Logo variant="header" />
 
-        {/* Right side */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {!authLoading && (
-            <>
-              {user ? (
-                <UserDropdown user={user} onSignOut={handleSignOut} onMyChartClick={handleMyChartClick} />
-              ) : (
-                <>
-                  <Link
-                    href="/login"
-                    style={{
-                      fontSize: '13.5px',
-                      fontWeight: 500,
-                      color: 'var(--text2)',
-                      background: 'transparent',
-                      border: '1px solid var(--border2)',
-                      padding: '7px 18px',
-                      borderRadius: 8,
-                      textDecoration: 'none',
-                      transition: 'all .18s',
-                    }}
-                    onMouseEnter={(e) => {
-                      const el = e.currentTarget
-                      el.style.borderColor = 'var(--blue)'
-                      el.style.color = 'var(--blue)'
-                      el.style.background = 'var(--blue-light)'
-                    }}
-                    onMouseLeave={(e) => {
-                      const el = e.currentTarget
-                      el.style.borderColor = 'var(--border2)'
-                      el.style.color = 'var(--text2)'
-                      el.style.background = 'transparent'
-                    }}
-                  >
-                    Sign in
-                  </Link>
-                  {showNav && (
+          {/* Right side */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {/* Desktop nav links */}
+            <nav
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 2,
+                marginRight: 8,
+              }}
+              className="header-desktop-nav"
+            >
+              <HoroscopeDropdown pathname={pathname} />
+              <NavLink href="/panchang" label="Panchang" pathname={pathname} />
+              <NavLink href="/festival" label="Festival" pathname={pathname} />
+              <NavLink href="/book-consultancy" label="Book Consultancy" pathname={pathname} />
+            </nav>
+            {!authLoading && (
+              <>
+                {user ? (
+                  <UserDropdown user={user} onSignOut={handleSignOut} onMyChartClick={handleMyChartClick} />
+                ) : (
+                  <>
                     <Link
-                      href="/signup"
+                      href="/login"
                       style={{
                         fontSize: '13.5px',
                         fontWeight: 500,
-                        color: '#fff',
-                        background: 'var(--blue)',
-                        border: '1px solid var(--blue)',
+                        color: 'var(--text2)',
+                        background: 'transparent',
+                        border: '1px solid var(--border2)',
                         padding: '7px 18px',
                         borderRadius: 8,
                         textDecoration: 'none',
-                        transition: 'background .18s',
+                        transition: 'all .18s',
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.background = 'var(--blue-dark)'
+                        const el = e.currentTarget
+                        el.style.borderColor = 'var(--blue)'
+                        el.style.color = 'var(--blue)'
+                        el.style.background = 'var(--blue-light)'
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'var(--blue)'
+                        const el = e.currentTarget
+                        el.style.borderColor = 'var(--border2)'
+                        el.style.color = 'var(--text2)'
+                        el.style.background = 'transparent'
                       }}
                     >
-                      Get started
+                      Sign in
                     </Link>
-                  )}
-                </>
-              )}
-            </>
-          )}
+                    {showNav && (
+                      <Link
+                        href="/signup"
+                        style={{
+                          fontSize: '13.5px',
+                          fontWeight: 500,
+                          color: '#fff',
+                          background: 'var(--blue)',
+                          border: '1px solid var(--blue)',
+                          padding: '7px 18px',
+                          borderRadius: 8,
+                          textDecoration: 'none',
+                          transition: 'background .18s',
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--blue-dark)' }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--blue)' }}
+                      >
+                        Get started
+                      </Link>
+                    )}
+                  </>
+                )}
+              </>
+            )}
+
+            {/* Mobile hamburger */}
+            <button
+              onClick={() => setMobileMenuOpen((o) => !o)}
+              className="header-mobile-menu-btn"
+              style={{
+                display: 'none',
+                background: 'transparent',
+                border: '1px solid var(--border2)',
+                borderRadius: 8,
+                padding: '6px 8px',
+                cursor: 'pointer',
+                color: 'var(--text2)',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+              aria-label="Toggle menu"
+            >
+              {mobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
+            </button>
+          </div>
         </div>
-      </div>
-    </header>
+      </header>
+
+      {/* Mobile menu drawer */}
+      {mobileMenuOpen && (
+        <div
+          className="header-mobile-drawer"
+          style={{
+            position: 'fixed',
+            top: 64,
+            left: 0,
+            right: 0,
+            zIndex: 199,
+            background: '#fff',
+            borderBottom: '1px solid var(--border2)',
+            boxShadow: '0 8px 24px rgba(0,0,0,.10)',
+            padding: '12px 0 16px',
+          }}
+        >
+          {/* Horoscope section */}
+          <div style={{ padding: '4px 0' }}>
+            <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.08em', padding: '6px 20px 4px' }}>
+              Horoscope
+            </p>
+            {[
+              { label: 'Daily', href: '/horoscope/daily/aries' },
+              { label: 'Weekly', href: '/horoscope/weekly/aries' },
+              { label: 'Monthly', href: '/horoscope/monthly/aries' },
+            ].map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                style={{
+                  display: 'block',
+                  padding: '10px 20px',
+                  fontSize: 15,
+                  color: pathname.startsWith(item.href.replace('/aries', '')) ? 'var(--blue)' : 'var(--text2)',
+                  fontWeight: pathname.startsWith(item.href.replace('/aries', '')) ? 600 : 400,
+                  textDecoration: 'none',
+                }}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </div>
+
+          <div style={{ height: 1, background: 'var(--border2)', margin: '8px 20px' }} />
+
+          <Link
+            href="/panchang"
+            style={{
+              display: 'block',
+              padding: '10px 20px',
+              fontSize: 15,
+              color: pathname.startsWith('/panchang') ? 'var(--blue)' : 'var(--text2)',
+              fontWeight: pathname.startsWith('/panchang') ? 600 : 400,
+              textDecoration: 'none',
+            }}
+          >
+            Panchang
+          </Link>
+
+          <Link
+            href="/festival"
+            style={{
+              display: 'block',
+              padding: '10px 20px',
+              fontSize: 15,
+              color: pathname.startsWith('/festival') ? 'var(--blue)' : 'var(--text2)',
+              fontWeight: pathname.startsWith('/festival') ? 600 : 400,
+              textDecoration: 'none',
+            }}
+          >
+            Festival
+          </Link>
+
+          <Link
+            href="/book-consultancy"
+            style={{
+              display: 'block',
+              padding: '10px 20px',
+              fontSize: 15,
+              color: pathname.startsWith('/book-consultancy') ? 'var(--blue)' : 'var(--text2)',
+              fontWeight: pathname.startsWith('/book-consultancy') ? 600 : 400,
+              textDecoration: 'none',
+            }}
+          >
+            Book Consultancy
+          </Link>
+        </div>
+      )}
+    </>
   )
 }
