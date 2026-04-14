@@ -216,7 +216,7 @@ export function ResetPasswordForm() {
         </div>
 
         <p className="text-center text-xs text-muted-foreground">
-          <Link href="/privacy" className="hover:underline">
+          <Link href="/privacy-policy/" className="hover:underline">
             Privacy Policy
           </Link>
           {' · '}

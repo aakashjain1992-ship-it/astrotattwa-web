@@ -160,7 +160,7 @@ export function SignupForm() {
             By creating an account, you agree to our{' '}
             <Link href="/terms" className="underline hover:text-foreground">Terms</Link>
             {' '}and{' '}
-            <Link href="/privacy" className="underline hover:text-foreground">Privacy Policy</Link>
+            <Link href="/privacy-policy/" className="underline hover:text-foreground">Privacy Policy</Link>
           </p>
         </div>
 
@@ -172,7 +172,7 @@ export function SignupForm() {
           <Link href="/" className="text-sm text-muted-foreground hover:text-foreground">← Back to home</Link>
         </div>
         <p className="text-center text-xs text-muted-foreground">
-          <Link href="/privacy" className="hover:underline">Privacy Policy</Link>
+          <Link href="/privacy-policy/" className="hover:underline">Privacy Policy</Link>
           {' · '}
           <Link href="/terms" className="hover:underline">Terms of Service</Link>
         </p>
