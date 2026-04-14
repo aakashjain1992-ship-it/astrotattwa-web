@@ -1,6 +1,7 @@
 'use client'
 
 import { createContext, useCallback, useContext, useEffect, useState } from 'react'
+import { usePathname } from 'next/navigation'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -37,6 +38,20 @@ function applyClass(theme: Theme) {
   document.documentElement.classList.toggle('dark', resolved === 'dark')
 }
 
+// ─── Route-change re-applier ──────────────────────────────────────────────────
+// React reconciles <html> during App Router navigation and resets its className
+// to the server-rendered value (font vars only), stripping 'dark'. This sub-
+// component detects every pathname change and immediately re-applies the class.
+
+function ThemeApplier() {
+  const pathname = usePathname()
+  useEffect(() => {
+    const stored = (localStorage.getItem('theme') as Theme) || 'light'
+    applyClass(stored)
+  }, [pathname])
+  return null
+}
+
 // ─── Provider ─────────────────────────────────────────────────────────────────
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
@@ -71,6 +86,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       setTheme,
       resolvedTheme: mounted ? resolveTheme(theme) : 'light',
     }}>
+      <ThemeApplier />
       {children}
     </ThemeContext.Provider>
   )
