@@ -124,8 +124,8 @@ export default function HomePage() {
               display: 'flex', alignItems: 'center', gap: 0,
               marginTop: '24px',
               padding: '14px 20px',
-              background: 'rgba(37,99,235,.04)',
-              border: '1px solid rgba(37,99,235,.1)',
+              background: 'var(--blue-light)',
+              border: '1px solid var(--blue-mid)',
               borderRadius: '12px',
               animation: 'up .65s ease 1.05s forwards',
             }}>
@@ -134,7 +134,7 @@ export default function HomePage() {
                   {i > 0 && (
                     <div style={{
                       width: '1px', height: '36px',
-                      background: 'rgba(37,99,235,.15)',
+                      background: 'var(--blue-mid)',
                       flexShrink: 0, margin: '0 4px',
                     }} />
                   )}
@@ -149,7 +149,7 @@ export default function HomePage() {
                     <span style={{ fontSize: '15px', lineHeight: 1.2, color: 'var(--text1)', fontWeight: 600, letterSpacing: '.1px' }}>
                       {s.num}
                     </span>
-                    <span style={{ fontSize: '10.5px', letterSpacing: '.3px', color: 'rgba(15,23,42,.38)', marginTop: '2px' }}>
+                    <span style={{ fontSize: '10.5px', letterSpacing: '.3px', color: 'var(--text3)', marginTop: '2px' }}>
                       {s.label}
                     </span>
                   </div>
@@ -162,8 +162,8 @@ export default function HomePage() {
           {/* Right: Form card */}
           <div className="hero-card-wrap" >
              <div style={{
-              background: '#fff',
-              border: '1px solid var(--border)',
+              background: 'var(--surface)',
+              border: '1px solid var(--border2)',
               borderRadius: '16px',
               padding: '32px 32px 28px',
               width: '100%', maxWidth: '480px',
