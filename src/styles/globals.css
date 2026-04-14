@@ -321,11 +321,11 @@
 .stagger-5 { animation-delay: 0.5s; }
 
 /* ========================================
-   COSMIC PREVIEW THEME
+   DARK / COSMIC THEME
    Applied to <html> via JS on /preview
    ======================================== */
 
-.cosmic-theme {
+.dark {
   /* Flat token overrides */
   --bg:          #08081A;
   --bg-subtle:   #0D0D22;
@@ -369,20 +369,20 @@
 }
 
 /* ── Form inputs: override hardcoded bg-white Tailwind classes ── */
-.cosmic-theme .bg-white {
+.dark .bg-white {
   background-color: var(--surface) !important;
   color: var(--text) !important;
 }
-.cosmic-theme .text-black {
+.dark .text-black {
   color: var(--text) !important;
 }
 /* Popover calendar nav hover */
-.cosmic-theme .hover\:bg-gray-100:hover {
+.dark .hover\:bg-gray-100:hover {
   background-color: rgba(255,255,255,.06) !important;
 }
 
 /* Galaxy body background */
-.cosmic-theme body {
+.dark body {
   background:
     radial-gradient(ellipse at 15% 40%, rgba(80,50,160,.08) 0%, transparent 55%),
     radial-gradient(ellipse at 85% 15%, rgba(60,30,130,.07) 0%, transparent 50%),
@@ -392,58 +392,58 @@
 }
 
 /* ── Header ── */
-.cosmic-theme header {
+.dark header {
   background: rgba(8,8,26,0.88) !important;
   border-bottom-color: rgba(255,255,255,0.06) !important;
 }
 
 /* Header user dropdown panel */
-.cosmic-theme header [style*="z-index: 999"] {
+.dark header [style*="z-index: 999"] {
   background: #0F0F28 !important;
   border-color: rgba(255,255,255,0.08) !important;
   box-shadow: 0 8px 30px rgba(0,0,0,.6) !important;
 }
-.cosmic-theme header [style*="z-index: 999"] [style*="borderBottom"] {
+.dark header [style*="z-index: 999"] [style*="borderBottom"] {
   border-bottom-color: rgba(255,255,255,0.08) !important;
 }
-.cosmic-theme header [style*="z-index: 999"] [style*="borderTop"] {
+.dark header [style*="z-index: 999"] [style*="borderTop"] {
   border-top-color: rgba(255,255,255,0.08) !important;
 }
 
 /* ── Footer ── */
-.cosmic-theme footer {
+.dark footer {
   border-top-color: rgba(255,255,255,0.06) !important;
 }
 
 /* ── Navagraha section ── */
-.cosmic-theme section:has(.nava-section-inner) {
+.dark section:has(.nava-section-inner) {
   background: #0A0A1E !important;
   border-top-color: rgba(255,255,255,0.06) !important;
 }
 /* Inactive planet glyph circles */
-.cosmic-theme .nava-tab-btn > div > div:first-child {
+.dark .nava-tab-btn > div > div:first-child {
   color: rgba(255,255,255,0.28) !important;
 }
 /* Inactive planet name labels */
-.cosmic-theme .nava-tab-btn > span {
+.dark .nava-tab-btn > span {
   color: rgba(255,255,255,0.22) !important;
 }
 /* Mobile border between panes */
 @media (max-width: 900px) {
-  .cosmic-theme .nava-pane-left {
+  .dark .nava-pane-left {
     border-bottom-color: rgba(255,255,255,0.08) !important;
   }
 }
 
 /* ── Header horoscope nav dropdown ── */
-.cosmic-theme header [style*="z-index: 300"] {
+.dark header [style*="z-index: 300"] {
   background: #0F0F28 !important;
   border-color: rgba(255,255,255,.08) !important;
   box-shadow: 0 8px 24px rgba(0,0,0,.5) !important;
 }
 
 /* ── Mobile drawer ── */
-.cosmic-theme .header-mobile-drawer {
+.dark .header-mobile-drawer {
   background: #0F0F28 !important;
   box-shadow: 0 8px 24px rgba(0,0,0,.5) !important;
 }
@@ -459,15 +459,15 @@
 }
 
 /* ── Yantra SVG: blue → gold ── */
-.cosmic-theme .hero-yantra svg circle,
-.cosmic-theme .hero-yantra svg polygon,
-.cosmic-theme .hero-yantra svg ellipse {
+.dark .hero-yantra svg circle,
+.dark .hero-yantra svg polygon,
+.dark .hero-yantra svg ellipse {
   stroke: #D4A017 !important;
 }
-.cosmic-theme .hero-yantra svg circle[fill="#2563EB"] {
+.dark .hero-yantra svg circle[fill="#2563EB"] {
   fill: #D4A017 !important;
 }
 /* Yantra left-side mask: white → cosmic bg */
-.cosmic-theme .hero-yantra [style*="linear-gradient"] {
+.dark .hero-yantra [style*="linear-gradient"] {
   background: linear-gradient(to right, #08081A 55%, transparent) !important;
 }

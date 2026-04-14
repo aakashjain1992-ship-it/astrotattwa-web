@@ -45,7 +45,6 @@ export default function RootLayout({
           defaultTheme="light"
           enableSystem
           themes={['light', 'dark', 'system']}
-          value={{ dark: 'cosmic-theme' }}
           disableTransitionOnChange
         >
           {children}
