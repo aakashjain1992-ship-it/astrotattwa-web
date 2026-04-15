@@ -95,7 +95,7 @@ function SectionCard({
   return (
     <div
       style={{
-        background: '#fff',
+        background: 'hsl(var(--card))',
         border: '1px solid var(--border2)',
         borderRadius: 14,
         overflow: 'hidden',
@@ -306,12 +306,12 @@ function ChangePasswordForm() {
           {error && (
             <div
               style={{
-                background: '#FEF2F2',
-                border: '1px solid #FCA5A5',
+                background: 'hsl(var(--destructive)/.1)',
+                border: '1px solid hsl(var(--destructive)/.4)',
                 borderRadius: 8,
                 padding: '8px 12px',
                 fontSize: 13,
-                color: '#DC2626',
+                color: 'hsl(var(--destructive))',
               }}
             >
               {error}
@@ -321,8 +321,8 @@ function ChangePasswordForm() {
           {success && (
             <div
               style={{
-                background: '#F0FDF4',
-                border: '1px solid #86EFAC',
+                background: 'rgba(22,163,74,.1)',
+                border: '1px solid rgba(22,163,74,.4)',
                 borderRadius: 8,
                 padding: '8px 12px',
                 fontSize: 13,
@@ -588,7 +588,7 @@ if (profileErr) {
               onClick={handleSignOut}
               disabled={signOutLoading}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background = '#FEF2F2'
+                e.currentTarget.style.background = 'hsl(var(--destructive)/.1)'
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.background = 'transparent'

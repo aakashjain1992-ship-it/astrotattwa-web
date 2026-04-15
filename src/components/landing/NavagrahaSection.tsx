@@ -140,14 +140,14 @@ export function NavagrahaSection() {
                 width: '44px', height: '44px',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 borderRadius: '50%',
-                border: active === i ? `1.5px solid rgba(${p.rgb},.45)` : '1.5px solid rgba(15,23,42,.1)',
-                background: active === i ? `rgba(${p.rgb},.08)` : 'rgba(15,23,42,.04)',
+                border: active === i ? `1.5px solid rgba(${p.rgb},.45)` : '1.5px solid var(--nava-inactive-border)',
+                background: active === i ? `rgba(${p.rgb},.08)` : 'var(--nava-inactive-bg)',
                 transition: 'background .2s, border-color .2s, transform .2s, box-shadow .2s',
                 transform: active === i ? 'scale(1.1)' : 'scale(1)',
                 boxShadow: active === i ? `0 0 12px rgba(${p.rgb},.25), 0 0 0 3px rgba(${p.rgb},.08)` : 'none',
                 fontFamily: "'Segoe UI Symbol','Apple Symbols','Symbola',serif",
                 fontSize: '19px', lineHeight: 1,
-                color: active === i ? `rgb(${p.rgb})` : 'rgba(15,23,42,.38)',
+                color: active === i ? `rgb(${p.rgb})` : 'var(--nava-inactive-color)',
               }}>
                 {p.sym}
               </div>
@@ -156,7 +156,7 @@ export function NavagrahaSection() {
               <span style={{
                 fontSize: '9.5px', fontWeight: 600,
                 letterSpacing: '1.8px', textTransform: 'uppercase',
-                color: active === i ? `rgb(${p.rgb})` : 'rgba(15,23,42,.35)',
+                color: active === i ? `rgb(${p.rgb})` : 'var(--nava-inactive-name)',
                 transition: 'color .2s',
               }}>
                 {p.name}

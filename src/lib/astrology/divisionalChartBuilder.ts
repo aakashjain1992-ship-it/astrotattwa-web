@@ -99,8 +99,15 @@ export const CHATURTHAMSA_CONFIG: DivisionConfig = {
   },
 };
 /**
- * Panchamamsa (D5) Configuration - NEW
+ * Panchamamsa (D5) Configuration
  * Shows fame, power, authority, and influence
+ *
+ * Per BPHS (Brihat Parashara Hora Shastra):
+ * - Movable signs (Aries, Cancer, Libra, Capricorn — signIndex % 3 = 0): start from Aries (0)
+ * - Fixed signs (Taurus, Leo, Scorpio, Aquarius — signIndex % 3 = 1): start from Leo (4)
+ * - Dual signs (Gemini, Virgo, Sag, Pisces — signIndex % 3 = 2): start from Sagittarius (8)
+ *
+ * This produces: Movable→Aries..Leo, Fixed→Leo..Sag, Dual→Sag..Aries — all 12 signs covered.
  */
 export const PANCHAMAMSA_CONFIG: DivisionConfig = {
   type: 'D5',
@@ -110,9 +117,11 @@ export const PANCHAMAMSA_CONFIG: DivisionConfig = {
   calculateSign: (longitude: number): number => {
     const signIndex = Math.floor(longitude / 30);
     const degreeInSign = longitude % 30;
-    const panchamamsaPart = Math.floor(degreeInSign / 6); // 0-4
-    const isOddSign = signIndex % 2 === 0;
-    const startSign = isOddSign ? signIndex : (signIndex + 8) % 12;
+    const panchamamsaPart = Math.floor(degreeInSign / 6); // 0–4
+    // signIndex % 3: 0 = movable, 1 = fixed, 2 = dual
+    const signType = signIndex % 3;
+    const startSigns = [0, 4, 8]; // Movable→Aries(0), Fixed→Leo(4), Dual→Sag(8)
+    const startSign = startSigns[signType];
     const resultSignIndex = (startSign + panchamamsaPart) % 12;
     return resultSignIndex + 1;
   },
@@ -550,8 +559,10 @@ export function buildDivisionalHouses(
     });
   }
   
-  // Step 3: Distribute planets into houses
+  // Step 3: Distribute planets into houses (skip non-planet keys like Ascendant)
+  const STANDARD_PLANETS = new Set(['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu']);
   Object.entries(planets).forEach(([planetKey, planetData]) => {
+    if (!STANDARD_PLANETS.has(planetKey)) return;
     // Calculate planet's divisional sign
     const planetDivisionalSign = config.calculateSign(planetData.longitude);
     

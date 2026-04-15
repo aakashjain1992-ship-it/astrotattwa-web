@@ -5,6 +5,9 @@ import { Yantra } from '@/components/landing/Yantra'
 import { Particles } from '@/components/landing/Particles'
 import { Glyphs } from '@/components/landing/Glyphs'
 import BirthDataFormWrapper from '@/components/forms/BirthDataFormWrapper'
+import { PanchangTeaser } from '@/components/home/PanchangTeaser'
+import { HoroscopeTeaser } from '@/components/home/HoroscopeTeaser'
+import { FestivalCalendarSection } from '@/components/preview/FestivalCalendarSection'
 
 const HERO_BULLETS = [
   'Your Dashas — the planetary periods timing every chapter of your life',
@@ -81,7 +84,6 @@ export default function HomePage() {
               fontSize: '15.5px', lineHeight: 1.72,
               color: 'var(--text2)', maxWidth: '420px',
               marginBottom: '10px',
-              animation: 'up .65s ease .65s forwards',
             }}>
               Your birth chart is a precise record of the sky at the moment
               you arrived — the timing of life&apos;s chapters, the pattern of your
@@ -92,7 +94,6 @@ export default function HomePage() {
               fontSize: '15.5px', lineHeight: 1.72,
               color: 'var(--text2)', maxWidth: '420px',
               marginBottom: '28px',
-              animation: 'up .65s ease .65s forwards',
             }}>
               Astrotattwa helps you decode your chart through -
 
@@ -102,7 +103,6 @@ export default function HomePage() {
             <ul style={{
               listStyle: 'none', display: 'flex', flexDirection: 'column',
               gap: '10px', marginBottom: '0',
-              animation: 'up .65s ease .82s forwards',
             }}>
               {HERO_BULLETS.map(text => (
                 <li key={text} style={{
@@ -124,17 +124,16 @@ export default function HomePage() {
               display: 'flex', alignItems: 'center', gap: 0,
               marginTop: '24px',
               padding: '14px 20px',
-              background: 'rgba(37,99,235,.04)',
-              border: '1px solid rgba(37,99,235,.1)',
+              background: 'var(--blue-light)',
+              border: '1px solid var(--blue-mid)',
               borderRadius: '12px',
-              animation: 'up .65s ease 1.05s forwards',
             }}>
               {HERO_STATS.map((s, i) => (
                 <div key={s.num} style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
                   {i > 0 && (
                     <div style={{
                       width: '1px', height: '36px',
-                      background: 'rgba(37,99,235,.15)',
+                      background: 'var(--blue-mid)',
                       flexShrink: 0, margin: '0 4px',
                     }} />
                   )}
@@ -149,7 +148,7 @@ export default function HomePage() {
                     <span style={{ fontSize: '15px', lineHeight: 1.2, color: 'var(--text1)', fontWeight: 600, letterSpacing: '.1px' }}>
                       {s.num}
                     </span>
-                    <span style={{ fontSize: '10.5px', letterSpacing: '.3px', color: 'rgba(15,23,42,.38)', marginTop: '2px' }}>
+                    <span style={{ fontSize: '10.5px', letterSpacing: '.3px', color: 'var(--text3)', marginTop: '2px' }}>
                       {s.label}
                     </span>
                   </div>
@@ -162,19 +161,48 @@ export default function HomePage() {
           {/* Right: Form card */}
           <div className="hero-card-wrap" >
              <div style={{
-              background: '#fff',
-              border: '1px solid var(--border)',
+              background: 'var(--surface)',
+              border: '1px solid var(--border2)',
               borderRadius: '16px',
               padding: '32px 32px 28px',
               width: '100%', maxWidth: '480px',
               boxShadow: 'var(--shadow-md)',
-              animation: 'cardIn .85s cubic-bezier(.16,1,.3,1) .3s forwards',
             }}>
               <BirthDataFormWrapper />
              </div>  
           </div>
 
         </section>
+
+        {/* ── PANCHANG + HOROSCOPE ── */}
+        <section style={{
+          borderTop: '1px solid var(--border)',
+          borderBottom: '1px solid var(--border)',
+          padding: '64px 0',
+          position: 'relative',
+        }}>
+          <div style={{
+            position: 'absolute', inset: 0, pointerEvents: 'none',
+            background: 'radial-gradient(ellipse at 25% 50%, rgba(212,160,23,.03) 0%, transparent 60%), radial-gradient(ellipse at 75% 50%, rgba(120,60,200,.03) 0%, transparent 60%)',
+          }} />
+          <div className="teasers-row" style={{
+            width: 'min(1280px, calc(100% - 20px))', margin: '0 auto',
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '20px',
+            position: 'relative',
+          }}>
+            <div className="teaser-card" style={{ border: '1px solid var(--border)', borderRadius: '20px', padding: '40px 40px 36px', background: 'hsl(var(--card))', boxShadow: 'var(--shadow-md)' }}>
+              <PanchangTeaser />
+            </div>
+            <div className="teaser-card" style={{ border: '1px solid var(--border)', borderRadius: '20px', padding: '40px 40px 36px', background: 'hsl(var(--card))', boxShadow: 'var(--shadow-md)' }}>
+              <HoroscopeTeaser />
+            </div>
+          </div>
+        </section>
+
+        {/* ── FESTIVAL CALENDAR ── */}
+        <FestivalCalendarSection />
 
         {/* ── NAVAGRAHA ── */}
         <NavagrahaSection />
@@ -227,6 +255,10 @@ export default function HomePage() {
         @media (max-width: 600px) {
           .hero-section { padding: 80px 20px 48px 20px; }
           .hero-stats { flex-direction: column; gap: 0 !important; }
+        }
+        @media (max-width: 900px) {
+          .teasers-row { grid-template-columns: 1fr !important; }
+          .teaser-card { padding: 32px 24px !important; }
         }
       `}</style>
     </div>

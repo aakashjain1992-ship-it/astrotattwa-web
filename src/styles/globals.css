@@ -55,6 +55,12 @@
     --error:       #DC2626;
     --shadow-sm:   0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
     --shadow-md:   0 4px 24px rgba(0,0,0,.08), 0 1px 4px rgba(0,0,0,.04);
+
+    /* ─── Navagraha inactive planet tokens ─── */
+    --nava-inactive-border: rgba(15,23,42,.1);
+    --nava-inactive-bg:     rgba(15,23,42,.04);
+    --nava-inactive-color:  rgba(15,23,42,.38);
+    --nava-inactive-name:   rgba(15,23,42,.35);
     
     /* Chart-specific colors (Light Mode) */
     --chart-bg: 0 0% 100%;             /* White */
@@ -112,6 +118,24 @@
     --elevation-1: 0 0% 12%;           /* #1E1E1E */
     --elevation-2: 0 0% 18%;           /* #2D2D2D */
     --elevation-3: 0 0% 24%;           /* #3D3D3D */
+
+    /* ─── v3_9 flat token overrides (dark mode) ───── */
+    --bg:          #121212;
+    --bg-subtle:   #1A1A1A;
+    --surface:     #1E1E1E;
+    --text:        #E1E1E1;
+    --text1:       #E1E1E1;
+    --text2:       #A0A0A0;
+    --text3:       #737373;
+    --blue-light:  rgba(37,99,235,.18);
+    --blue-mid:    rgba(37,99,235,.28);
+    --border2:     #333333;
+    --shadow-sm:   0 1px 3px rgba(0,0,0,.5), 0 1px 2px rgba(0,0,0,.4);
+    --shadow-md:   0 4px 24px rgba(0,0,0,.6), 0 1px 4px rgba(0,0,0,.4);
+    --nava-inactive-border: rgba(255,255,255,.1);
+    --nava-inactive-bg:     rgba(255,255,255,.04);
+    --nava-inactive-color:  rgba(255,255,255,.38);
+    --nava-inactive-name:   rgba(255,255,255,.35);
   }
 }
 
@@ -313,3 +337,155 @@
 .stagger-3 { animation-delay: 0.3s; }
 .stagger-4 { animation-delay: 0.4s; }
 .stagger-5 { animation-delay: 0.5s; }
+
+/* ========================================
+   DARK / COSMIC THEME
+   Applied to <html> via JS on /preview
+   ======================================== */
+
+.dark {
+  /* Flat token overrides */
+  --bg:          #08081A;
+  --bg-subtle:   #0D0D22;
+  --surface:     #0F0F28;
+  --text:        #F0EDE8;
+  --text1:       #F0EDE8;
+  --text2:       #B8B4C4;
+  --text3:       #6E6B80;
+  --blue:        #D4A017;
+  --blue-dark:   #B8880E;
+  --blue-light:  rgba(212,160,23,.08);
+  --blue-mid:    rgba(212,160,23,.15);
+  --border2:     #252340;
+  --shadow-sm:   0 1px 3px rgba(0,0,0,.3), 0 1px 2px rgba(0,0,0,.2);
+  --shadow-md:   0 4px 24px rgba(0,0,0,.5), 0 1px 4px rgba(0,0,0,.3);
+
+  /* shadcn/Radix HSL vars */
+  --background:         237 47% 7%;
+  --foreground:         40 20% 94%;
+  --card:               237 45% 10%;
+  --card-foreground:    40 20% 94%;
+  --popover:            237 45% 12%;
+  --popover-foreground: 40 20% 94%;
+  --primary:            43 96% 42%;
+  --primary-foreground: 0 0% 7%;
+  --secondary:          237 40% 15%;
+  --secondary-foreground: 40 20% 94%;
+  --muted:              237 40% 15%;
+  --muted-foreground:   250 10% 55%;
+  --accent:             237 40% 18%;
+  --accent-foreground:  40 20% 94%;
+  --border:             237 40% 18%;
+  --input:              237 40% 18%;
+  --ring:               43 96% 42%;
+
+  /* Navagraha inactive planet tokens — light on dark */
+  --nava-inactive-border: rgba(255,255,255,.12);
+  --nava-inactive-bg:     rgba(255,255,255,.05);
+  --nava-inactive-color:  rgba(255,255,255,.35);
+  --nava-inactive-name:   rgba(255,255,255,.3);
+}
+
+/* ── Form inputs: override hardcoded bg-white Tailwind classes ── */
+.dark .bg-white {
+  background-color: var(--surface) !important;
+  color: var(--text) !important;
+}
+.dark .text-black {
+  color: var(--text) !important;
+}
+/* Popover calendar nav hover */
+.dark .hover\:bg-gray-100:hover {
+  background-color: rgba(255,255,255,.06) !important;
+}
+
+/* Galaxy body background */
+.dark body {
+  background:
+    radial-gradient(ellipse at 15% 40%, rgba(80,50,160,.08) 0%, transparent 55%),
+    radial-gradient(ellipse at 85% 15%, rgba(60,30,130,.07) 0%, transparent 50%),
+    radial-gradient(ellipse at 60% 85%, rgba(100,60,180,.06) 0%, transparent 45%),
+    #08081A !important;
+  color: #F0EDE8;
+}
+
+/* ── Header ── */
+.dark header {
+  background: rgba(8,8,26,0.88) !important;
+  border-bottom-color: rgba(255,255,255,0.06) !important;
+}
+
+/* Header user dropdown panel */
+.dark header [style*="z-index: 999"] {
+  background: #0F0F28 !important;
+  border-color: rgba(255,255,255,0.08) !important;
+  box-shadow: 0 8px 30px rgba(0,0,0,.6) !important;
+}
+.dark header [style*="z-index: 999"] [style*="borderBottom"] {
+  border-bottom-color: rgba(255,255,255,0.08) !important;
+}
+.dark header [style*="z-index: 999"] [style*="borderTop"] {
+  border-top-color: rgba(255,255,255,0.08) !important;
+}
+
+/* ── Footer ── */
+.dark footer {
+  border-top-color: rgba(255,255,255,0.06) !important;
+}
+
+/* ── Navagraha section ── */
+.dark section:has(.nava-section-inner) {
+  background: #0A0A1E !important;
+  border-top-color: rgba(255,255,255,0.06) !important;
+}
+/* Inactive planet glyph circles */
+.dark .nava-tab-btn > div > div:first-child {
+  color: rgba(255,255,255,0.28) !important;
+}
+/* Inactive planet name labels */
+.dark .nava-tab-btn > span {
+  color: rgba(255,255,255,0.22) !important;
+}
+/* Mobile border between panes */
+@media (max-width: 900px) {
+  .dark .nava-pane-left {
+    border-bottom-color: rgba(255,255,255,0.08) !important;
+  }
+}
+
+/* ── Header horoscope nav dropdown ── */
+.dark header [style*="z-index: 300"] {
+  background: #0F0F28 !important;
+  border-color: rgba(255,255,255,.08) !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,.5) !important;
+}
+
+/* ── Mobile drawer ── */
+.dark .header-mobile-drawer {
+  background: #0F0F28 !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,.5) !important;
+}
+
+/* ── Header nav responsive ── */
+@media (max-width: 768px) {
+  .header-desktop-nav { display: none !important; }
+  .header-mobile-menu-btn { display: flex !important; }
+  .theme-switcher-icon-btn { display: none !important; }
+}
+@media (min-width: 769px) {
+  .header-mobile-drawer { display: none !important; }
+}
+
+/* ── Yantra SVG: blue → gold ── */
+.dark .hero-yantra svg circle,
+.dark .hero-yantra svg polygon,
+.dark .hero-yantra svg ellipse {
+  stroke: #D4A017 !important;
+}
+.dark .hero-yantra svg circle[fill="#2563EB"] {
+  fill: #D4A017 !important;
+}
+/* Yantra left-side mask: white → cosmic bg */
+.dark .hero-yantra [style*="linear-gradient"] {
+  background: linear-gradient(to right, #08081A 55%, transparent) !important;
+}

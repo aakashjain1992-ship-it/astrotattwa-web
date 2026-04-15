@@ -67,7 +67,7 @@ export function ForgotPasswordForm() {
             <Link href="/login" className="text-sm text-muted-foreground hover:text-foreground">← Back to sign in</Link>
           </div>
           <p className="text-center text-xs text-muted-foreground">
-            <Link href="/privacy" className="hover:underline">Privacy Policy</Link>
+            <Link href="/privacy-policy/" className="hover:underline">Privacy Policy</Link>
             {' · '}
             <Link href="/terms" className="hover:underline">Terms of Service</Link>
           </p>
@@ -107,7 +107,7 @@ export function ForgotPasswordForm() {
           <Link href="/login" className="text-sm text-muted-foreground hover:text-foreground">← Back to sign in</Link>
         </div>
         <p className="text-center text-xs text-muted-foreground">
-          <Link href="/privacy" className="hover:underline">Privacy Policy</Link>
+          <Link href="/privacy-policy/" className="hover:underline">Privacy Policy</Link>
           {' · '}
           <Link href="/terms" className="hover:underline">Terms of Service</Link>
         </p>

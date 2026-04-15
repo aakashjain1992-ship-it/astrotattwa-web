@@ -3,6 +3,8 @@ export const dynamic = 'force-dynamic'
 import { NextResponse, type NextRequest } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { convert12to24 } from '@/lib/astrology/time'
+import { calculateKpChart } from '@/lib/astrology/kp/calculate'
+import { getCurrentPeriods } from '@/lib/astrology/kp/dasa'
 
 export const runtime = 'nodejs'
 
@@ -81,6 +83,28 @@ function getUtcOffsetMinutes(tz: string, birthDate: string, birthTime24: string)
   return offsetMinutes
 }
 
+/**
+ * Returns the Western tropical sun sign number (1=Aries … 12=Pisces)
+ * based on birth date ranges. This is the familiar "star sign" by birthday.
+ */
+function sunSignFromBirthDate(birthDate: string): number {
+  const [, mStr, dStr] = birthDate.split('-')
+  const m = Number(mStr)
+  const d = Number(dStr)
+  if ((m === 3 && d >= 21) || (m === 4 && d <= 19)) return 1   // Aries
+  if ((m === 4 && d >= 20) || (m === 5 && d <= 20)) return 2   // Taurus
+  if ((m === 5 && d >= 21) || (m === 6 && d <= 20)) return 3   // Gemini
+  if ((m === 6 && d >= 21) || (m === 7 && d <= 22)) return 4   // Cancer
+  if ((m === 7 && d >= 23) || (m === 8 && d <= 22)) return 5   // Leo
+  if ((m === 8 && d >= 23) || (m === 9 && d <= 22)) return 6   // Virgo
+  if ((m === 9 && d >= 23) || (m === 10 && d <= 22)) return 7  // Libra
+  if ((m === 10 && d >= 23) || (m === 11 && d <= 21)) return 8 // Scorpio
+  if ((m === 11 && d >= 22) || (m === 12 && d <= 21)) return 9 // Sagittarius
+  if ((m === 12 && d >= 22) || (m === 1 && d <= 19)) return 10 // Capricorn
+  if ((m === 1 && d >= 20) || (m === 2 && d <= 18)) return 11  // Aquarius
+  return 12                                                      // Pisces (Feb 19 – Mar 20)
+}
+
 function mapDbErrorToHttp(err: any): { status: number; message: string } {
   // Unique constraint violation
   if (err?.code === '23505') {
@@ -95,6 +119,101 @@ function mapDbErrorToHttp(err: any): { status: number; message: string } {
 
   return { status: 400, message: msg || 'Request failed.' }
 }
+
+const PLANET_KEYS = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu'] as const
+
+interface ChartSnapshot {
+  moon_sign: number       // INTEGER 1-12 (signNumber)
+  sun_sign: number        // INTEGER 1-12
+  ascendant_sign: number  // INTEGER 1-12
+  ascendant_degree: number
+  nakshatra: string
+  nakshatra_pada: number
+  planets: Record<string, { sign: string; degree: number; house: number; retrograde: boolean; exhausted: boolean; combust: boolean }>
+  dashas: { computed_at: string; mahadasha: { planet: string; start: string; end: string }; antardasha: { planet: string; start: string; end: string }; pratyantar: { planet: string; start: string; end: string } } | null
+}
+
+/**
+ * Runs calculateKpChart and extracts a minimal snapshot for DB storage.
+ * Returns null on any calculation error — caller should save without computed fields.
+ * sun_sign uses Western tropical date ranges (the familiar birthday star sign).
+ * moon_sign uses the KP sidereal chart position (used for Vedic horoscopes).
+ */
+async function buildChartSnapshot(
+  birthDate: string,   // YYYY-MM-DD
+  birthTime24: string, // HH:MM 24h
+  birthPlace: string,
+  latitude: number,
+  longitude: number,
+  timezone: string,
+  gender: string,
+): Promise<ChartSnapshot | null> {
+  try {
+    const chart = await calculateKpChart({
+      birthDate,
+      birthTime: birthTime24,
+      birthPlace,
+      latitude,
+      longitude,
+      timezone,
+      gender,
+    })
+
+    const asc = chart.planets.Ascendant
+    const ascSignNum = asc.signNumber
+
+    // Minimal 9-planet snapshot — house via same formula as buildLagnaHouses
+    const planetsSnap: ChartSnapshot['planets'] = {}
+    for (const key of PLANET_KEYS) {
+      const p = chart.planets[key]
+      if (!p) continue
+      planetsSnap[key] = {
+        sign:       p.sign.toLowerCase(),
+        degree:     Math.round(p.degreeInSign * 100) / 100,
+        house:      ((p.signNumber - ascSignNum + 12) % 12) + 1,
+        retrograde: p.retrograde,
+        exhausted:  p.exhausted,
+        combust:    p.combust,
+      }
+    }
+
+    // Current dasha snapshot
+    let dashas: ChartSnapshot['dashas'] = null
+    try {
+      const birthUtc  = new Date(chart.calculated.utcDateTime)
+      const nakLord   = chart.planets.Moon.kp.nakshatraLord as any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const balance   = (chart.dasa.balance as any)?.classical360?.remainingYearsFloat ?? 0
+      const periods   = getCurrentPeriods(birthUtc, nakLord, balance)
+      if (periods) {
+        dashas = {
+          computed_at: new Date().toISOString(),
+          mahadasha:  { planet: periods.mahadasha.lord,  start: periods.mahadasha.startUtc,  end: periods.mahadasha.endUtc  },
+          antardasha: { planet: periods.antardasha.lord, start: periods.antardasha.startUtc, end: periods.antardasha.endUtc },
+          pratyantar: { planet: periods.pratyantar.lord, start: periods.pratyantar.startUtc, end: periods.pratyantar.endUtc },
+        }
+      }
+    } catch { /* dashas stay null */ }
+
+    return {
+      moon_sign:        chart.planets.Moon.signNumber,  // INTEGER 1-12 (KP sidereal)
+      sun_sign:         sunSignFromBirthDate(birthDate), // INTEGER 1-12 (Western tropical date range)
+      ascendant_sign:   asc.signNumber,                 // INTEGER 1-12
+      ascendant_degree: Math.round(asc.degreeInSign * 100) / 100,
+      nakshatra:        chart.planets.Moon.kp.nakshatraName,
+      nakshatra_pada:   chart.planets.Moon.kp.nakshatraPada,
+      planets:          planetsSnap,
+      dashas,
+    }
+  } catch (err) {
+    console.error('[save-chart] chart snapshot failed:', err)
+    return null
+  }
+}
+
+const SNAPSHOT_SELECT = 'moon_sign,sun_sign,ascendant_sign,ascendant_degree,nakshatra,nakshatra_pada,planets,dashas'
+const BASE_SELECT = 'id,user_id,name,label,gender,birth_date,birth_time,birth_place,latitude,longitude,timezone,utc_offset,created_at,updated_at,is_favorite'
+const FULL_SELECT = `${BASE_SELECT},${SNAPSHOT_SELECT}`
 
 /**
  * GET /api/SaveChart
@@ -112,9 +231,7 @@ export async function GET(req: NextRequest) {
 
   const { data: charts, error: e } = await supabase
     .from('charts')
-    .select(
-      'id,user_id,name,label,gender,birth_date,birth_time,birth_place,latitude,longitude,timezone,utc_offset,created_at,updated_at,is_favorite'
-    )
+    .select(FULL_SELECT)
     .eq('user_id', userId)
     .order('updated_at', { ascending: false })
 
@@ -167,6 +284,9 @@ export async function POST(req: NextRequest) {
   const birthTime24 = convert12to24(birthTime, timePeriod)
   const utc_offset = getUtcOffsetMinutes(timezone, birthDate, birthTime24)
 
+  // Calculate chart snapshot (non-blocking on failure)
+  const snapshot = await buildChartSnapshot(birthDate, birthTime24, birthPlace, latitude, longitude, timezone, gender)
+
   // If setting as favorite, clear any existing favorite for this user first
   if (isFavorite) {
     await supabase
@@ -190,26 +310,24 @@ export async function POST(req: NextRequest) {
     utc_offset,
     is_favorite: isFavorite,
 
-    // Ensure "chart output" is NOT stored
-    ayanamsa: null,
-    ascendant_degree: null,
-    ascendant_sign: null,
-    moon_sign: null,
-    sun_sign: null,
-    nakshatra: null,
-    nakshatra_pada: null,
-    planets: null,
-    houses: null,
-    dashas: null,
-    yogas: null,
+    // Computed snapshot — populated from calculation, null on failure
+    ayanamsa:         null,
+    moon_sign:        snapshot?.moon_sign        ?? null,
+    sun_sign:         snapshot?.sun_sign         ?? null,
+    ascendant_sign:   snapshot?.ascendant_sign   ?? null,
+    ascendant_degree: snapshot?.ascendant_degree ?? null,
+    nakshatra:        snapshot?.nakshatra        ?? null,
+    nakshatra_pada:   snapshot?.nakshatra_pada   ?? null,
+    planets:          snapshot?.planets          ?? null,
+    dashas:           snapshot?.dashas           ?? null,
+    houses:           null,
+    yogas:            null,
   }
 
   const { data: created, error: e } = await supabase
     .from('charts')
     .insert(insertRow)
-    .select(
-      'id,user_id,name,label,gender,birth_date,birth_time,birth_place,latitude,longitude,timezone,utc_offset,created_at,updated_at,is_favorite'
-    )
+    .select(FULL_SELECT)
     .single()
 
   if (e) {

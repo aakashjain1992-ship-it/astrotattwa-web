@@ -29,7 +29,7 @@ export function Footer({ className }: { className?: string }) {
 
         <div style={{ display: 'flex', gap: '22px' }}>
           <a
-            href="https://astrotattwa.com/privacy"
+            href="https://astrotattwa.com/privacy-policy/"
             style={{
               fontSize: '13px',
               color: 'var(--text3)',

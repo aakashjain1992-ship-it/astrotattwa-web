@@ -16,12 +16,12 @@ npm run build            # Production build (512MB memory limit)
 npm run lint             # ESLint via next lint
 npm run type-check       # TypeScript check (tsc --noEmit)
 npm start                # Start production server
-pm2 restart astrotattwa-web  # Restart production process
+pm2 reload astrotattwa-web   # Reload production process (near-zero downtime)
 ```
 
 Note: `next.config.js` sets `ignoreBuildErrors: true` for TypeScript — type errors won't fail the build. Run `npm run type-check` separately.
 
-**Deploy sequence (production):** `NODE_OPTIONS='--max-old-space-size=512' npx next build --webpack && pm2 reload astrotattwa-web && pm2 save` — do NOT `rm -rf .next` first (old server keeps serving from memory while new build writes in-place). Use `pm2 reload` not `pm2 restart` — reload starts new instance before killing old one (near-zero downtime).
+**Deploy sequence (production):** `npm run build && pm2 reload astrotattwa-web && pm2 save` — **NEVER stop PM2 before building.** Build first while the old server keeps serving from memory, then reload after. Do NOT `rm -rf .next` first. Use `pm2 reload` not `pm2 restart` — reload starts new instance before killing old one (near-zero downtime). `npm run build` already sets `NODE_OPTIONS='--max-old-space-size=512'` — required because the Linode VPS has ~957 MB RAM total.
 
 ## Tech Stack
 
@@ -32,7 +32,7 @@ Note: `next.config.js` sets `ignoreBuildErrors: true` for TypeScript — type er
 - **Forms:** React Hook Form + Zod validation schemas (in `src/lib/validation/`)
 - **Rate Limiting:** Upstash Redis (`@upstash/ratelimit`) — presets in `src/lib/api/rateLimit.ts`
 - **Testing:** Vitest and @testing-library/react are installed but **no tests exist** — manual testing via `/api/test/run-calculations`
-- **Deployment:** GitHub Actions → SSH to Linode → `npm install && npm run build && pm2 restart`
+- **Deployment:** GitHub Actions → SSH to Linode → `npm install && npm run build && pm2 reload astrotattwa-web`
 
 ## Architecture
 
@@ -66,7 +66,7 @@ Note: `next.config.js` sets `ignoreBuildErrors: true` for TypeScript — type er
 - `src/lib/panchang/` — Daily Panchang engine (12 files) — see section below
 - `src/lib/utils/divisional/` — Individual D2-D60 chart calculation files (legacy, mostly superseded by divisionalChartBuilder)
 - `src/lib/utils/chartHelpers.ts` — House building functions (Lagna, Moon, Navamsa)
-- `src/components/chart/` — Chart display components: `PlanetaryTable.tsx` (sorted in KP order), `PlanetsTab.tsx`, `DashaNavigator.tsx`, `AvakhadaTable.tsx`, `ChartFocusMode.tsx` (D1/Moon/D9 visual charts), `ChartLabelModal.tsx` (save/rename + is_favorite), `DeleteChartDialog.tsx`
+- `src/components/chart/` — Chart display components: `PlanetaryTable.tsx` (sorted in KP order), `PlanetsTab.tsx`, `DashaNavigator.tsx`, `AvakhadaTable.tsx`, `ChartFocusMode.tsx` (D1/Moon/D9 visual charts), `ChartLabelModal.tsx` (save/rename + is_favorite), `DeleteChartDialog.tsx`, `DiamondChart.tsx` (renders the diamond-grid chart layout — used by both ChartFocusMode and DivisionalChartsTab; accepts `showAscLabel` to toggle Asc annotation)
 - `src/components/chart/sadesati/` — `SadeSatiTableView.tsx` + supporting components
 - `src/components/chart/divisional/` — `DivisionalChartsTab.tsx` + config/selector/insights
 - `src/components/forms/` — Birth data forms with city autocomplete
@@ -74,6 +74,40 @@ Note: `next.config.js` sets `ignoreBuildErrors: true` for TypeScript — type er
 - `src/components/ui/` — shadcn/ui components (do not manually edit, use `npx shadcn-ui@latest add`)
 - `src/types/astrology.ts` — Central type definitions for all astrology entities (PlanetData, ChartData, HouseInfo, KPData, etc.)
 - `src/types/chart-calculation.ts` — API request/response types
+
+### Frontend Pages
+
+| Route | Description |
+|-------|-------------|
+| `/` | Homepage: Hero + BirthDataForm, Panchang + Horoscope teasers, Festival Calendar, Navagraha |
+| `/chart` | Chart view — reads `lastChart` from localStorage |
+| `/chart/[id]` | Saved chart view — URL set via `replaceState`, not Next.js nav |
+| `/panchang` | Daily Panchang for user's location |
+| `/horoscope/[type]/[rashi]` | SSR horoscope page; redirects `/horoscope` → `/horoscope/daily/aries` |
+| `/numerology` | Lo Shu Grid numerology reading — form + tabbed report |
+| `/numerology/compatibility` | Partner compatibility — two-person form + 5-tab CompatibilityReport |
+| `/settings` | Protected; user account settings |
+| `/admin/tests` | Manual regression test runner (requires `ADMIN_SECRET_TOKEN`) |
+| `/(auth)/login` | Auth pages (grouped route, no shared layout with app) |
+| `/terms` | Terms of Service (static) |
+| `/privacy-policy` | Privacy Policy (static) — note: old `/privacy` route was deleted |
+
+**Deleted routes:** `/preview` was merged into `/` (Apr 2026).
+
+### PM2 Processes
+
+| Process | Description |
+|---------|-------------|
+| `astrotattwa-web` | Next.js production server |
+| `horoscope-cron` | Runs `scripts/horoscope/cron.js` — generates daily/weekly/monthly horoscopes on schedule |
+
+### Scripts (`scripts/`)
+
+- `scripts/horoscope/generate.js` — Manual horoscope generation: `node scripts/horoscope/generate.js [daily|weekly|monthly] [YYYY-MM-DD]`
+- `scripts/horoscope/cron.js` — Cron worker run by PM2 `horoscope-cron`
+- `scripts/transit-db/` — Planet transit DB population: `generate-daily-positions.js`, `generate-planet-transits.js`, `transit-cron-worker.js`, `seed-transit-log.js`
+- `scripts/seed-festivals.ts` — Seeds `festival_calendar` table
+- `scripts/send-audit-email.ts` — Admin audit emails via Resend
 
 ### Panchang Module (`src/lib/panchang/`)
 
@@ -120,12 +154,33 @@ Cache key: `${CACHE_VERSION}_${dateParam}_${lat.toFixed(2)}_${lng.toFixed(2)}`
 | `/api/save-chart` | Chart CRUD (GET list, POST create — requires auth) |
 | `/api/save-chart/[id]` | PATCH update, DELETE — requires auth; PATCH clears other `is_favorite` when setting new default |
 | `/api/cities/search` | City autocomplete (uses HERE Maps API) |
+| `/api/user/theme` | GET/PATCH user theme preference — stored in `profiles.theme`; GET returns `null` if unset |
 | `/api/auth/login`, `/logout`, `/me` | Authentication |
 | `/auth/callback` | Supabase OAuth callback handler |
 | `/api/test/run-calculations`, `/history`, `/delete-runs` | Manual regression testing (requires `ADMIN_SECRET_TOKEN`); UI at `/admin/tests` |
 | `/api/horoscope` | GET: fetch horoscope by type/rashi/sign_type/date; fallback to latest if not found |
 | `/api/horoscope/history` | GET: past N horoscopes (7 daily / 4 weekly / 6 monthly) |
 | `/api/horoscope/generate` | POST: generate all 12 rashis for a type/date (protected by `ADMIN_SECRET_TOKEN`) |
+| `/api/numerology` | GET: saved readings list; POST: save reading — requires auth |
+| `/api/numerology/[id]` | DELETE: remove saved reading — requires auth |
+| `/api/numerology/compatibility` | GET: saved compatibility readings; POST: save — requires auth |
+| `/api/numerology/compatibility/[id]` | DELETE: remove saved compatibility reading — requires auth |
+
+### Theming Pattern
+
+Any component with structural backgrounds or borders must be theme-aware. Two approaches used throughout the codebase:
+
+1. **CSS variables** — structural elements use `hsl(var(--card))`, `hsl(var(--background))`, `var(--border)`, `var(--shadow-md)`. Dark mode overrides for flat tokens (`--text`, `--text2`, `--text3`, `--surface`, `--bg`, `--bg-subtle`, `--shadow-*`, etc.) are defined inside the `.dark {}` block in `globals.css`.
+
+2. **`tw()` helper** — components with dynamic inline opacity values (borders, row backgrounds, separators) import `useTheme` and define:
+   ```ts
+   const { resolvedTheme } = useTheme()
+   const isDark = resolvedTheme === 'dark'
+   const tw = (a: number) => isDark ? `rgba(255,255,255,${a})` : `rgba(13,17,23,${a})`
+   ```
+   This replaces all hardcoded `rgba(255,255,255,X)` values which are invisible in light mode. Components using this pattern: `PanchangTeaser`, `HoroscopeTeaser`, `FestivalCalendarSection`, `FestivalCalendarPage`.
+
+**`/api/user/theme` (GET/PATCH):** Reads/writes `profiles.theme` using Supabase cookie auth (`createServerClient` + `getChunkedCookie`). GET returns `null` (not `'light'`) when no theme is stored — the Header only calls `setTheme()` when the API returns a non-null value, preventing the API from overwriting a locally-set dark theme on every page load. **Do not use `x-user-id` header in API routes** — middleware sets it on the *response*, not the request, so API routes never see it. Use `supabase.auth.getUser()` instead.
 
 ### Auth & Middleware
 
@@ -142,11 +197,19 @@ Cache key: `${CACHE_VERSION}_${dateParam}_${lat.toFixed(2)}_${lng.toFixed(2)}`
 
 Centralized in `src/lib/api/errorHandling.ts` — use `successResponse()`, `errorResponse()`, `validationError()`, etc. Rate limiting presets in `src/lib/api/rateLimit.ts`: `strict` (5/min), `standard` (20/min), `lenient` (60/min — used for Panchang and horoscope), `auth` (very strict). There is no `loose` preset.
 
+## Workflow Discipline
+
+- **Complex features** (>2 files, new API + UI, or unclear approach): run `/plan` first, get approval before writing any code
+- **Any bug or unexpected behavior**: run `/debug` — diagnose root cause before attempting a fix
+- **Any completed task**: run `/verify` — re-read changed files, trace the logic end-to-end, then declare done
+- **New pages vs existing pages**: when a feature could live on an existing page or a new page, always ask the user which they prefer — never create a new page without confirming first
+- TypeScript errors don't fail the build (`ignoreBuildErrors: true`) — run `npm run type-check` separately after changes
+
 ## Conventions
 
 - Path alias: `@/*` maps to `src/*`
 - Fonts: Instrument Serif (headings), DM Sans (body) — loaded in root layout
-- Theme: CSS variables in `globals.css` with light/dark mode via `next-themes` (class strategy)
+- Theme: CSS variables in `globals.css` with light/dark mode via a **custom `ThemeProvider`** (`src/components/theme-provider.tsx`) — NOT next-themes. Uses `MutationObserver` to re-apply `.dark` class on the `<html>` element whenever React reconciliation strips it. Theme persisted to `localStorage` (key: `theme`) and to `profiles.theme` in Supabase via `/api/user/theme`.
 - `swisseph` must stay in `serverExternalPackages` in `next.config.js` — it's a native Node module that cannot be bundled
 - Commit style: `type(scope): description` (e.g., `fix(panchang): correct vijaya muhurta to 11th of 15-muhurta system`)
 - The owner uses both Claude and ChatGPT — see `AI_HANDOFF_GUIDE.md` for session handoff protocol
@@ -177,8 +240,35 @@ General (non-user-specific) horoscopes for all 12 rashis — daily, weekly, mont
 
 **UI:** `HoroscopeShell` — lang preference in `localStorage` (`horoscope_lang`); Prev/Next nav inline with type tabs; history loaded on mount.
 
-### Database Tables (18 in Supabase)
-`profiles`, `charts`, `cities`, `reports`, `payments`, `test_cases`, `test_case_runs`, `astronomical_events`, `auth_login_attempts_v2`, `auth_login_events`, `planet_daily_positions`, `planet_retrograde_periods`, `planet_sign_transits`, `transit_generation_log`, `panchang_cache`, `festival_calendar`, `horoscopes`, `horoscope_generation_log`. Note: `supabase/migrations/001_initial_schema.sql` only defines 4 tables; `supabase/panchang_tables.sql` defines 2 more — the rest were created directly in Supabase.
+### Numerology Module (`src/lib/numerology/`)
+
+Pure client-side calculation — no server calls. All computation runs in the browser.
+
+| File | Responsibility |
+|------|---------------|
+| `calculate.ts` | Main entry point — `calculateNumerology(dob, name): NumerologyResult` |
+| `compatibility.ts` | `calculateCompatibility(r1, r2): CompatibilityResult` — 100-pt score engine |
+| `chaldean.ts` | Chaldean name numerology (no letter maps to 9) |
+| `meanings.ts` | All pre-written interpretations — `NUMBER_MEANINGS`, `ARROW_MEANINGS`, `RAJ_YOGA_MEANINGS`, `KARMIC_LESSON_MEANINGS`, `MASTER_NUMBER_MEANINGS`, `PLANE_GUIDANCE` |
+| `compatibilityMeanings.ts` | LP pair matrix (36 unique pairs) — `getLPPairMeaning(lp1, lp2)` |
+
+**Key calculation rules:**
+- Life Path = sum of the **day (DD) digits only**, reduced; master numbers 11/22/33 preserved
+- Destiny = sum of **all DOB digits**, reduced; master numbers preserved
+- `gridFrequency` = DOB digit frequency + 1 for LP number + 1 for Destiny number → used for grid, planes, arrows, yogas
+- `frequency` (DOB only) → used solely for karmic lessons (missing numbers)
+- Number strength: 0 = Missing, 1 = Balanced, 2 = Strong, 3+ = Excess
+
+**Compatibility score breakdown (100 pts):** Life Path harmony 30 + Destiny alignment 20 + Grid balance 20 + Arrow harmony 15 + Raj Yoga alignment 15.
+
+**Components:** `src/components/numerology/` — `NumerologyReport` (6-tab reusable report), `CompatibilityReport` (5-tab), `LoShuGrid`, `CoreNumbers`, `ChaldeanCard`, `PlanesAnalysis`, `ArrowsAnalysis`, `RajYogas`, `KarmicLessons`, `SpecialConditions`, `SavedReadings`, `CompatibilityScore`, `GridComparison`, `CompatibilityArrows`, `CompatibilityYogas`.
+
+**`NumerologyReport` is designed to be embedded** — it only takes a `NumerologyResult` prop and is used inside `CompatibilityReport`'s "Full Reports" tab to show each person's complete reading.
+
+**Strings in `meanings.ts` must use double quotes** — single-quoted strings with apostrophes caused a build failure previously.
+
+### Database Tables (20 in Supabase)
+`profiles`, `charts`, `cities`, `reports`, `payments`, `test_cases`, `test_case_runs`, `astronomical_events`, `auth_login_attempts_v2`, `auth_login_events`, `planet_daily_positions`, `planet_retrograde_periods`, `planet_sign_transits`, `transit_generation_log`, `panchang_cache`, `festival_calendar`, `horoscopes`, `horoscope_generation_log`, `numerology_readings`, `compatibility_readings`. Note: `supabase/migrations/001_initial_schema.sql` only defines 4 tables; `supabase/panchang_tables.sql` defines 2 more — the rest were created directly in Supabase.
 
 ## Known Issues
 
