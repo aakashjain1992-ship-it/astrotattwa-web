@@ -84,7 +84,6 @@ export default function HomePage() {
               fontSize: '15.5px', lineHeight: 1.72,
               color: 'var(--text2)', maxWidth: '420px',
               marginBottom: '10px',
-              animation: 'up .65s ease .65s forwards',
             }}>
               Your birth chart is a precise record of the sky at the moment
               you arrived — the timing of life&apos;s chapters, the pattern of your
@@ -95,7 +94,6 @@ export default function HomePage() {
               fontSize: '15.5px', lineHeight: 1.72,
               color: 'var(--text2)', maxWidth: '420px',
               marginBottom: '28px',
-              animation: 'up .65s ease .65s forwards',
             }}>
               Astrotattwa helps you decode your chart through -
 
@@ -105,7 +103,6 @@ export default function HomePage() {
             <ul style={{
               listStyle: 'none', display: 'flex', flexDirection: 'column',
               gap: '10px', marginBottom: '0',
-              animation: 'up .65s ease .82s forwards',
             }}>
               {HERO_BULLETS.map(text => (
                 <li key={text} style={{
@@ -130,7 +127,6 @@ export default function HomePage() {
               background: 'var(--blue-light)',
               border: '1px solid var(--blue-mid)',
               borderRadius: '12px',
-              animation: 'up .65s ease 1.05s forwards',
             }}>
               {HERO_STATS.map((s, i) => (
                 <div key={s.num} style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
@@ -171,7 +167,6 @@ export default function HomePage() {
               padding: '32px 32px 28px',
               width: '100%', maxWidth: '480px',
               boxShadow: 'var(--shadow-md)',
-              animation: 'cardIn .85s cubic-bezier(.16,1,.3,1) .3s forwards',
             }}>
               <BirthDataFormWrapper />
              </div>  
