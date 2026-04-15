@@ -45,7 +45,6 @@ export default function HomePage() {
               fontSize: '11px', fontWeight: 500, letterSpacing: '2.8px',
               textTransform: 'uppercase', color: 'var(--blue)',
               marginBottom: '18px',
-              animation: 'up .6s ease .15s forwards',
             }}>
               <span style={{
                 width: '5px', height: '5px', borderRadius: '50%',
@@ -64,7 +63,6 @@ export default function HomePage() {
                 display: 'block', fontStyle: 'italic', fontWeight: 400,
                 fontSize: 'clamp(30px,3.8vw,52px)',
                 color: 'var(--text3)',
-                animation: 'up .75s ease .3s forwards',
               }}>
                 the map
               </span>
@@ -72,7 +70,6 @@ export default function HomePage() {
                 display: 'block', fontWeight: 400,
                 fontSize: 'clamp(52px,6.2vw,84px)',
                 color: 'var(--text)', lineHeight: 1,
-                animation: 'up .75s ease .45s forwards',
               }}>
                 you were<br />
                 <span style={{ color: 'var(--blue)' }}>born with</span>
