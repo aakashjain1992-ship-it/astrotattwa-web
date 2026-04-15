@@ -84,6 +84,8 @@ Note: `next.config.js` sets `ignoreBuildErrors: true` for TypeScript — type er
 | `/chart/[id]` | Saved chart view — URL set via `replaceState`, not Next.js nav |
 | `/panchang` | Daily Panchang for user's location |
 | `/horoscope/[type]/[rashi]` | SSR horoscope page; redirects `/horoscope` → `/horoscope/daily/aries` |
+| `/numerology` | Lo Shu Grid numerology reading — form + tabbed report |
+| `/numerology/compatibility` | Partner compatibility — two-person form + 5-tab CompatibilityReport |
 | `/settings` | Protected; user account settings |
 | `/admin/tests` | Manual regression test runner (requires `ADMIN_SECRET_TOKEN`) |
 | `/(auth)/login` | Auth pages (grouped route, no shared layout with app) |
@@ -159,6 +161,10 @@ Cache key: `${CACHE_VERSION}_${dateParam}_${lat.toFixed(2)}_${lng.toFixed(2)}`
 | `/api/horoscope` | GET: fetch horoscope by type/rashi/sign_type/date; fallback to latest if not found |
 | `/api/horoscope/history` | GET: past N horoscopes (7 daily / 4 weekly / 6 monthly) |
 | `/api/horoscope/generate` | POST: generate all 12 rashis for a type/date (protected by `ADMIN_SECRET_TOKEN`) |
+| `/api/numerology` | GET: saved readings list; POST: save reading — requires auth |
+| `/api/numerology/[id]` | DELETE: remove saved reading — requires auth |
+| `/api/numerology/compatibility` | GET: saved compatibility readings; POST: save — requires auth |
+| `/api/numerology/compatibility/[id]` | DELETE: remove saved compatibility reading — requires auth |
 
 ### Theming Pattern
 
@@ -234,8 +240,35 @@ General (non-user-specific) horoscopes for all 12 rashis — daily, weekly, mont
 
 **UI:** `HoroscopeShell` — lang preference in `localStorage` (`horoscope_lang`); Prev/Next nav inline with type tabs; history loaded on mount.
 
-### Database Tables (18 in Supabase)
-`profiles`, `charts`, `cities`, `reports`, `payments`, `test_cases`, `test_case_runs`, `astronomical_events`, `auth_login_attempts_v2`, `auth_login_events`, `planet_daily_positions`, `planet_retrograde_periods`, `planet_sign_transits`, `transit_generation_log`, `panchang_cache`, `festival_calendar`, `horoscopes`, `horoscope_generation_log`. Note: `supabase/migrations/001_initial_schema.sql` only defines 4 tables; `supabase/panchang_tables.sql` defines 2 more — the rest were created directly in Supabase.
+### Numerology Module (`src/lib/numerology/`)
+
+Pure client-side calculation — no server calls. All computation runs in the browser.
+
+| File | Responsibility |
+|------|---------------|
+| `calculate.ts` | Main entry point — `calculateNumerology(dob, name): NumerologyResult` |
+| `compatibility.ts` | `calculateCompatibility(r1, r2): CompatibilityResult` — 100-pt score engine |
+| `chaldean.ts` | Chaldean name numerology (no letter maps to 9) |
+| `meanings.ts` | All pre-written interpretations — `NUMBER_MEANINGS`, `ARROW_MEANINGS`, `RAJ_YOGA_MEANINGS`, `KARMIC_LESSON_MEANINGS`, `MASTER_NUMBER_MEANINGS`, `PLANE_GUIDANCE` |
+| `compatibilityMeanings.ts` | LP pair matrix (36 unique pairs) — `getLPPairMeaning(lp1, lp2)` |
+
+**Key calculation rules:**
+- Life Path = sum of the **day (DD) digits only**, reduced; master numbers 11/22/33 preserved
+- Destiny = sum of **all DOB digits**, reduced; master numbers preserved
+- `gridFrequency` = DOB digit frequency + 1 for LP number + 1 for Destiny number → used for grid, planes, arrows, yogas
+- `frequency` (DOB only) → used solely for karmic lessons (missing numbers)
+- Number strength: 0 = Missing, 1 = Balanced, 2 = Strong, 3+ = Excess
+
+**Compatibility score breakdown (100 pts):** Life Path harmony 30 + Destiny alignment 20 + Grid balance 20 + Arrow harmony 15 + Raj Yoga alignment 15.
+
+**Components:** `src/components/numerology/` — `NumerologyReport` (6-tab reusable report), `CompatibilityReport` (5-tab), `LoShuGrid`, `CoreNumbers`, `ChaldeanCard`, `PlanesAnalysis`, `ArrowsAnalysis`, `RajYogas`, `KarmicLessons`, `SpecialConditions`, `SavedReadings`, `CompatibilityScore`, `GridComparison`, `CompatibilityArrows`, `CompatibilityYogas`.
+
+**`NumerologyReport` is designed to be embedded** — it only takes a `NumerologyResult` prop and is used inside `CompatibilityReport`'s "Full Reports" tab to show each person's complete reading.
+
+**Strings in `meanings.ts` must use double quotes** — single-quoted strings with apostrophes caused a build failure previously.
+
+### Database Tables (20 in Supabase)
+`profiles`, `charts`, `cities`, `reports`, `payments`, `test_cases`, `test_case_runs`, `astronomical_events`, `auth_login_attempts_v2`, `auth_login_events`, `planet_daily_positions`, `planet_retrograde_periods`, `planet_sign_transits`, `transit_generation_log`, `panchang_cache`, `festival_calendar`, `horoscopes`, `horoscope_generation_log`, `numerology_readings`, `compatibility_readings`. Note: `supabase/migrations/001_initial_schema.sql` only defines 4 tables; `supabase/panchang_tables.sql` defines 2 more — the rest were created directly in Supabase.
 
 ## Known Issues
 
