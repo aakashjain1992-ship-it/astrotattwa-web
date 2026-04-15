@@ -99,6 +99,7 @@ export function DateTimeField({
   fromYear = 1900,
   errorDate,
   errorTime,
+  dateOnly = false,
 }: {
   labelDate?: string
   labelTime?: string
@@ -108,6 +109,8 @@ export function DateTimeField({
   fromYear?: number
   errorDate?: string
   errorTime?: string
+  /** When true, renders only the date picker and hides the time fields */
+  dateOnly?: boolean
 }) {
   const today = new Date()
   const toYear = today.getFullYear()
@@ -362,7 +365,7 @@ export function DateTimeField({
         {errorDate && <p className="text-sm text-destructive">{errorDate}</p>}
       </div>
 
-      <div className="space-y-2">
+      {!dateOnly && <div className="space-y-2">
         <Label className="flex items-center gap-2">
           <Clock className="h-4 w-4" />
           {labelTime}
@@ -408,7 +411,7 @@ export function DateTimeField({
           </Select>
         </div>
         {errorTime && <p className="text-sm text-destructive">{errorTime}</p>}
-      </div>
+      </div>}
     </div>
   )
 }
