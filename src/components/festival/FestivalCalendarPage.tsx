@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import type { FestivalData } from '@/lib/panchang/types'
+import { useTheme } from '@/components/theme-provider'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -47,7 +48,7 @@ function getDow(dateStr: string): string {
 
 // ── Festival Row ──────────────────────────────────────────────────────────────
 
-function FestRow({ f }: { f: FestivalData }) {
+function FestRow({ f, tw }: { f: FestivalData; tw: (a: number) => string }) {
   const info = TYPE_INFO[f.type] ?? TYPE_INFO.minor
   const { month, day } = parseDateStr(f.date)
   const dow = getDow(f.date)
@@ -56,29 +57,29 @@ function FestRow({ f }: { f: FestivalData }) {
   return (
     <div style={{
       display: 'flex', alignItems: 'flex-start', gap: '14px',
-      padding: '12px 0', borderBottom: '1px solid rgba(255,255,255,.04)',
+      padding: '12px 0', borderBottom: `1px solid ${tw(.06)}`,
     }}>
       {/* Date block */}
       <div style={{ flexShrink: 0, width: '42px', textAlign: 'center' }}>
         <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '.8px', textTransform: 'uppercase', color: GOLD, opacity: .65, marginBottom: '2px' }}>{dow}</div>
-        <div style={{ fontSize: '20px', fontWeight: 700, lineHeight: 1, color: 'rgba(255,255,255,.88)' }}>{day}</div>
-        <div style={{ fontSize: '9px', letterSpacing: '.6px', textTransform: 'uppercase', color: 'rgba(255,255,255,.25)', marginTop: '2px' }}>{mon}</div>
+        <div style={{ fontSize: '20px', fontWeight: 700, lineHeight: 1, color: tw(.88) }}>{day}</div>
+        <div style={{ fontSize: '9px', letterSpacing: '.6px', textTransform: 'uppercase', color: tw(.25), marginTop: '2px' }}>{mon}</div>
       </div>
 
       {/* Divider */}
-      <div style={{ width: '1px', alignSelf: 'stretch', background: 'rgba(255,255,255,.07)', flexShrink: 0 }} />
+      <div style={{ width: '1px', alignSelf: 'stretch', background: tw(.07), flexShrink: 0 }} />
 
       {/* Content */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: '14px', fontWeight: 500, color: 'rgba(255,255,255,.85)' }}>{f.name}</span>
+          <span style={{ fontSize: '14px', fontWeight: 500, color: tw(.85) }}>{f.name}</span>
           <span style={{
             fontSize: '10px', padding: '2px 8px', borderRadius: '99px',
             background: info.bg, color: info.color, flexShrink: 0,
           }}>{info.label}</span>
         </div>
         {f.description && (
-          <p style={{ fontSize: '12px', color: 'rgba(255,255,255,.3)', margin: '4px 0 0', lineHeight: 1.55 }}>
+          <p style={{ fontSize: '12px', color: tw(.4), margin: '4px 0 0', lineHeight: 1.55 }}>
             {f.description}
           </p>
         )}
@@ -90,6 +91,12 @@ function FestRow({ f }: { f: FestivalData }) {
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export function FestivalCalendarPage() {
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
+
+  // tw(opacity) — returns white-based color in dark mode, near-black in light mode
+  const tw = (a: number) => isDark ? `rgba(255,255,255,${a})` : `rgba(13,17,23,${a})`
+
   const now = new Date()
   const currentYear  = now.getFullYear()
   const currentMonth = now.getMonth() + 1
@@ -189,7 +196,7 @@ export function FestivalCalendarPage() {
             <h1 style={{
               fontFamily: "'Instrument Serif', serif",
               fontSize: 'clamp(28px, 4vw, 48px)', fontWeight: 400,
-              color: 'rgba(255,255,255,.92)', margin: 0, letterSpacing: '-.5px',
+              color: tw(.92), margin: 0, letterSpacing: '-.5px',
             }}>
               Festival Calendar {activeYear}
             </h1>
@@ -199,8 +206,8 @@ export function FestivalCalendarPage() {
                   padding: '7px 20px', borderRadius: '10px', fontSize: '13px',
                   cursor: 'pointer', border: '1px solid',
                   background: activeYear === y ? GOLD_RGBA(.15) : 'transparent',
-                  borderColor: activeYear === y ? GOLD_RGBA(.5) : 'rgba(255,255,255,.12)',
-                  color: activeYear === y ? GOLD : 'rgba(255,255,255,.4)',
+                  borderColor: activeYear === y ? GOLD_RGBA(.5) : tw(.12),
+                  color: activeYear === y ? GOLD : tw(.4),
                   fontWeight: activeYear === y ? 600 : 400,
                   transition: 'all .15s',
                 }}>{y}</button>
@@ -219,8 +226,8 @@ export function FestivalCalendarPage() {
                 padding: '6px 16px', borderRadius: '99px', fontSize: '12.5px',
                 cursor: 'pointer', border: '1px solid',
                 background: active ? (info ? info.bg : GOLD_RGBA(.12)) : 'transparent',
-                borderColor: active ? (info ? info.color : GOLD) : 'rgba(255,255,255,.1)',
-                color: active ? (info ? info.color : GOLD) : 'rgba(255,255,255,.4)',
+                borderColor: active ? (info ? info.color : GOLD) : tw(.1),
+                color: active ? (info ? info.color : GOLD) : tw(.4),
                 fontWeight: active ? 600 : 400, transition: 'all .15s',
               }}>{opt.label}</button>
             )
@@ -229,7 +236,7 @@ export function FestivalCalendarPage() {
 
         {loading ? (
           <div style={{ minHeight: '40vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <p style={{ color: 'rgba(255,255,255,.2)', fontSize: '14px' }}>Loading…</p>
+            <p style={{ color: tw(.3), fontSize: '14px' }}>Loading…</p>
           </div>
         ) : (
           /* ── Main Grid ─────────────────────────────── */
@@ -242,10 +249,10 @@ export function FestivalCalendarPage() {
 
             {/* ── LEFT: Mini Calendar ─────────────────── */}
             <div style={{
-              border: '1px solid rgba(255,255,255,.07)',
+              border: `1px solid ${tw(.07)}`,
               borderRadius: '20px',
               padding: '24px',
-              background: 'rgba(255,255,255,.02)',
+              background: tw(.02),
               position: 'sticky',
               top: '84px',
             }}>
@@ -253,25 +260,25 @@ export function FestivalCalendarPage() {
               {/* Month nav */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
                 <button onClick={prevMonth} disabled={selectedMonth === 1} style={{
-                  background: 'transparent', border: '1px solid rgba(255,255,255,.1)', borderRadius: '8px',
+                  background: 'transparent', border: `1px solid ${tw(.1)}`, borderRadius: '8px',
                   width: '32px', height: '32px', fontSize: '18px', lineHeight: 1,
                   cursor: selectedMonth === 1 ? 'default' : 'pointer',
-                  color: selectedMonth === 1 ? 'rgba(255,255,255,.12)' : 'rgba(255,255,255,.5)',
+                  color: selectedMonth === 1 ? tw(.12) : tw(.5),
                   display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all .15s',
                 }}>‹</button>
 
                 <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '15px', fontWeight: 600, color: 'rgba(255,255,255,.88)' }}>
+                  <div style={{ fontSize: '15px', fontWeight: 600, color: tw(.88) }}>
                     {MONTH_NAMES[selectedMonth - 1]}
                   </div>
-                  <div style={{ fontSize: '11px', color: 'rgba(255,255,255,.28)', marginTop: '1px' }}>{activeYear}</div>
+                  <div style={{ fontSize: '11px', color: tw(.28), marginTop: '1px' }}>{activeYear}</div>
                 </div>
 
                 <button onClick={nextMonth} disabled={selectedMonth === 12} style={{
-                  background: 'transparent', border: '1px solid rgba(255,255,255,.1)', borderRadius: '8px',
+                  background: 'transparent', border: `1px solid ${tw(.1)}`, borderRadius: '8px',
                   width: '32px', height: '32px', fontSize: '18px', lineHeight: 1,
                   cursor: selectedMonth === 12 ? 'default' : 'pointer',
-                  color: selectedMonth === 12 ? 'rgba(255,255,255,.12)' : 'rgba(255,255,255,.5)',
+                  color: selectedMonth === 12 ? tw(.12) : tw(.5),
                   display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all .15s',
                 }}>›</button>
               </div>
@@ -281,7 +288,7 @@ export function FestivalCalendarPage() {
                 {DAY_LABELS.map(d => (
                   <div key={d} style={{
                     textAlign: 'center', fontSize: '9.5px', fontWeight: 700,
-                    color: 'rgba(255,255,255,.18)', letterSpacing: '.5px', padding: '4px 0',
+                    color: tw(.3), letterSpacing: '.5px', padding: '4px 0',
                   }}>{d}</div>
                 ))}
               </div>
@@ -309,13 +316,13 @@ export function FestivalCalendarPage() {
                         cursor: hasFest ? 'pointer' : 'default',
                         transition: 'all .12s',
                       }}
-                      onMouseEnter={e => { if (hasFest && !selected) e.currentTarget.style.background = 'rgba(255,255,255,.05)' }}
+                      onMouseEnter={e => { if (hasFest && !selected) e.currentTarget.style.background = tw(.05) }}
                       onMouseLeave={e => { e.currentTarget.style.background = selected ? GOLD_RGBA(.18) : today ? GOLD_RGBA(.08) : 'transparent' }}
                     >
                       <span style={{
                         fontSize: '12px', lineHeight: 1,
                         fontWeight: today || selected ? 700 : 400,
-                        color: selected ? GOLD : today ? GOLD : hasFest ? 'rgba(255,255,255,.82)' : 'rgba(255,255,255,.28)',
+                        color: selected ? GOLD : today ? GOLD : hasFest ? tw(.82) : tw(.28),
                       }}>{day}</span>
                       <div style={{ display: 'flex', gap: '2px', marginTop: '3px', height: '5px', alignItems: 'center' }}>
                         {dotColors.map((color, di) => (
@@ -328,13 +335,13 @@ export function FestivalCalendarPage() {
               </div>
 
               {/* Legend */}
-              <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,.06)' }}>
-                <div style={{ fontSize: '10px', color: 'rgba(255,255,255,.18)', letterSpacing: '.6px', textTransform: 'uppercase', marginBottom: '10px' }}>Legend</div>
+              <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: `1px solid ${tw(.06)}` }}>
+                <div style={{ fontSize: '10px', color: tw(.3), letterSpacing: '.6px', textTransform: 'uppercase', marginBottom: '10px' }}>Legend</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 12px' }}>
                   {Object.entries(TYPE_INFO).map(([key, info]) => (
                     <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
                       <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: info.color, flexShrink: 0 }} />
-                      <span style={{ fontSize: '11px', color: 'rgba(255,255,255,.35)' }}>{info.label}</span>
+                      <span style={{ fontSize: '11px', color: tw(.45) }}>{info.label}</span>
                     </div>
                   ))}
                 </div>
@@ -347,18 +354,18 @@ export function FestivalCalendarPage() {
                 <h2 style={{
                   fontFamily: "'Instrument Serif', serif",
                   fontSize: 'clamp(18px, 2vw, 26px)', fontWeight: 400,
-                  color: 'rgba(255,255,255,.85)', margin: 0,
+                  color: tw(.85), margin: 0,
                 }}>
                   {selectedDay
                     ? `${MONTH_NAMES[selectedMonth - 1]} ${selectedDay}`
                     : MONTH_NAMES[selectedMonth - 1]}
                   {' '}
-                  <span style={{ color: 'rgba(255,255,255,.3)', fontStyle: 'italic' }}>{activeYear}</span>
+                  <span style={{ color: tw(.3), fontStyle: 'italic' }}>{activeYear}</span>
                 </h2>
                 {selectedDay && (
                   <button onClick={() => setSelectedDay(null)} style={{
-                    fontSize: '12px', color: 'rgba(255,255,255,.35)',
-                    background: 'transparent', border: '1px solid rgba(255,255,255,.1)',
+                    fontSize: '12px', color: tw(.45),
+                    background: 'transparent', border: `1px solid ${tw(.1)}`,
                     borderRadius: '6px', padding: '4px 12px', cursor: 'pointer',
                   }}>Show all</button>
                 )}
@@ -366,14 +373,14 @@ export function FestivalCalendarPage() {
 
               {activeFests.length === 0 ? (
                 <div style={{ padding: '60px 0', textAlign: 'center' }}>
-                  <p style={{ color: 'rgba(255,255,255,.2)', fontSize: '14px' }}>
+                  <p style={{ color: tw(.3), fontSize: '14px' }}>
                     No festivals{selectedDay
                       ? ` on ${MONTH_NAMES[selectedMonth - 1]} ${selectedDay}`
                       : ` in ${MONTH_NAMES[selectedMonth - 1]}`}.
                   </p>
                 </div>
               ) : (
-                activeFests.map(f => <FestRow key={f.id} f={f} />)
+                activeFests.map(f => <FestRow key={f.id} f={f} tw={tw} />)
               )}
             </div>
 

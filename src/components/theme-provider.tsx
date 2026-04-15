@@ -1,7 +1,6 @@
 'use client'
 
 import { createContext, useCallback, useContext, useEffect, useState } from 'react'
-import { usePathname } from 'next/navigation'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -32,24 +31,14 @@ function resolveTheme(theme: Theme): 'light' | 'dark' {
   return theme === 'system' ? getSystemTheme() : theme
 }
 
-/** Apply / remove 'dark' class on <html>. Called directly — no React reconciler involved. */
+/** Apply / remove 'dark' class on <html>. Guards against no-op to avoid triggering
+ *  MutationObserver when the class is already in the correct state. */
 function applyClass(theme: Theme) {
-  const resolved = resolveTheme(theme)
-  document.documentElement.classList.toggle('dark', resolved === 'dark')
-}
-
-// ─── Route-change re-applier ──────────────────────────────────────────────────
-// React reconciles <html> during App Router navigation and resets its className
-// to the server-rendered value (font vars only), stripping 'dark'. This sub-
-// component detects every pathname change and immediately re-applies the class.
-
-function ThemeApplier() {
-  const pathname = usePathname()
-  useEffect(() => {
-    const stored = (localStorage.getItem('theme') as Theme) || 'light'
-    applyClass(stored)
-  }, [pathname])
-  return null
+  const shouldBeDark = resolveTheme(theme) === 'dark'
+  const isDark = document.documentElement.classList.contains('dark')
+  if (shouldBeDark !== isDark) {
+    document.documentElement.classList.toggle('dark', shouldBeDark)
+  }
 }
 
 // ─── Provider ─────────────────────────────────────────────────────────────────
@@ -64,6 +53,19 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     applyClass(stored)
     setMounted(true)
 
+    // MutationObserver: whenever React's reconciliation strips 'dark' from <html>,
+    // this fires as a microtask — before the next paint — and immediately re-adds it.
+    // No visible flash is possible because the browser never gets to paint the
+    // intermediate state.
+    const observer = new MutationObserver(() => {
+      const current = (localStorage.getItem('theme') as Theme) || 'light'
+      applyClass(current)
+    })
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+    })
+
     // Re-apply when OS preference changes (only matters when theme === 'system')
     const mq = window.matchMedia('(prefers-color-scheme: dark)')
     const onSystemChange = () => {
@@ -71,7 +73,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       if (current === 'system') applyClass('system')
     }
     mq.addEventListener('change', onSystemChange)
-    return () => mq.removeEventListener('change', onSystemChange)
+
+    return () => {
+      observer.disconnect()
+      mq.removeEventListener('change', onSystemChange)
+    }
   }, [])
 
   const setTheme = useCallback((t: Theme) => {
@@ -86,7 +92,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       setTheme,
       resolvedTheme: mounted ? resolveTheme(theme) : 'light',
     }}>
-      <ThemeApplier />
       {children}
     </ThemeContext.Provider>
   )

@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
+import { useTheme } from '@/components/theme-provider'
 import { RASHI_MAP } from '@/lib/horoscope/rashiMap'
 import type { HoroscopeContent, HoroscopeType } from '@/types/horoscope'
 
@@ -100,6 +101,9 @@ const SECTIONS = [
 
 export function HoroscopeTeaser() {
   const { user, loading: authLoading } = useAuth()
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
+  const tw = (a: number) => isDark ? `rgba(255,255,255,${a})` : `rgba(13,17,23,${a})`
 
   const [rashi,     setRashi]     = useState<RashiInfo>(DEFAULT_RASHI)
   const [type,      setType]      = useState<HoroscopeType>('daily')
@@ -173,7 +177,7 @@ export function HoroscopeTeaser() {
         </h2>
 
         {/* Daily / Weekly / Monthly tabs */}
-        <div style={{ display: 'flex', gap: '2px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', padding: '3px', flexShrink: 0 }}>
+        <div style={{ display: 'flex', gap: '2px', background: tw(.06), borderRadius: '8px', padding: '3px', flexShrink: 0 }}>
           {TYPES.map(({ key, label }) => (
             <button
               key={key}
@@ -183,7 +187,7 @@ export function HoroscopeTeaser() {
                 padding: '5px 10px', borderRadius: '6px', border: 'none',
                 cursor: 'pointer', transition: 'background .15s, color .15s',
                 background: type === key ? 'var(--blue)' : 'transparent',
-                color: type === key ? '#0A0A14' : 'var(--text3)',
+                color: type === key ? '#fff' : 'var(--text3)',
               }}
             >
               {label}
@@ -192,26 +196,33 @@ export function HoroscopeTeaser() {
         </div>
       </div>
 
-      {/* Date label */}
-      {dateLabel && (
-        <p style={{ fontSize: '12px', color: 'var(--text3)', margin: '0 0 14px', letterSpacing: '.2px' }}>
-          {dateLabel}
-        </p>
-      )}
+      {/* Date label + moon sign badge */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px', flexWrap: 'wrap' }}>
+        {dateLabel && (
+          <p style={{ fontSize: '12px', color: 'var(--text3)', margin: 0, letterSpacing: '.2px' }}>
+            {dateLabel}
+          </p>
+        )}
+        {user && (
+          <span style={{ fontSize: '10.5px', color: 'var(--text3)', background: tw(.05), border: `1px solid ${tw(.08)}`, borderRadius: '99px', padding: '2px 8px', letterSpacing: '.2px', flexShrink: 0 }}>
+            ☽ Based on your moon sign
+          </span>
+        )}
+      </div>
 
-      {loading ? <HoroscopeSkeleton /> : content ? (
+      {loading ? <HoroscopeSkeleton tw={tw} /> : content ? (
         <>
           {/* Overview */}
-          <div style={{ padding: '16px 18px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', marginBottom: '8px' }}>
+          <div style={{ padding: '16px 18px', background: tw(.025), border: `1px solid ${tw(.08)}`, borderRadius: '12px', marginBottom: '8px' }}>
             <p style={{ fontSize: '13.5px', lineHeight: 1.7, color: 'var(--text2)', margin: 0 }}>
               {truncate(content.overview, overviewMax)}
             </p>
           </div>
 
           {/* Career / Love / Health */}
-          <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', overflow: 'hidden', marginBottom: '8px' }}>
+          <div style={{ border: `1px solid ${tw(.08)}`, borderRadius: '12px', overflow: 'hidden', marginBottom: '8px' }}>
             {SECTIONS.map(({ key, icon, label }, i) => (
-              <div key={key} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', padding: '12px 16px', background: i % 2 ? 'rgba(255,255,255,0.015)' : 'transparent', borderBottom: i < SECTIONS.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
+              <div key={key} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', padding: '12px 16px', background: i % 2 ? tw(.02) : 'transparent', borderBottom: i < SECTIONS.length - 1 ? `1px solid ${tw(.05)}` : 'none' }}>
                 <span style={{ fontSize: '14px', flexShrink: 0, marginTop: '1px' }}>{icon}</span>
                 <div>
                   <div style={{ fontSize: '9px', fontWeight: 600, letterSpacing: '1.6px', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: '3px' }}>{label}</div>
@@ -224,16 +235,16 @@ export function HoroscopeTeaser() {
           </div>
 
           {/* 2×2 insight chips */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1px', background: 'rgba(255,255,255,0.06)', borderRadius: '12px', overflow: 'hidden', marginBottom: '24px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1px', background: tw(.07), borderRadius: '12px', overflow: 'hidden', marginBottom: '24px' }}>
             {[
               { icon: '🎨', label: 'Lucky Colour',    value: content.lucky_colour,    swatch: colourToHex(content.lucky_colour) },
               { icon: '🔢', label: 'Lucky Number',    value: content.lucky_number,    swatch: null },
               { icon: '⏰', label: 'Favourable Time', value: content.favourable_time, swatch: null },
               { icon: '🌿', label: 'Remedy',          value: truncate(content.remedy, 55), swatch: null },
             ].map(chip => (
-              <div key={chip.label} style={{ background: 'rgba(255,255,255,0.02)', padding: '12px 14px', transition: 'background .15s' }}
-                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(212,160,23,.04)')}
-                onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.02)')}
+              <div key={chip.label} style={{ background: tw(.025), padding: '12px 14px', transition: 'background .15s' }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(212,160,23,.06)')}
+                onMouseLeave={e => (e.currentTarget.style.background = tw(.025))}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '4px' }}>
                   <span style={{ fontSize: '11px' }}>{chip.icon}</span>
@@ -249,9 +260,11 @@ export function HoroscopeTeaser() {
 
       {/* CTA */}
       <div style={{ marginTop: 'auto' }}>
-        <Link href={`/horoscope/${type}/${rashi.slug}`} style={{ display: 'block', textAlign: 'center', background: 'var(--blue)', color: '#0A0A14', fontWeight: 600, fontSize: '14px', letterSpacing: '.3px', padding: '13px 0', borderRadius: '10px', textDecoration: 'none', transition: 'opacity .18s' }}
-          onMouseEnter={e => (e.currentTarget.style.opacity = '0.88')}
-          onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
+        <Link
+          href={`/horoscope/${type}/${rashi.slug}`}
+          style={{ display: 'block', textAlign: 'center', background: isDark ? 'transparent' : 'var(--blue)', color: isDark ? 'var(--blue)' : '#fff', fontWeight: 600, fontSize: '14px', letterSpacing: '.3px', padding: '13px 0', borderRadius: '10px', border: '1.5px solid var(--blue)', textDecoration: 'none', transition: 'background .18s, color .18s' }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'var(--blue)'; e.currentTarget.style.color = '#fff' }}
+          onMouseLeave={e => { e.currentTarget.style.background = isDark ? 'transparent' : 'var(--blue)'; e.currentTarget.style.color = isDark ? 'var(--blue)' : '#fff' }}
         >
           Check your horoscope →
         </Link>
@@ -260,27 +273,27 @@ export function HoroscopeTeaser() {
   )
 }
 
-function HoroscopeSkeleton() {
+function HoroscopeSkeleton({ tw }: { tw: (a: number) => string }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1 }}>
-      <div style={{ padding: '16px 18px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px' }}>
+      <div style={{ padding: '16px 18px', background: tw(.025), border: `1px solid ${tw(.08)}`, borderRadius: '12px' }}>
         {[100, 85, 65].map((w, i) => (
-          <div key={i} style={{ height: '13px', width: `${w}%`, background: 'rgba(255,255,255,0.06)', borderRadius: '3px', marginBottom: i < 2 ? '7px' : 0 }} />
+          <div key={i} style={{ height: '13px', width: `${w}%`, background: tw(.06), borderRadius: '3px', marginBottom: i < 2 ? '7px' : 0 }} />
         ))}
       </div>
-      <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', overflow: 'hidden' }}>
+      <div style={{ border: `1px solid ${tw(.08)}`, borderRadius: '12px', overflow: 'hidden' }}>
         {[...Array(3)].map((_, i) => (
-          <div key={i} style={{ padding: '12px 16px', borderBottom: i < 2 ? '1px solid rgba(255,255,255,0.05)' : 'none', background: i % 2 ? 'rgba(255,255,255,0.015)' : 'transparent' }}>
-            <div style={{ height: '9px', width: '50px', background: 'rgba(255,255,255,0.06)', borderRadius: '2px', marginBottom: '6px' }} />
-            <div style={{ height: '12px', width: '80%', background: 'rgba(255,255,255,0.04)', borderRadius: '3px' }} />
+          <div key={i} style={{ padding: '12px 16px', borderBottom: i < 2 ? `1px solid ${tw(.05)}` : 'none', background: i % 2 ? tw(.02) : 'transparent' }}>
+            <div style={{ height: '9px', width: '50px', background: tw(.06), borderRadius: '2px', marginBottom: '6px' }} />
+            <div style={{ height: '12px', width: '80%', background: tw(.04), borderRadius: '3px' }} />
           </div>
         ))}
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1px', background: 'rgba(255,255,255,0.06)', borderRadius: '12px', overflow: 'hidden' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1px', background: tw(.07), borderRadius: '12px', overflow: 'hidden' }}>
         {[...Array(4)].map((_, i) => (
-          <div key={i} style={{ background: 'rgba(255,255,255,0.02)', padding: '12px 14px' }}>
-            <div style={{ height: '9px', width: '55%', background: 'rgba(255,255,255,0.06)', borderRadius: '2px', marginBottom: '6px' }} />
-            <div style={{ height: '12px', width: '70%', background: 'rgba(255,255,255,0.04)', borderRadius: '3px' }} />
+          <div key={i} style={{ background: tw(.025), padding: '12px 14px' }}>
+            <div style={{ height: '9px', width: '55%', background: tw(.06), borderRadius: '2px', marginBottom: '6px' }} />
+            <div style={{ height: '12px', width: '70%', background: tw(.04), borderRadius: '3px' }} />
           </div>
         ))}
       </div>

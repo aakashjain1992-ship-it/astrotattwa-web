@@ -5,6 +5,9 @@ import { Yantra } from '@/components/landing/Yantra'
 import { Particles } from '@/components/landing/Particles'
 import { Glyphs } from '@/components/landing/Glyphs'
 import BirthDataFormWrapper from '@/components/forms/BirthDataFormWrapper'
+import { PanchangTeaser } from '@/components/home/PanchangTeaser'
+import { HoroscopeTeaser } from '@/components/home/HoroscopeTeaser'
+import { FestivalCalendarSection } from '@/components/preview/FestivalCalendarSection'
 
 const HERO_BULLETS = [
   'Your Dashas — the planetary periods timing every chapter of your life',
@@ -176,6 +179,36 @@ export default function HomePage() {
 
         </section>
 
+        {/* ── PANCHANG + HOROSCOPE ── */}
+        <section style={{
+          borderTop: '1px solid var(--border)',
+          borderBottom: '1px solid var(--border)',
+          padding: '64px 0',
+          position: 'relative',
+        }}>
+          <div style={{
+            position: 'absolute', inset: 0, pointerEvents: 'none',
+            background: 'radial-gradient(ellipse at 25% 50%, rgba(212,160,23,.03) 0%, transparent 60%), radial-gradient(ellipse at 75% 50%, rgba(120,60,200,.03) 0%, transparent 60%)',
+          }} />
+          <div className="teasers-row" style={{
+            width: 'min(1280px, calc(100% - 20px))', margin: '0 auto',
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '20px',
+            position: 'relative',
+          }}>
+            <div className="teaser-card" style={{ border: '1px solid var(--border)', borderRadius: '20px', padding: '40px 40px 36px', background: 'hsl(var(--card))', boxShadow: 'var(--shadow-md)' }}>
+              <PanchangTeaser />
+            </div>
+            <div className="teaser-card" style={{ border: '1px solid var(--border)', borderRadius: '20px', padding: '40px 40px 36px', background: 'hsl(var(--card))', boxShadow: 'var(--shadow-md)' }}>
+              <HoroscopeTeaser />
+            </div>
+          </div>
+        </section>
+
+        {/* ── FESTIVAL CALENDAR ── */}
+        <FestivalCalendarSection />
+
         {/* ── NAVAGRAHA ── */}
         <NavagrahaSection />
 
@@ -227,6 +260,10 @@ export default function HomePage() {
         @media (max-width: 600px) {
           .hero-section { padding: 80px 20px 48px 20px; }
           .hero-stats { flex-direction: column; gap: 0 !important; }
+        }
+        @media (max-width: 900px) {
+          .teasers-row { grid-template-columns: 1fr !important; }
+          .teaser-card { padding: 32px 24px !important; }
         }
       `}</style>
     </div>

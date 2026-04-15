@@ -118,6 +118,24 @@
     --elevation-1: 0 0% 12%;           /* #1E1E1E */
     --elevation-2: 0 0% 18%;           /* #2D2D2D */
     --elevation-3: 0 0% 24%;           /* #3D3D3D */
+
+    /* ─── v3_9 flat token overrides (dark mode) ───── */
+    --bg:          #121212;
+    --bg-subtle:   #1A1A1A;
+    --surface:     #1E1E1E;
+    --text:        #E1E1E1;
+    --text1:       #E1E1E1;
+    --text2:       #A0A0A0;
+    --text3:       #737373;
+    --blue-light:  rgba(37,99,235,.18);
+    --blue-mid:    rgba(37,99,235,.28);
+    --border2:     #333333;
+    --shadow-sm:   0 1px 3px rgba(0,0,0,.5), 0 1px 2px rgba(0,0,0,.4);
+    --shadow-md:   0 4px 24px rgba(0,0,0,.6), 0 1px 4px rgba(0,0,0,.4);
+    --nava-inactive-border: rgba(255,255,255,.1);
+    --nava-inactive-bg:     rgba(255,255,255,.04);
+    --nava-inactive-color:  rgba(255,255,255,.38);
+    --nava-inactive-name:   rgba(255,255,255,.35);
   }
 }
 

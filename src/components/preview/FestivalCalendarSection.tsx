@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import type { FestivalData } from '@/lib/panchang/types'
+import { useTheme } from '@/components/theme-provider'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -39,6 +40,10 @@ function getDow(dateStr: string): string {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function FestivalCalendarSection() {
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
+  const tw = (a: number) => isDark ? `rgba(255,255,255,${a})` : `rgba(13,17,23,${a})`
+
   const now          = new Date()
   const currentYear  = now.getFullYear()
   const currentMonth = now.getMonth() + 1
@@ -66,7 +71,7 @@ export function FestivalCalendarSection() {
 
   return (
     <section style={{
-      borderTop: '1px solid rgba(255,255,255,0.06)',
+      borderTop: '1px solid var(--border)',
       padding: '64px 0',
       position: 'relative',
     }}>
@@ -80,10 +85,12 @@ export function FestivalCalendarSection() {
         className="fest-teaser-card"
         style={{
           width: 'min(1280px, calc(100% - 20px))', margin: '0 auto',
-          border: '1px solid rgba(255,255,255,.07)',
+          border: '1px solid var(--border)',
           borderRadius: '20px',
           padding: '40px 40px 36px',
           position: 'relative',
+          background: 'hsl(var(--card))',
+          boxShadow: 'var(--shadow-md)',
         }}
       >
         {/* Header row */}
@@ -101,7 +108,7 @@ export function FestivalCalendarSection() {
             <h3 style={{
               fontFamily: "'Instrument Serif', serif",
               fontSize: 'clamp(22px, 2.6vw, 32px)', fontWeight: 400,
-              color: 'rgba(255,255,255,.92)', margin: 0,
+              color: tw(.92), margin: 0,
             }}>
               Upcoming Festivals
             </h3>
@@ -126,7 +133,7 @@ export function FestivalCalendarSection() {
 
         {/* Festival rows */}
         {upcoming.length === 0 ? (
-          <p style={{ fontSize: '13px', color: 'rgba(255,255,255,.3)' }}>
+          <p style={{ fontSize: '13px', color: tw(.3) }}>
             No more festivals this month.{' '}
             <Link href="/festival" style={{ color: GOLD, textDecoration: 'none' }}>
               View full calendar →
@@ -141,16 +148,16 @@ export function FestivalCalendarSection() {
             return (
               <div key={f.id} style={{
                 display: 'flex', alignItems: 'center', gap: '14px',
-                padding: '9px 0', borderBottom: '1px solid rgba(255,255,255,.04)',
+                padding: '9px 0', borderBottom: `1px solid ${tw(.06)}`,
               }}>
                 <div style={{ flexShrink: 0, width: '38px', textAlign: 'center' }}>
                   <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '.8px', textTransform: 'uppercase', color: GOLD, opacity: .65, marginBottom: '1px' }}>{dow}</div>
-                  <div style={{ fontSize: '18px', fontWeight: 700, lineHeight: 1, color: 'rgba(255,255,255,.88)' }}>{day}</div>
-                  <div style={{ fontSize: '9px', letterSpacing: '.6px', textTransform: 'uppercase', color: 'rgba(255,255,255,.25)', marginTop: '2px' }}>{mon}</div>
+                  <div style={{ fontSize: '18px', fontWeight: 700, lineHeight: 1, color: tw(.88) }}>{day}</div>
+                  <div style={{ fontSize: '9px', letterSpacing: '.6px', textTransform: 'uppercase', color: tw(.25), marginTop: '2px' }}>{mon}</div>
                 </div>
-                <div style={{ width: '1px', alignSelf: 'stretch', background: 'rgba(255,255,255,.07)', flexShrink: 0 }} />
+                <div style={{ width: '1px', alignSelf: 'stretch', background: tw(.07), flexShrink: 0 }} />
                 <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: '13.5px', fontWeight: 500, color: 'rgba(255,255,255,.82)' }}>{f.name}</span>
+                  <span style={{ fontSize: '13.5px', fontWeight: 500, color: tw(.82) }}>{f.name}</span>
                   <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '99px', background: badge.bg, color: badge.text, flexShrink: 0 }}>{badge.label}</span>
                 </div>
               </div>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useTheme } from '@/components/theme-provider'
 
 const DELHI = { lat: 28.7041, lng: 77.1025, timezone: 'Asia/Kolkata', location: 'New Delhi, India' }
 
@@ -68,6 +69,10 @@ async function fetchPanchang(lat: number, lng: number, tz: string, loc: string):
 }
 
 export function PanchangTeaser() {
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
+  const tw = (a: number) => isDark ? `rgba(255,255,255,${a})` : `rgba(13,17,23,${a})`
+
   const [data, setData]       = useState<PanchangSnap | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -81,7 +86,6 @@ export function PanchangTeaser() {
     }
 
     async function run() {
-      // Always fetch IP location first — gives us a real city name for display
       let ipLat = DELHI.lat, ipLng = DELHI.lng, ipTz = DELHI.timezone, ipCity = DELHI.location
       try {
         const res = await fetch('/api/panchang/ip-location')
@@ -97,7 +101,6 @@ export function PanchangTeaser() {
 
       if (!navigator.geolocation) { load(ipLat, ipLng, ipTz, ipCity); return }
 
-      // Try browser geolocation for better coords — keep IP city name for display
       navigator.geolocation.getCurrentPosition(
         pos => {
           if (cancelled) return
@@ -135,7 +138,7 @@ export function PanchangTeaser() {
         Today&apos;s Cosmic Calendar
       </h2>
 
-      {loading ? <PanchangSkeleton /> : data ? (
+      {loading ? <PanchangSkeleton tw={tw} /> : data ? (
         <>
           {/* Location + date */}
           <p style={{ fontSize: '12px', color: 'var(--text3)', margin: '0 0 16px', letterSpacing: '.2px' }}>
@@ -143,18 +146,18 @@ export function PanchangTeaser() {
           </p>
 
           {/* Panchang detail rows */}
-          <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', overflow: 'hidden', marginBottom: '8px' }}>
-            <DetailRow label="Tithi"    value={`${data.tithi.paksha} ${data.tithi.name}`}       endTime={data.tithi.endTime} />
-            <DetailRow label="Nakshatra" value={`${data.nakshatra.name} (Pada ${data.nakshatra.pada})`} endTime={data.nakshatra.endTime} alt />
-            <DetailRow label="Yoga"     value={data.yoga.name}                                   endTime={data.yoga.endTime} />
+          <div style={{ border: `1px solid ${tw(.08)}`, borderRadius: '12px', overflow: 'hidden', marginBottom: '8px' }}>
+            <DetailRow label="Tithi"    value={`${data.tithi.paksha} ${data.tithi.name}`}             endTime={data.tithi.endTime}    tw={tw} />
+            <DetailRow label="Nakshatra" value={`${data.nakshatra.name} (Pada ${data.nakshatra.pada})`} endTime={data.nakshatra.endTime} tw={tw} alt />
+            <DetailRow label="Yoga"     value={data.yoga.name}                                          endTime={data.yoga.endTime}      tw={tw} />
             {data.karanas.map((k, i) => (
-              <DetailRow key={i} label={i === 0 ? 'Karana' : ''} value={k.name} endTime={k.endTime} alt={i % 2 === 0} />
+              <DetailRow key={i} label={i === 0 ? 'Karana' : ''} value={k.name} endTime={k.endTime} tw={tw} alt={i % 2 === 0} />
             ))}
-            <DetailRow label="Vara"     value={data.vara}                                        endTime={null} alt />
+            <DetailRow label="Vara"     value={data.vara}                                               endTime={null}                   tw={tw} alt />
           </div>
 
           {/* Lunar calendar */}
-          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', padding: '10px 14px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '10px', marginBottom: '8px', fontSize: '12px', color: 'var(--text3)' }}>
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', padding: '10px 14px', background: tw(.025), border: `1px solid ${tw(.07)}`, borderRadius: '10px', marginBottom: '8px', fontSize: '12px', color: 'var(--text3)' }}>
             <span>Month (Amanta): <strong style={{ color: 'var(--text2)', fontWeight: 500 }}>{data.monthAmanta}</strong></span>
             <span style={{ opacity: 0.3 }}>·</span>
             <span>Month (Purnimanta): <strong style={{ color: 'var(--text2)', fontWeight: 500 }}>{data.monthPurnimanta}</strong></span>
@@ -162,23 +165,23 @@ export function PanchangTeaser() {
           </div>
 
           {/* Sun / Rahu timings */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 16px', padding: '12px 14px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '10px', marginBottom: '8px' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 16px', padding: '12px 14px', background: tw(.025), border: `1px solid ${tw(.07)}`, borderRadius: '10px', marginBottom: '8px' }}>
             <Chip icon="🌅" label="Sunrise"    value={data.sunrise} />
-            <Sep />
+            <Sep tw={tw} />
             <Chip icon="🌇" label="Sunset"     value={data.sunset} />
-            {data.rahuKalam && <><Sep /><Chip icon="⚠" label="Rahu Kalam" value={`${data.rahuKalam.start}–${data.rahuKalam.end}`} warn /></>}
+            {data.rahuKalam && <><Sep tw={tw} /><Chip icon="⚠" label="Rahu Kalam" value={`${data.rahuKalam.start}–${data.rahuKalam.end}`} warn /></>}
           </div>
 
           {/* Auspicious timings */}
           {auspicious.length > 0 && (
-            <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', overflow: 'hidden', marginBottom: '24px' }}>
-              <div style={{ padding: '9px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(212,160,23,.04)' }}>
+            <div style={{ border: `1px solid ${tw(.08)}`, borderRadius: '12px', overflow: 'hidden', marginBottom: '24px' }}>
+              <div style={{ padding: '9px 16px', borderBottom: `1px solid ${tw(.06)}`, background: 'rgba(212,160,23,.06)' }}>
                 <span style={{ fontSize: '9.5px', fontWeight: 600, letterSpacing: '2px', textTransform: 'uppercase', color: 'var(--blue)' }}>
                   ✦ Auspicious Timings
                 </span>
               </div>
               {auspicious.map(({ label, value }, i) => (
-                <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 16px', borderBottom: i < auspicious.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none', background: i % 2 ? 'rgba(255,255,255,0.015)' : 'transparent' }}>
+                <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 16px', borderBottom: i < auspicious.length - 1 ? `1px solid ${tw(.05)}` : 'none', background: i % 2 ? tw(.02) : 'transparent' }}>
                   <span style={{ fontSize: '12.5px', color: 'var(--text2)' }}>{label}</span>
                   <span style={{ fontSize: '12px', color: 'var(--blue)', fontWeight: 500, opacity: 0.9 }}>{value}</span>
                 </div>
@@ -190,9 +193,11 @@ export function PanchangTeaser() {
 
       {/* CTA */}
       <div style={{ marginTop: 'auto' }}>
-        <Link href="/panchang" style={{ display: 'block', textAlign: 'center', background: 'transparent', color: 'var(--blue)', fontWeight: 600, fontSize: '14px', letterSpacing: '.3px', padding: '13px 0', borderRadius: '10px', border: '1.5px solid var(--blue)', textDecoration: 'none', transition: 'background .18s, color .18s' }}
-          onMouseEnter={e => { e.currentTarget.style.background = 'var(--blue)'; e.currentTarget.style.color = '#0A0A14' }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--blue)' }}
+        <Link
+          href="/panchang"
+          style={{ display: 'block', textAlign: 'center', background: isDark ? 'transparent' : 'var(--blue)', color: isDark ? 'var(--blue)' : '#fff', fontWeight: 600, fontSize: '14px', letterSpacing: '.3px', padding: '13px 0', borderRadius: '10px', border: '1.5px solid var(--blue)', textDecoration: 'none', transition: 'background .18s, color .18s' }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'var(--blue)'; e.currentTarget.style.color = '#fff' }}
+          onMouseLeave={e => { e.currentTarget.style.background = isDark ? 'transparent' : 'var(--blue)'; e.currentTarget.style.color = isDark ? 'var(--blue)' : '#fff' }}
         >
           See Full Panchang →
         </Link>
@@ -201,9 +206,9 @@ export function PanchangTeaser() {
   )
 }
 
-function DetailRow({ label, value, endTime, alt }: { label: string; value: string; endTime: string | null; alt?: boolean }) {
+function DetailRow({ label, value, endTime, alt, tw }: { label: string; value: string; endTime: string | null; alt?: boolean; tw: (a: number) => string }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', padding: '11px 16px', background: alt ? 'rgba(255,255,255,0.015)' : 'transparent', borderBottom: '1px solid rgba(255,255,255,0.05)', gap: '12px' }}>
+    <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', padding: '11px 16px', background: alt ? tw(.025) : 'transparent', borderBottom: `1px solid ${tw(.05)}`, gap: '12px' }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', minWidth: 0 }}>
         <span style={{ fontSize: '9.5px', fontWeight: 600, letterSpacing: '1.6px', textTransform: 'uppercase', color: 'var(--text3)', flexShrink: 0, width: '72px' }}>{label}</span>
         <span style={{ fontSize: '13.5px', color: 'var(--text)', fontWeight: 500 }}>{value}</span>
@@ -219,34 +224,34 @@ function Chip({ icon, label, value, warn }: { icon: string; label: string; value
       <span style={{ fontSize: '13px', opacity: warn ? 1 : 0.65 }}>{icon}</span>
       <div>
         <div style={{ fontSize: '9px', fontWeight: 600, letterSpacing: '1.4px', textTransform: 'uppercase', color: warn ? '#F87171' : 'var(--text3)' }}>{label}</div>
-        <div style={{ fontSize: '12.5px', fontWeight: 500, color: warn ? '#FCA5A5' : 'var(--text2)' }}>{value}</div>
+        <div style={{ fontSize: '12.5px', fontWeight: 500, color: warn ? '#EF4444' : 'var(--text2)' }}>{value}</div>
       </div>
     </div>
   )
 }
 
-function Sep() {
-  return <div style={{ width: '1px', height: '24px', background: 'rgba(255,255,255,0.07)', flexShrink: 0, alignSelf: 'center' }} />
+function Sep({ tw }: { tw: (a: number) => string }) {
+  return <div style={{ width: '1px', height: '24px', background: tw(.08), flexShrink: 0, alignSelf: 'center' }} />
 }
 
-function PanchangSkeleton() {
+function PanchangSkeleton({ tw }: { tw: (a: number) => string }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1 }}>
-      <div style={{ height: '12px', width: '180px', background: 'rgba(255,255,255,0.06)', borderRadius: '3px', marginBottom: '4px' }} />
-      <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', overflow: 'hidden' }}>
+      <div style={{ height: '12px', width: '180px', background: tw(.06), borderRadius: '3px', marginBottom: '4px' }} />
+      <div style={{ border: `1px solid ${tw(.08)}`, borderRadius: '12px', overflow: 'hidden' }}>
         {[...Array(6)].map((_, i) => (
-          <div key={i} style={{ padding: '11px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)', background: i % 2 ? 'rgba(255,255,255,0.015)' : 'transparent', display: 'flex', justifyContent: 'space-between' }}>
-            <div style={{ height: '13px', width: `${35 + i * 8}%`, background: 'rgba(255,255,255,0.06)', borderRadius: '3px' }} />
-            <div style={{ height: '11px', width: '60px', background: 'rgba(255,255,255,0.04)', borderRadius: '2px' }} />
+          <div key={i} style={{ padding: '11px 16px', borderBottom: `1px solid ${tw(.05)}`, background: i % 2 ? tw(.02) : 'transparent', display: 'flex', justifyContent: 'space-between' }}>
+            <div style={{ height: '13px', width: `${35 + i * 8}%`, background: tw(.06), borderRadius: '3px' }} />
+            <div style={{ height: '11px', width: '60px', background: tw(.04), borderRadius: '2px' }} />
           </div>
         ))}
       </div>
-      <div style={{ height: '36px', background: 'rgba(255,255,255,0.02)', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.06)' }} />
-      <div style={{ height: '44px', background: 'rgba(255,255,255,0.02)', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.06)' }} />
-      <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', overflow: 'hidden' }}>
+      <div style={{ height: '36px', background: tw(.025), borderRadius: '10px', border: `1px solid ${tw(.07)}` }} />
+      <div style={{ height: '44px', background: tw(.025), borderRadius: '10px', border: `1px solid ${tw(.07)}` }} />
+      <div style={{ border: `1px solid ${tw(.08)}`, borderRadius: '12px', overflow: 'hidden' }}>
         {[...Array(3)].map((_, i) => (
-          <div key={i} style={{ padding: '10px 16px', borderBottom: i < 2 ? '1px solid rgba(255,255,255,0.05)' : 'none', display: 'flex', justifyContent: 'space-between' }}>
-            <div style={{ height: '12px', width: '40%', background: 'rgba(255,255,255,0.05)', borderRadius: '3px' }} />
+          <div key={i} style={{ padding: '10px 16px', borderBottom: i < 2 ? `1px solid ${tw(.05)}` : 'none', display: 'flex', justifyContent: 'space-between' }}>
+            <div style={{ height: '12px', width: '40%', background: tw(.05), borderRadius: '3px' }} />
             <div style={{ height: '12px', width: '35%', background: 'rgba(212,160,23,0.1)', borderRadius: '3px' }} />
           </div>
         ))}

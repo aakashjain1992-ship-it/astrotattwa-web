@@ -40,7 +40,7 @@ const DOMAINS = [
     Icon: Briefcase,
     title: 'Career',
     color: '#2563EB',
-    bg: '#EFF6FF',
+    bg: 'rgba(37,99,235,.12)',
     questions: [
       'Why does success always feel slow or just out of reach?',
       'Should you keep going, switch paths, or try something new?',
@@ -51,7 +51,7 @@ const DOMAINS = [
     Icon: Heart,
     title: 'Love & Relationships',
     color: '#E11D48',
-    bg: '#FFF1F2',
+    bg: 'rgba(225,29,72,.12)',
     questions: [
       'Why do your relationships feel confusing, heavy, or stuck in a loop?',
       'Is your current partner the right one or just a passing phase?',
@@ -62,7 +62,7 @@ const DOMAINS = [
     Icon: TrendingUp,
     title: 'Money & Growth',
     color: '#059669',
-    bg: '#ECFDF5',
+    bg: 'rgba(5,150,105,.12)',
     questions: [
       'Why does money come in but never seem to stay?',
       'Are you meant to struggle, or is something blocking your growth?',
@@ -73,7 +73,7 @@ const DOMAINS = [
     Icon: Leaf,
     title: 'Health & Inner Peace',
     color: '#7C3AED',
-    bg: '#F5F3FF',
+    bg: 'rgba(124,58,237,.12)',
     questions: [
       'Why do you keep facing the same health or energy issues?',
       'Is stress or something deeper affecting your well-being?',
@@ -233,7 +233,7 @@ function TestimonialCard({ name, text }: { name: string; text: string }) {
     <div style={{
       flexShrink: 0,
       width: '280px',
-      background: '#fff',
+      background: 'hsl(var(--card))',
       border: '1px solid var(--border)',
       borderRadius: '14px',
       padding: '18px 20px',
@@ -267,7 +267,7 @@ function PricingCard({ pkg, onBook }: { pkg: PkgType; onBook: () => void }) {
   return (
     <div style={{
       position: 'relative',
-      background: pkg.popular ? 'var(--blue)' : '#fff',
+      background: pkg.popular ? 'var(--blue)' : 'hsl(var(--card))',
       border: pkg.popular ? 'none' : '1px solid var(--border)',
       borderRadius: '20px',
       padding: '28px 24px 24px',
@@ -506,7 +506,7 @@ export default function ConsultClient() {
 
   // ── SECTION: DOMAINS ───────────────────────────────────────────────────────
   const Domains = (
-    <section style={{ padding: '80px 24px', background: '#fff' }}>
+    <section style={{ padding: '80px 24px', background: 'hsl(var(--background))' }}>
       <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
         <div style={{ textAlign: 'center', marginBottom: '52px' }}>
           <h2 style={{
@@ -526,7 +526,7 @@ export default function ConsultClient() {
         <div className="domains-grid">
           {DOMAINS.map(({ Icon, title, color, bg, questions }) => (
             <div key={title} style={{
-              background: '#fff',
+              background: 'hsl(var(--card))',
               border: '1px solid var(--border)',
               borderRadius: '18px',
               padding: '28px 24px',
@@ -602,7 +602,7 @@ export default function ConsultClient() {
 
   // ── SECTION: PRICING ───────────────────────────────────────────────────────
   const Pricing = (
-    <section id="pricing-section" style={{ padding: '80px 24px', background: '#fff' }}>
+    <section id="pricing-section" style={{ padding: '80px 24px', background: 'hsl(var(--background))' }}>
       <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
         <div style={{ textAlign: 'center', marginBottom: '52px' }}>
           <h2 style={{
@@ -665,7 +665,7 @@ export default function ConsultClient() {
               )}
               <div style={{
                 width: '64px', height: '64px', borderRadius: '50%',
-                background: '#fff', border: '2px solid var(--blue-mid)',
+                background: 'hsl(var(--card))', border: '2px solid var(--blue-mid)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 marginBottom: '18px', position: 'relative', zIndex: 1,
                 boxShadow: 'var(--shadow-sm)',
@@ -698,7 +698,7 @@ export default function ConsultClient() {
 
   // ── SECTION: WHY US ────────────────────────────────────────────────────────
   const WhyUs = (
-    <section style={{ padding: '72px 24px', background: '#fff' }}>
+    <section style={{ padding: '72px 24px', background: 'hsl(var(--background))' }}>
       <div style={{ maxWidth: '820px', margin: '0 auto' }}>
         <div style={{ textAlign: 'center', marginBottom: '44px' }}>
           <h2 style={{
@@ -813,7 +813,7 @@ export default function ConsultClient() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {FAQ_ITEMS.map(({ q, a }, idx) => (
             <div key={idx} style={{
-              background: '#fff',
+              background: 'hsl(var(--card))',
               border: '1px solid var(--border)',
               borderRadius: '12px',
               overflow: 'hidden',
@@ -860,9 +860,9 @@ export default function ConsultClient() {
 
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '10px 14px',
-    border: '1px solid #D1D5DB',
+    border: '1px solid var(--border2)',
     borderRadius: '8px', fontSize: '14px',
-    color: 'var(--text)', background: '#fff',
+    color: 'var(--text)', background: 'hsl(var(--card))',
     outline: 'none', boxSizing: 'border-box',
     fontFamily: 'inherit',
   }
@@ -880,7 +880,7 @@ export default function ConsultClient() {
 
   const Form = submitted ? (
     /* ── SUCCESS STATE ── */
-    <section id="booking-form" style={{ padding: '80px 24px', background: '#fff' }}>
+    <section id="booking-form" style={{ padding: '80px 24px', background: 'hsl(var(--background))' }}>
       <div style={{
         maxWidth: '520px', margin: '0 auto', textAlign: 'center',
         padding: '56px 40px',
@@ -919,7 +919,7 @@ export default function ConsultClient() {
     </section>
   ) : (
     /* ── FORM ── */
-    <section id="booking-form" style={{ padding: '80px 24px', background: '#fff' }}>
+    <section id="booking-form" style={{ padding: '80px 24px', background: 'hsl(var(--background))' }}>
       <div style={{ maxWidth: '680px', margin: '0 auto' }}>
 
         {/* Heading */}
@@ -960,7 +960,7 @@ export default function ConsultClient() {
                 }}
                 style={{
                   padding: '8px 14px',
-                  background: selectedPkgId === p.id ? 'var(--blue)' : '#fff',
+                  background: selectedPkgId === p.id ? 'var(--blue)' : 'hsl(var(--card))',
                   color: selectedPkgId === p.id ? '#fff' : 'var(--text2)',
                   border: selectedPkgId === p.id ? 'none' : '1px solid var(--border)',
                   borderRadius: '8px', cursor: 'pointer',
@@ -1153,7 +1153,7 @@ export default function ConsultClient() {
                   onClick={() => setLang(l)}
                   style={{
                     padding: '8px 20px',
-                    background: lang === l ? 'var(--blue)' : '#fff',
+                    background: lang === l ? 'var(--blue)' : 'hsl(var(--card))',
                     color: lang === l ? '#fff' : 'var(--text2)',
                     border: lang === l ? 'none' : '1px solid var(--border)',
                     borderRadius: '8px', cursor: 'pointer',
