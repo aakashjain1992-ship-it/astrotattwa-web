@@ -161,6 +161,107 @@ function HoroscopeDropdown({ pathname }: { pathname: string }) {
   )
 }
 
+// ─── Numerology Nav Dropdown ──────────────────────────────────────────────────
+
+function NumerologyDropdown({ pathname }: { pathname: string }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const isActive = pathname.startsWith('/numerology')
+
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+    if (open) document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  const items = [
+    { label: 'Reading', href: '/numerology' },
+    { label: 'Compatibility', href: '/numerology/compatibility' },
+  ]
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        onMouseEnter={() => setOpen(true)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 4,
+          background: 'transparent',
+          border: 'none',
+          cursor: 'pointer',
+          fontSize: '13.5px',
+          fontWeight: 500,
+          color: isActive ? 'var(--blue)' : 'var(--text2)',
+          padding: '6px 10px',
+          borderRadius: 8,
+          transition: 'color .15s',
+        }}
+        onMouseLeave={() => {/* keep open while hovering panel */}}
+      >
+        Numerology
+        <ChevronDown
+          size={13}
+          style={{
+            transform: open ? 'rotate(180deg)' : 'rotate(0)',
+            transition: 'transform .2s',
+          }}
+        />
+      </button>
+
+      {open && (
+        <div
+          onMouseEnter={() => setOpen(true)}
+          onMouseLeave={() => setOpen(false)}
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 4px)',
+            left: 0,
+            minWidth: 160,
+            background: '#fff',
+            border: '1px solid var(--border2)',
+            borderRadius: 10,
+            boxShadow: '0 8px 24px rgba(0,0,0,.10)',
+            overflow: 'hidden',
+            zIndex: 300,
+          }}
+        >
+          {items.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={() => setOpen(false)}
+              style={{
+                display: 'block',
+                padding: '10px 16px',
+                fontSize: 13,
+                color: pathname === item.href || (item.href === '/numerology' && pathname === '/numerology')
+                  ? 'var(--blue)'
+                  : pathname.startsWith(item.href) && item.href !== '/numerology'
+                  ? 'var(--blue)'
+                  : 'var(--text2)',
+                fontWeight: (pathname === item.href || (pathname.startsWith(item.href) && item.href !== '/numerology')) ? 600 : 400,
+                textDecoration: 'none',
+                transition: 'background .12s',
+                background: 'transparent',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-subtle)' }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+            >
+              {item.label}
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Simple Nav Link ──────────────────────────────────────────────────────────
 
 function NavLink({ href, label, pathname }: { href: string; label: string; pathname: string }) {
@@ -587,6 +688,7 @@ export function Header({ showNav = true }: HeaderProps) {
               <HoroscopeDropdown pathname={pathname} />
               <NavLink href="/panchang" label="Panchang" pathname={pathname} />
               <NavLink href="/festival" label="Festival" pathname={pathname} />
+              <NumerologyDropdown pathname={pathname} />
               <NavLink href="/book-consultancy" label="Book Consultancy" pathname={pathname} />
             </nav>
             {!authLoading && (
@@ -745,6 +847,31 @@ export function Header({ showNav = true }: HeaderProps) {
           >
             Festival
           </Link>
+
+          <div style={{ padding: '4px 0' }}>
+            <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.08em', padding: '6px 20px 4px' }}>
+              Numerology
+            </p>
+            {[
+              { label: 'Reading', href: '/numerology' },
+              { label: 'Compatibility', href: '/numerology/compatibility' },
+            ].map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                style={{
+                  display: 'block',
+                  padding: '10px 20px',
+                  fontSize: 15,
+                  color: pathname === item.href || (pathname.startsWith(item.href) && item.href !== '/numerology') ? 'var(--blue)' : 'var(--text2)',
+                  fontWeight: (pathname === item.href || (pathname.startsWith(item.href) && item.href !== '/numerology')) ? 600 : 400,
+                  textDecoration: 'none',
+                }}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </div>
 
           <Link
             href="/book-consultancy"

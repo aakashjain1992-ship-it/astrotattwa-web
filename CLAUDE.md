@@ -79,7 +79,7 @@ Note: `next.config.js` sets `ignoreBuildErrors: true` for TypeScript — type er
 
 | Route | Description |
 |-------|-------------|
-| `/` | Homepage with `BirthDataForm` |
+| `/` | Homepage: Hero + BirthDataForm, Panchang + Horoscope teasers, Festival Calendar, Navagraha |
 | `/chart` | Chart view — reads `lastChart` from localStorage |
 | `/chart/[id]` | Saved chart view — URL set via `replaceState`, not Next.js nav |
 | `/panchang` | Daily Panchang for user's location |
@@ -89,6 +89,8 @@ Note: `next.config.js` sets `ignoreBuildErrors: true` for TypeScript — type er
 | `/(auth)/login` | Auth pages (grouped route, no shared layout with app) |
 | `/terms` | Terms of Service (static) |
 | `/privacy-policy` | Privacy Policy (static) — note: old `/privacy` route was deleted |
+
+**Deleted routes:** `/preview` was merged into `/` (Apr 2026).
 
 ### PM2 Processes
 
@@ -150,12 +152,29 @@ Cache key: `${CACHE_VERSION}_${dateParam}_${lat.toFixed(2)}_${lng.toFixed(2)}`
 | `/api/save-chart` | Chart CRUD (GET list, POST create — requires auth) |
 | `/api/save-chart/[id]` | PATCH update, DELETE — requires auth; PATCH clears other `is_favorite` when setting new default |
 | `/api/cities/search` | City autocomplete (uses HERE Maps API) |
+| `/api/user/theme` | GET/PATCH user theme preference — stored in `profiles.theme`; GET returns `null` if unset |
 | `/api/auth/login`, `/logout`, `/me` | Authentication |
 | `/auth/callback` | Supabase OAuth callback handler |
 | `/api/test/run-calculations`, `/history`, `/delete-runs` | Manual regression testing (requires `ADMIN_SECRET_TOKEN`); UI at `/admin/tests` |
 | `/api/horoscope` | GET: fetch horoscope by type/rashi/sign_type/date; fallback to latest if not found |
 | `/api/horoscope/history` | GET: past N horoscopes (7 daily / 4 weekly / 6 monthly) |
 | `/api/horoscope/generate` | POST: generate all 12 rashis for a type/date (protected by `ADMIN_SECRET_TOKEN`) |
+
+### Theming Pattern
+
+Any component with structural backgrounds or borders must be theme-aware. Two approaches used throughout the codebase:
+
+1. **CSS variables** — structural elements use `hsl(var(--card))`, `hsl(var(--background))`, `var(--border)`, `var(--shadow-md)`. Dark mode overrides for flat tokens (`--text`, `--text2`, `--text3`, `--surface`, `--bg`, `--bg-subtle`, `--shadow-*`, etc.) are defined inside the `.dark {}` block in `globals.css`.
+
+2. **`tw()` helper** — components with dynamic inline opacity values (borders, row backgrounds, separators) import `useTheme` and define:
+   ```ts
+   const { resolvedTheme } = useTheme()
+   const isDark = resolvedTheme === 'dark'
+   const tw = (a: number) => isDark ? `rgba(255,255,255,${a})` : `rgba(13,17,23,${a})`
+   ```
+   This replaces all hardcoded `rgba(255,255,255,X)` values which are invisible in light mode. Components using this pattern: `PanchangTeaser`, `HoroscopeTeaser`, `FestivalCalendarSection`, `FestivalCalendarPage`.
+
+**`/api/user/theme` (GET/PATCH):** Reads/writes `profiles.theme` using Supabase cookie auth (`createServerClient` + `getChunkedCookie`). GET returns `null` (not `'light'`) when no theme is stored — the Header only calls `setTheme()` when the API returns a non-null value, preventing the API from overwriting a locally-set dark theme on every page load. **Do not use `x-user-id` header in API routes** — middleware sets it on the *response*, not the request, so API routes never see it. Use `supabase.auth.getUser()` instead.
 
 ### Auth & Middleware
 
@@ -184,7 +203,7 @@ Centralized in `src/lib/api/errorHandling.ts` — use `successResponse()`, `erro
 
 - Path alias: `@/*` maps to `src/*`
 - Fonts: Instrument Serif (headings), DM Sans (body) — loaded in root layout
-- Theme: CSS variables in `globals.css` with light/dark mode via `next-themes` (class strategy)
+- Theme: CSS variables in `globals.css` with light/dark mode via a **custom `ThemeProvider`** (`src/components/theme-provider.tsx`) — NOT next-themes. Uses `MutationObserver` to re-apply `.dark` class on the `<html>` element whenever React reconciliation strips it. Theme persisted to `localStorage` (key: `theme`) and to `profiles.theme` in Supabase via `/api/user/theme`.
 - `swisseph` must stay in `serverExternalPackages` in `next.config.js` — it's a native Node module that cannot be bundled
 - Commit style: `type(scope): description` (e.g., `fix(panchang): correct vijaya muhurta to 11th of 15-muhurta system`)
 - The owner uses both Claude and ChatGPT — see `AI_HANDOFF_GUIDE.md` for session handoff protocol
