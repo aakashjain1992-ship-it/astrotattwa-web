@@ -167,10 +167,8 @@ function PanchangInner() {
     <div className="max-w-4xl mx-auto px-4 pt-24 pb-6 space-y-6">
 
       {/* Controls */}
-      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-        <div className="flex-1 min-w-0 max-w-xs">
-          <CitySearch value={cityDisplay} onSelect={handleCitySelect} />
-        </div>
+      <div className="flex flex-col gap-3">
+        <CitySearch value={cityDisplay} onSelect={handleCitySelect} />
         <DateNavigator
           currentDate={date}
           onDateChange={setDate}

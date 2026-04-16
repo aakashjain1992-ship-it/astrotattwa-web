@@ -6,7 +6,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import { useTheme } from '@/components/theme-provider'
 import { createClient } from '@/lib/supabase/client'
 import { Logo } from '@/components/ui/Logo'
-import { LogOut, Settings, User, ChevronDown, Menu, X, Sun, Calendar, BookOpen } from 'lucide-react'
+import { LogOut, Settings, User, ChevronDown, Menu, X, Sun, Calendar, BookOpen, Star, Hash } from 'lucide-react'
 import type { AuthUser } from '@/hooks/useAuth'
 import { performLogout } from '@/lib/auth/logout'
 import { useToast } from '@/hooks/use-toast'
@@ -497,6 +497,213 @@ function DropdownItem({
   )
 }
 
+// ─── Mobile Drawer ───────────────────────────────────────────────────────────
+
+function MobileDrawer({
+  open,
+  onClose,
+  pathname,
+  user,
+  onSignOut,
+  onMyChartClick,
+}: {
+  open: boolean
+  onClose: () => void
+  pathname: string
+  user: AuthUser | null
+  onSignOut: () => void
+  onMyChartClick: () => void
+}) {
+  const [horoscopeOpen, setHoroscopeOpen] = useState(false)
+  const [numerologyOpen, setNumerologyOpen] = useState(false)
+
+  useEffect(() => {
+    if (!open) { setHoroscopeOpen(false); setNumerologyOpen(false) }
+  }, [open])
+
+  if (!open) return null
+
+  // Shared styles
+  const mainRow = (active: boolean): React.CSSProperties => ({
+    display: 'flex', alignItems: 'center', gap: 14,
+    width: '100%', padding: '13px 24px',
+    background: 'none', border: 'none', cursor: 'pointer',
+    fontSize: 16, fontWeight: 500, textAlign: 'left' as const,
+    color: active ? 'var(--blue)' : 'var(--text)',
+    textDecoration: 'none',
+    borderRadius: 0,
+  })
+
+  const iconColor = (active: boolean) => active ? 'var(--blue)' : 'var(--text3)'
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, top: 64, background: 'rgba(0,0,0,0.45)', zIndex: 198 }} />
+
+      {/* Slide panel */}
+      <div
+        className="header-mobile-drawer"
+        style={{
+          position: 'fixed', top: 64, left: 0, right: 0, bottom: 0,
+          zIndex: 199,
+          background: 'hsl(var(--background))',
+          display: 'flex', flexDirection: 'column',
+          overflowY: 'auto',
+        }}
+      >
+        {/* ── Nav ── */}
+        <nav style={{ flex: 1, paddingTop: 8 }}>
+
+          {/* Horoscope accordion */}
+          <button onClick={() => setHoroscopeOpen(o => !o)} style={mainRow(pathname.startsWith('/horoscope'))}>
+            <Sun size={19} style={{ color: iconColor(pathname.startsWith('/horoscope')), flexShrink: 0 }} />
+            <span style={{ flex: 1 }}>Horoscope</span>
+            <ChevronDown size={15} style={{ color: 'var(--text3)', flexShrink: 0, transform: horoscopeOpen ? 'rotate(180deg)' : 'none', transition: 'transform .22s' }} />
+          </button>
+          {horoscopeOpen && (
+            <div style={{ paddingBottom: 4 }}>
+              {[
+                { label: 'Daily',   href: '/horoscope/daily/aries' },
+                { label: 'Weekly',  href: '/horoscope/weekly/aries' },
+                { label: 'Monthly', href: '/horoscope/monthly/aries' },
+              ].map(item => {
+                const active = pathname.startsWith(item.href.replace('/aries', ''))
+                return (
+                  <Link key={item.href} href={item.href} onClick={onClose} style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '10px 24px 10px 57px',
+                    fontSize: 14.5, fontWeight: active ? 500 : 400,
+                    color: active ? 'var(--blue)' : 'var(--text2)',
+                    textDecoration: 'none',
+                  }}>
+                    {active && <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--blue)', flexShrink: 0, marginLeft: -13 }} />}
+                    {item.label}
+                  </Link>
+                )
+              })}
+            </div>
+          )}
+
+          {/* Divider */}
+          <div style={{ height: 1, background: 'var(--border)', margin: '4px 24px' }} />
+
+          {/* Panchang */}
+          <Link href="/panchang" onClick={onClose} style={mainRow(pathname.startsWith('/panchang'))}>
+            <Calendar size={19} style={{ color: iconColor(pathname.startsWith('/panchang')), flexShrink: 0 }} />
+            Panchang
+          </Link>
+
+          {/* Festival */}
+          <Link href="/festival" onClick={onClose} style={mainRow(pathname.startsWith('/festival'))}>
+            <Star size={19} style={{ color: iconColor(pathname.startsWith('/festival')), flexShrink: 0 }} />
+            Festival
+          </Link>
+
+          {/* Divider */}
+          <div style={{ height: 1, background: 'var(--border)', margin: '4px 24px' }} />
+
+          {/* Numerology accordion */}
+          <button onClick={() => setNumerologyOpen(o => !o)} style={mainRow(pathname.startsWith('/numerology'))}>
+            <Hash size={19} style={{ color: iconColor(pathname.startsWith('/numerology')), flexShrink: 0 }} />
+            <span style={{ flex: 1 }}>Numerology</span>
+            <ChevronDown size={15} style={{ color: 'var(--text3)', flexShrink: 0, transform: numerologyOpen ? 'rotate(180deg)' : 'none', transition: 'transform .22s' }} />
+          </button>
+          {numerologyOpen && (
+            <div style={{ paddingBottom: 4 }}>
+              {[
+                { label: 'Reading',       href: '/numerology' },
+                { label: 'Compatibility', href: '/numerology/compatibility' },
+              ].map(item => {
+                const active = pathname === item.href || (pathname.startsWith(item.href) && item.href !== '/numerology')
+                return (
+                  <Link key={item.href} href={item.href} onClick={onClose} style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '10px 24px 10px 57px',
+                    fontSize: 14.5, fontWeight: active ? 500 : 400,
+                    color: active ? 'var(--blue)' : 'var(--text2)',
+                    textDecoration: 'none',
+                  }}>
+                    {active && <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--blue)', flexShrink: 0, marginLeft: -13 }} />}
+                    {item.label}
+                  </Link>
+                )
+              })}
+            </div>
+          )}
+
+          {/* Divider */}
+          <div style={{ height: 1, background: 'var(--border)', margin: '4px 24px' }} />
+
+          {/* Book Consultancy */}
+          <Link href="/book-consultancy" onClick={onClose} style={mainRow(pathname.startsWith('/book-consultancy'))}>
+            <BookOpen size={19} style={{ color: iconColor(pathname.startsWith('/book-consultancy')), flexShrink: 0 }} />
+            Book Consultancy
+          </Link>
+
+        </nav>
+
+        {/* ── Bottom section ── */}
+        <div style={{ padding: '20px 24px 44px', borderTop: '1px solid var(--border)' }}>
+
+          <ThemeSwitcher variant="menu" userId={user?.id ?? null} />
+
+          {/* Guest buttons */}
+          {!user && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 18 }}>
+              <Link href="/login" onClick={onClose} style={{
+                display: 'block', padding: '13px', borderRadius: 12,
+                fontSize: 15, fontWeight: 500, color: 'var(--text)',
+                textDecoration: 'none', textAlign: 'center',
+                border: '1px solid var(--border2)',
+              }}>
+                Sign in
+              </Link>
+              <Link href="/signup" onClick={onClose} style={{
+                display: 'block', padding: '13px', borderRadius: 12,
+                fontSize: 15, fontWeight: 600, color: '#fff',
+                background: 'var(--blue)', textDecoration: 'none', textAlign: 'center',
+              }}>
+                Get started
+              </Link>
+            </div>
+          )}
+
+          {/* Logged-in user */}
+          {user && (
+            <div style={{ marginTop: 18 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '4px 0 14px', borderBottom: '1px solid var(--border)', marginBottom: 8 }}>
+                <Avatar user={user} />
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {user.fullName ?? 'My Account'}
+                  </p>
+                  <p style={{ fontSize: 12, color: 'var(--text3)', margin: '2px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {user.email}
+                  </p>
+                </div>
+              </div>
+              <button onClick={() => { onClose(); onMyChartClick() }}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '11px 0', background: 'none', border: 'none', cursor: 'pointer', fontSize: 14.5, color: 'var(--text2)' }}>
+                <User size={15} style={{ color: 'var(--text3)' }} /> My Chart
+              </button>
+              <Link href="/settings" onClick={onClose}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 0', fontSize: 14.5, color: 'var(--text2)', textDecoration: 'none' }}>
+                <Settings size={15} style={{ color: 'var(--text3)' }} /> Account Settings
+              </Link>
+              <button onClick={() => { onClose(); onSignOut() }}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '11px 0', background: 'none', border: 'none', cursor: 'pointer', fontSize: 14.5, color: '#DC2626', marginTop: 4 }}>
+                <LogOut size={15} /> Sign out
+              </button>
+            </div>
+          )}
+        </div>
+
+      </div>
+    </>
+  )
+}
+
 // ─── Header ──────────────────────────────────────────────────────────────────
 
 interface HeaderProps {
@@ -691,39 +898,23 @@ export function Header({ showNav = true }: HeaderProps) {
               <NumerologyDropdown pathname={pathname} />
               <NavLink href="/book-consultancy" label="Book Consultancy" pathname={pathname} />
             </nav>
+            {/* Desktop-only auth (hidden on mobile — lives in the drawer instead) */}
             {!authLoading && (
-              <>
+              <div className="header-auth-desktop" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 {user ? (
                   <UserDropdown user={user} onSignOut={handleSignOut} onMyChartClick={handleMyChartClick} />
                 ) : (
                   <>
-                    {/* Theme toggle — icon cycling, hidden on mobile via CSS */}
                     <ThemeSwitcher variant="icon" />
                     <Link
                       href="/login"
                       style={{
-                        fontSize: '13.5px',
-                        fontWeight: 500,
-                        color: 'var(--text2)',
-                        background: 'transparent',
-                        border: '1px solid var(--border2)',
-                        padding: '7px 18px',
-                        borderRadius: 8,
-                        textDecoration: 'none',
-                        transition: 'all .18s',
+                        fontSize: '13.5px', fontWeight: 500, color: 'var(--text2)',
+                        background: 'transparent', border: '1px solid var(--border2)',
+                        padding: '7px 18px', borderRadius: 8, textDecoration: 'none', transition: 'all .18s',
                       }}
-                      onMouseEnter={(e) => {
-                        const el = e.currentTarget
-                        el.style.borderColor = 'var(--blue)'
-                        el.style.color = 'var(--blue)'
-                        el.style.background = 'var(--blue-light)'
-                      }}
-                      onMouseLeave={(e) => {
-                        const el = e.currentTarget
-                        el.style.borderColor = 'var(--border2)'
-                        el.style.color = 'var(--text2)'
-                        el.style.background = 'transparent'
-                      }}
+                      onMouseEnter={(e) => { const el = e.currentTarget; el.style.borderColor = 'var(--blue)'; el.style.color = 'var(--blue)'; el.style.background = 'var(--blue-light)' }}
+                      onMouseLeave={(e) => { const el = e.currentTarget; el.style.borderColor = 'var(--border2)'; el.style.color = 'var(--text2)'; el.style.background = 'transparent' }}
                     >
                       Sign in
                     </Link>
@@ -731,15 +922,9 @@ export function Header({ showNav = true }: HeaderProps) {
                       <Link
                         href="/signup"
                         style={{
-                          fontSize: '13.5px',
-                          fontWeight: 500,
-                          color: '#fff',
-                          background: 'var(--blue)',
-                          border: '1px solid var(--blue)',
-                          padding: '7px 18px',
-                          borderRadius: 8,
-                          textDecoration: 'none',
-                          transition: 'background .18s',
+                          fontSize: '13.5px', fontWeight: 500, color: '#fff',
+                          background: 'var(--blue)', border: '1px solid var(--blue)',
+                          padding: '7px 18px', borderRadius: 8, textDecoration: 'none', transition: 'background .18s',
                         }}
                         onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--blue-dark)' }}
                         onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--blue)' }}
@@ -749,7 +934,7 @@ export function Header({ showNav = true }: HeaderProps) {
                     )}
                   </>
                 )}
-              </>
+              </div>
             )}
 
             {/* Mobile hamburger */}
@@ -775,126 +960,14 @@ export function Header({ showNav = true }: HeaderProps) {
         </div>
       </header>
 
-      {/* Mobile menu drawer */}
-      {mobileMenuOpen && (
-        <div
-          className="header-mobile-drawer"
-          style={{
-            position: 'fixed',
-            top: 64,
-            left: 0,
-            right: 0,
-            zIndex: 199,
-            background: '#fff',
-            borderBottom: '1px solid var(--border2)',
-            boxShadow: '0 8px 24px rgba(0,0,0,.10)',
-            padding: '12px 0 16px',
-          }}
-        >
-          {/* Horoscope section */}
-          <div style={{ padding: '4px 0' }}>
-            <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.08em', padding: '6px 20px 4px' }}>
-              Horoscope
-            </p>
-            {[
-              { label: 'Daily', href: '/horoscope/daily/aries' },
-              { label: 'Weekly', href: '/horoscope/weekly/aries' },
-              { label: 'Monthly', href: '/horoscope/monthly/aries' },
-            ].map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                style={{
-                  display: 'block',
-                  padding: '10px 20px',
-                  fontSize: 15,
-                  color: pathname.startsWith(item.href.replace('/aries', '')) ? 'var(--blue)' : 'var(--text2)',
-                  fontWeight: pathname.startsWith(item.href.replace('/aries', '')) ? 600 : 400,
-                  textDecoration: 'none',
-                }}
-              >
-                {item.label}
-              </Link>
-            ))}
-          </div>
-
-          <div style={{ height: 1, background: 'var(--border2)', margin: '8px 20px' }} />
-
-          <Link
-            href="/panchang"
-            style={{
-              display: 'block',
-              padding: '10px 20px',
-              fontSize: 15,
-              color: pathname.startsWith('/panchang') ? 'var(--blue)' : 'var(--text2)',
-              fontWeight: pathname.startsWith('/panchang') ? 600 : 400,
-              textDecoration: 'none',
-            }}
-          >
-            Panchang
-          </Link>
-
-          <Link
-            href="/festival"
-            style={{
-              display: 'block',
-              padding: '10px 20px',
-              fontSize: 15,
-              color: pathname.startsWith('/festival') ? 'var(--blue)' : 'var(--text2)',
-              fontWeight: pathname.startsWith('/festival') ? 600 : 400,
-              textDecoration: 'none',
-            }}
-          >
-            Festival
-          </Link>
-
-          <div style={{ padding: '4px 0' }}>
-            <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.08em', padding: '6px 20px 4px' }}>
-              Numerology
-            </p>
-            {[
-              { label: 'Reading', href: '/numerology' },
-              { label: 'Compatibility', href: '/numerology/compatibility' },
-            ].map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                style={{
-                  display: 'block',
-                  padding: '10px 20px',
-                  fontSize: 15,
-                  color: pathname === item.href || (pathname.startsWith(item.href) && item.href !== '/numerology') ? 'var(--blue)' : 'var(--text2)',
-                  fontWeight: (pathname === item.href || (pathname.startsWith(item.href) && item.href !== '/numerology')) ? 600 : 400,
-                  textDecoration: 'none',
-                }}
-              >
-                {item.label}
-              </Link>
-            ))}
-          </div>
-
-          <Link
-            href="/book-consultancy"
-            style={{
-              display: 'block',
-              padding: '10px 20px',
-              fontSize: 15,
-              color: pathname.startsWith('/book-consultancy') ? 'var(--blue)' : 'var(--text2)',
-              fontWeight: pathname.startsWith('/book-consultancy') ? 600 : 400,
-              textDecoration: 'none',
-            }}
-          >
-            Book Consultancy
-          </Link>
-
-          <div style={{ height: 1, background: 'var(--border2)', margin: '8px 20px' }} />
-
-          {/* Theme switcher in mobile drawer */}
-          <div style={{ padding: '0 12px 4px' }}>
-            <ThemeSwitcher variant="menu" userId={user?.id ?? null} />
-          </div>
-        </div>
-      )}
+      <MobileDrawer
+        open={mobileMenuOpen}
+        onClose={() => setMobileMenuOpen(false)}
+        pathname={pathname}
+        user={user}
+        onSignOut={handleSignOut}
+        onMyChartClick={handleMyChartClick}
+      />
     </>
   )
 }

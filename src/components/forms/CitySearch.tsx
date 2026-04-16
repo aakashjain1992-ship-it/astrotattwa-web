@@ -26,9 +26,12 @@ export function CitySearch({ value, onSelect }: CitySearchProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const wrapperRef = useRef<HTMLDivElement>(null)
+  // Only open dropdown when the user actually typed — not when parent pushes a new value
+  const userTyped = useRef(false)
 
-  // keep input in sync when parent updates value (after selection / test data)
+  // keep input in sync when parent updates value (after selection / IP detection)
   useEffect(() => {
+    userTyped.current = false   // parent-driven update, not user input
     setQuery(value || '')
   }, [value])
 
@@ -43,13 +46,16 @@ export function CitySearch({ value, onSelect }: CitySearchProps) {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  // Search cities
+  // Search cities — only fires the dropdown when the user typed
   useEffect(() => {
     const searchCities = async () => {
       if (query.length < 2) {
         setResults([])
         return
       }
+
+      // Parent pushed a new value (IP detection / city select) — don't open dropdown
+      if (!userTyped.current) return
 
       setIsLoading(true)
       try {
@@ -83,7 +89,7 @@ export function CitySearch({ value, onSelect }: CitySearchProps) {
           type="text"
           placeholder="Search city... (e.g., Delhi, Mumbai, Baghpat)"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => { userTyped.current = true; setQuery(e.target.value) }}
           onFocus={() => query.length >= 2 && setIsOpen(true)}
           className="pl-10"
         />

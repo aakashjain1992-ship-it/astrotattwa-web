@@ -3,6 +3,7 @@ import { Footer } from '@/components/layout/Footer'
 import { NavagrahaSection } from '@/components/landing/NavagrahaSection'
 import { Yantra } from '@/components/landing/Yantra'
 import { Particles } from '@/components/landing/Particles'
+import { Galaxy } from '@/components/landing/Galaxy'
 import { Glyphs } from '@/components/landing/Glyphs'
 import BirthDataFormWrapper from '@/components/forms/BirthDataFormWrapper'
 import { PanchangTeaser } from '@/components/home/PanchangTeaser'
@@ -31,6 +32,7 @@ export default function HomePage() {
         {/* ── HERO ── */}
         <section className="hero-section"> 
          
+          <Galaxy />
           <Particles />
           <Glyphs />
           <div style={{position:'absolute',inset:0,pointerEvents:'none',zIndex:0}} className="hero-yantra"><Yantra /></div>

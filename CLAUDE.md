@@ -69,7 +69,8 @@ Note: `next.config.js` sets `ignoreBuildErrors: true` for TypeScript — type er
 - `src/components/chart/` — Chart display components: `PlanetaryTable.tsx` (sorted in KP order), `PlanetsTab.tsx`, `DashaNavigator.tsx`, `AvakhadaTable.tsx`, `ChartFocusMode.tsx` (D1/Moon/D9 visual charts), `ChartLabelModal.tsx` (save/rename + is_favorite), `DeleteChartDialog.tsx`, `DiamondChart.tsx` (renders the diamond-grid chart layout — used by both ChartFocusMode and DivisionalChartsTab; accepts `showAscLabel` to toggle Asc annotation)
 - `src/components/chart/sadesati/` — `SadeSatiTableView.tsx` + supporting components
 - `src/components/chart/divisional/` — `DivisionalChartsTab.tsx` + config/selector/insights
-- `src/components/forms/` — Birth data forms with city autocomplete
+- `src/components/forms/` — Birth data forms with city autocomplete. `CitySearch` uses a `userTyped` ref to prevent the results dropdown from auto-opening when the parent updates the `value` prop (e.g. after IP detection) — only opens on actual user keystrokes.
+- `src/components/landing/` — Homepage hero visuals: `Galaxy.tsx` (canvas star/nebula animation, `position: fixed` to escape hero `overflow: hidden`, uses `window.innerWidth/Height` not `offsetWidth`, `MutationObserver` on `<html>` class for instant dark/light switch), `Yantra.tsx` (SVG with 9 orbiting planets using SVG `animateTransform`), `Particles.tsx`, `Glyphs.tsx`.
 - `src/components/panchang/` — Panchang display sections (15 files): `DateNavigator`, `PanchangHeader`, `sections/` (14 section components for each panchang element)
 - `src/components/ui/` — shadcn/ui components (do not manually edit, use `npx shadcn-ui@latest add`)
 - `src/types/astrology.ts` — Central type definitions for all astrology entities (PlanetData, ChartData, HouseInfo, KPData, etc.)
@@ -93,6 +94,10 @@ Note: `next.config.js` sets `ignoreBuildErrors: true` for TypeScript — type er
 | `/privacy-policy` | Privacy Policy (static) — note: old `/privacy` route was deleted |
 
 **Deleted routes:** `/preview` was merged into `/` (Apr 2026).
+
+### Header & Mobile Navigation
+
+`src/components/layout/Header.tsx` contains a `MobileDrawer` component (defined in the same file, before `Header`). It renders as a full-height `position: fixed` side panel with a dimmed backdrop. Sub-menus (Horoscope, Numerology) are collapsed by default via `useState` — a `useEffect` resets them whenever the drawer closes. Bottom section shows Sign in + Get started for guests, or avatar + actions for logged-in users, with 44px bottom padding for iPhone home indicator. Desktop auth buttons are wrapped in `<div className="header-auth-desktop">` which is hidden via a media query in `globals.css` at ≤768px.
 
 ### PM2 Processes
 

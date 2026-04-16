@@ -120,12 +120,12 @@ export function FestivalCalendarSection() {
               display: 'inline-flex', alignItems: 'center', gap: '8px',
               padding: '10px 22px', borderRadius: '10px',
               fontSize: '13.5px', fontWeight: 600,
-              background: GOLD_RGBA(.14), border: `1px solid ${GOLD_RGBA(.35)}`,
-              color: GOLD, textDecoration: 'none',
+              background: 'var(--blue-light)', border: '1px solid var(--blue-mid)',
+              color: 'var(--blue)', textDecoration: 'none',
               transition: 'all .15s', flexShrink: 0, whiteSpace: 'nowrap',
             }}
-            onMouseEnter={e => { e.currentTarget.style.background = GOLD_RGBA(.24) }}
-            onMouseLeave={e => { e.currentTarget.style.background = GOLD_RGBA(.14) }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(37,99,235,0.18)' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'var(--blue-light)' }}
           >
             View Full Calendar →
           </Link>
