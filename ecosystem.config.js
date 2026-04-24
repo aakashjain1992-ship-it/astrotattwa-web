@@ -26,8 +26,10 @@ module.exports = {
     {
       name: "astrotattwa-web",
       cwd: "/var/www/astrotattwa-web",
-      script: "npm",
+      script: "node_modules/.bin/next",
       args: "start",
+      exec_mode: "cluster",
+      instances: 2,
       env: {
         NODE_ENV: "production",
         // All secrets from .env.local — explicitly listed so PM2 always wins

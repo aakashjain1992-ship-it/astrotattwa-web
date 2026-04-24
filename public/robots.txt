@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /payment-test
+Disallow: /settings
+Disallow: /api/
+
+Sitemap: https://astrotattwa.com/sitemap.xml

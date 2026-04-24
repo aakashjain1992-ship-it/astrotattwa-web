@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Astrotattwa is a Vedic astrology web application that generates birth charts (Kundli) using Swiss Ephemeris calculations. No login required for chart calculation. Charts are stored in localStorage on the client side, with optional save-to-database for authenticated users.
 
-**Live:** https://astrotattwa.com | **Server:** Linode VPS at `/var/www/astrotattwa-web` | **Process:** PM2 (`astrotattwa-web`)
+**Live:** https://astrotattwa.com | **Server:** Linode 4 GB VPS (2 CPU, 4 GB RAM, Mumbai) at `/var/www/astrotattwa-web` | **Process:** PM2 (`astrotattwa-web`, cluster mode — 2 instances)
 
 ## Commands
 
@@ -21,7 +21,7 @@ pm2 reload astrotattwa-web   # Reload production process (near-zero downtime)
 
 Note: `next.config.js` sets `ignoreBuildErrors: true` for TypeScript — type errors won't fail the build. Run `npm run type-check` separately.
 
-**Deploy sequence (production):** `npm run build && pm2 reload astrotattwa-web && pm2 save` — **NEVER stop PM2 before building.** Build first while the old server keeps serving from memory, then reload after. Do NOT `rm -rf .next` first. Use `pm2 reload` not `pm2 restart` — reload starts new instance before killing old one (near-zero downtime). `npm run build` already sets `NODE_OPTIONS='--max-old-space-size=512'` — required because the Linode VPS has ~957 MB RAM total.
+**Deploy sequence (production):** `npm run build && pm2 reload astrotattwa-web && pm2 save` — **NEVER stop PM2 before building.** Build first while the old server keeps serving from memory, then reload after. Do NOT `rm -rf .next` first. Use `pm2 reload` not `pm2 restart` — in cluster mode, reload does a rolling restart (one worker at a time, zero downtime). `npm run build` already sets `NODE_OPTIONS='--max-old-space-size=512'`. Server has 4 GB RAM total; build is capped at 512 MB to leave headroom for the 2 running workers.
 
 ## Tech Stack
 
@@ -31,7 +31,7 @@ Note: `next.config.js` sets `ignoreBuildErrors: true` for TypeScript — type er
 - **Payments:** PhonePe (`pg-sdk-node` v2.0.3) — Standard Checkout, **Production** credentials configured (pending PhonePe account activation). Webhook registered at `/api/payment/webhook` for order, refund and dispute events.
 - **State:** Component-local useState + localStorage (`lastChart` key) + custom hooks. No global store.
 - **Forms:** React Hook Form + Zod validation schemas (in `src/lib/validation/`)
-- **Rate Limiting:** Upstash Redis (`@upstash/ratelimit`) — presets in `src/lib/api/rateLimit.ts`
+- **Rate Limiting:** Local Redis via `ioredis` — runs on `localhost:6379`, auto-starts on boot (`systemctl enable redis-server`). Atomic Lua script for cross-process correctness. Presets in `src/lib/api/rateLimit.ts`. Fails open (allows request) if Redis is down.
 - **Testing:** Vitest and @testing-library/react are installed but **no tests exist** — manual testing via `/api/test/run-calculations`
 - **Deployment:** GitHub Actions → SSH to Linode → `npm install && npm run build && pm2 reload astrotattwa-web`
 
@@ -71,7 +71,7 @@ Note: `next.config.js` sets `ignoreBuildErrors: true` for TypeScript — type er
 - `src/components/chart/sadesati/` — `SadeSatiTableView.tsx` + supporting components
 - `src/components/chart/divisional/` — `DivisionalChartsTab.tsx` + config/selector/insights
 - `src/components/forms/` — Birth data forms with city autocomplete. `CitySearch` uses a `userTyped` ref to prevent the results dropdown from auto-opening when the parent updates the `value` prop (e.g. after IP detection) — only opens on actual user keystrokes.
-- `src/components/landing/` — Homepage hero visuals: `Galaxy.tsx` (canvas star/nebula animation, `position: fixed` to escape hero `overflow: hidden`, uses `window.innerWidth/Height` not `offsetWidth`, `MutationObserver` on `<html>` class for instant dark/light switch), `Yantra.tsx` (SVG with 9 orbiting planets using SVG `animateTransform`), `Particles.tsx`, `Glyphs.tsx`.
+- `src/components/landing/` — Homepage hero visuals: `Galaxy.tsx` (canvas star/nebula animation, `position: fixed` to escape hero `overflow: hidden`, uses `window.innerWidth/Height` not `offsetWidth`, `MutationObserver` on `<html>` class for instant dark/light switch, `visibilitychange` listener pauses animation when tab is hidden to save CPU), `Yantra.tsx` (SVG with 9 orbiting planets using SVG `animateTransform`), `Particles.tsx`, `Glyphs.tsx`.
 - `src/components/panchang/` — Panchang display sections (15 files): `DateNavigator`, `PanchangHeader`, `sections/` (14 section components for each panchang element)
 - `src/components/ui/` — shadcn/ui components (do not manually edit, use `npx shadcn-ui@latest add`)
 - `src/types/astrology.ts` — Central type definitions for all astrology entities (PlanetData, ChartData, HouseInfo, KPData, etc.)
@@ -96,16 +96,20 @@ Note: `next.config.js` sets `ignoreBuildErrors: true` for TypeScript — type er
 
 **Deleted routes:** `/preview` was merged into `/` (Apr 2026).
 
+**SEO:** `src/app/sitemap.ts` generates `/sitemap.xml` automatically (40 URLs: static pages + all 36 horoscope combinations). `public/robots.txt` blocks `/admin/`, `/payment-test`, `/settings`, `/api/`. Horoscope pages (`/horoscope/[type]/[rashi]`) use `generateStaticParams` — all 36 are pre-built as SSG at deploy time.
+
 ### Header & Mobile Navigation
 
 `src/components/layout/Header.tsx` contains a `MobileDrawer` component (defined in the same file, before `Header`). It renders as a full-height `position: fixed` side panel with a dimmed backdrop. Sub-menus (Horoscope, Numerology) are collapsed by default via `useState` — a `useEffect` resets them whenever the drawer closes. Bottom section shows Sign in + Get started for guests, or avatar + actions for logged-in users, with 44px bottom padding for iPhone home indicator. Desktop auth buttons are wrapped in `<div className="header-auth-desktop">` which is hidden via a media query in `globals.css` at ≤768px.
 
 ### PM2 Processes
 
-| Process | Description |
-|---------|-------------|
-| `astrotattwa-web` | Next.js production server |
-| `horoscope-cron` | Runs `scripts/horoscope/cron.js` — generates daily/weekly/monthly horoscopes on schedule |
+| Process | Mode | Description |
+|---------|------|-------------|
+| `astrotattwa-web` | cluster (2 instances) | Next.js production server — 2 workers share port via Node.js cluster, zero-downtime rolling reload |
+| `horoscope-cron` | fork (1 instance) | Runs `scripts/horoscope/cron.js` — generates daily/weekly/monthly horoscopes on schedule |
+
+**Cluster notes:** `ecosystem.config.js` sets `exec_mode: "cluster", instances: 2`. `pm2 reload astrotattwa-web` does a rolling restart (worker 1 up → worker 0 reloads → worker 0 up). Rate limiting is shared across workers via local Redis. Do NOT switch to `npm` as the PM2 script — cluster mode requires a Node.js entry point (`node_modules/.bin/next`).
 
 ### Scripts (`scripts/`)
 
@@ -201,7 +205,7 @@ Any component with structural backgrounds or borders must be theme-aware. Two ap
 
 ### Error Handling
 
-Centralized in `src/lib/api/errorHandling.ts` — use `successResponse()`, `errorResponse()`, `validationError()`, etc. Rate limiting presets in `src/lib/api/rateLimit.ts`: `strict` (5/min), `standard` (20/min), `lenient` (60/min — used for Panchang and horoscope), `auth` (very strict). There is no `loose` preset.
+Centralized in `src/lib/api/errorHandling.ts` — use `successResponse()`, `errorResponse()`, `validationError()`, etc. Rate limiting presets in `src/lib/api/rateLimit.ts`: `strict` (5/min), `standard` (20/min), `lenient` (60/min — used for Panchang and horoscope), `auth` (3/5min — very strict). There is no `loose` preset. Rate limiter uses local Redis (`ioredis`, localhost:6379) with an atomic Lua script — shared state across both PM2 cluster workers. Fails open if Redis is unavailable.
 
 ## Workflow Discipline
 
@@ -310,7 +314,7 @@ Required in `.env.local`:
 - `SUPABASE_SERVICE_ROLE_KEY` — Server-side admin operations
 - `NEXT_PUBLIC_SITE_URL` — App URL for auth callbacks (fallback: https://astrotattwa.com)
 - `NEXT_PUBLIC_APP_URL` — App URL for CORS headers in `next.config.js` (fallback: https://astrotattwa.com)
-- `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` — Upstash Redis for rate limiting
+- `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` — **No longer used for rate limiting** (switched to local Redis via `ioredis`). Vars kept in `.env.local` for reference but are not loaded into PM2 env.
 - `RESEND_API_KEY` — Email service (scripts only, not used in src/)
 - `HERE_MAPS_API_KEY` — Location/geocoding for city search (optional)
 - `ADMIN_SECRET_TOKEN` — Protects `/api/horoscope/generate` and test endpoints

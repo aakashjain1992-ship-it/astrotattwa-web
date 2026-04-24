@@ -84,8 +84,10 @@ export function Galaxy() {
     let stars: Star[] = []
     let time = 0
     let isDark = document.documentElement.classList.contains('dark')
+    let paused = false
 
     const draw = () => {
+      if (paused) return
       const w = canvas.width
       const h = canvas.height
       if (w === 0 || h === 0) { animId = requestAnimationFrame(draw); return }
@@ -166,9 +168,17 @@ export function Galaxy() {
     })
     themeObserver.observe(document.documentElement, { attributeFilter: ['class'] })
 
+    // Pause animation when tab is hidden, resume when visible
+    const handleVisibility = () => {
+      paused = document.hidden
+      if (!paused) animId = requestAnimationFrame(draw)
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+
     return () => {
       cancelAnimationFrame(animId)
       window.removeEventListener('resize', setSize)
+      document.removeEventListener('visibilitychange', handleVisibility)
       themeObserver.disconnect()
     }
   }, [])
