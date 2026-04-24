@@ -55,7 +55,7 @@ export function PanchangDatePicker({
         <Button
           variant="outline"
           className={cn(
-            'h-10 justify-start text-left font-normal min-w-[160px]',
+            'h-10 w-full justify-start text-left font-normal',
             !value && 'text-muted-foreground'
           )}
         >

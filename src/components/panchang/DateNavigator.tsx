@@ -15,15 +15,15 @@ export function DateNavigator({ currentDate, onDateChange }: DateNavigatorProps)
   const isToday = currentDate.toDateString() === today.toDateString()
 
   return (
-    <div className="flex items-center gap-2 flex-wrap">
+    <div className="flex items-center gap-1.5 w-full">
       <Button
         variant="outline"
         size="sm"
         onClick={() => onDateChange(subDays(currentDate, 1))}
-        className="flex items-center gap-1"
+        className="flex items-center gap-0.5 shrink-0 px-2 sm:px-3"
       >
         <ChevronLeft className="h-4 w-4" />
-        Prev
+        <span className="hidden sm:inline">Prev</span>
       </Button>
 
       <Button
@@ -31,25 +31,27 @@ export function DateNavigator({ currentDate, onDateChange }: DateNavigatorProps)
         size="sm"
         onClick={() => onDateChange(today)}
         disabled={isToday}
-        className="flex items-center gap-1"
+        className="flex items-center gap-0.5 shrink-0 px-2 sm:px-3"
       >
         <CalendarDays className="h-3.5 w-3.5" />
-        Today
+        <span className="hidden sm:inline">Today</span>
       </Button>
 
-      <PanchangDatePicker
-        value={currentDate}
-        onChange={onDateChange}
-        label={format(currentDate, 'dd MMM yyyy')}
-      />
+      <div className="flex-1 min-w-0">
+        <PanchangDatePicker
+          value={currentDate}
+          onChange={onDateChange}
+          label={format(currentDate, 'dd MMM yyyy')}
+        />
+      </div>
 
       <Button
         variant="outline"
         size="sm"
         onClick={() => onDateChange(addDays(currentDate, 1))}
-        className="flex items-center gap-1"
+        className="flex items-center gap-0.5 shrink-0 px-2 sm:px-3"
       >
-        Next
+        <span className="hidden sm:inline">Next</span>
         <ChevronRight className="h-4 w-4" />
       </Button>
     </div>

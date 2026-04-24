@@ -1,8 +1,8 @@
 # Component Library
 
-**Version:** 2.0
-**Last Updated:** March 18, 2026
-**Total Components:** 52 component files + 6 hooks + 18 API routes
+**Version:** 3.0
+**Last Updated:** April 24, 2026
+**Total Components:** 82 component files + 6 hooks + 28 API routes
 
 ---
 
@@ -29,12 +29,15 @@ This document catalogs all reusable components in the Astrotattwa codebase. Each
 
 ### Component Categories
 - **UI Components** - shadcn/ui primitives + custom (17 files: 15 shadcn/ui + 2 custom)
-- **Chart Components** - Astrology visualization (22 files; 16 active, 6 unused)
+- **Chart Components** - Astrology visualization (15 files; 12 active, 3 unused)
 - **Form Components** - Input and validation (5 components, all active)
 - **Layout Components** - Page structure (3 components: Header, Footer, ThemeProvider)
-- **Landing Components** - Landing page features (4 components, all active)
+- **Landing Components** - Landing page features (6 components, all active)
 - **Auth Components** - Authentication (1 component + 5 auth page forms)
-- **Custom Hooks** - Shared React hooks (6 hooks; 4 active, 2 unused)
+- **Panchang Components** - Daily panchang display (20 files; all active)
+- **Horoscope Components** - Horoscope shell + supporting UI (8 files; all active)
+- **Numerology Components** - Numerology reports + compatibility (15 files; all active)
+- **Custom Hooks** - Shared React hooks (6 hooks; 5 active, 1 unused)
 
 ### File Structure
 ```
@@ -46,13 +49,16 @@ src/components/
 │   └── sadesati/    # Saturn transit analysis
 ├── forms/           # Form components
 ├── layout/          # Header, Footer
-├── landing/         # Landing page components
+├── landing/         # Landing page components (Galaxy, Yantra, Particles, Glyphs, ZodiacWheel, NavagrahaSection)
+├── panchang/        # Panchang display (DateNavigator, PanchangHeader, sections/ × 14)
+├── horoscope/       # Horoscope shell + supporting UI (8 files)
+├── numerology/      # Numerology reports + compatibility (15 files)
 └── auth/            # Authentication components
 
 src/app/
 ├── (auth)/          # Auth page forms (Login, Signup, etc.)
 ├── chart/           # Chart page + ChartClient orchestrator
-└── api/             # 18 API route handlers
+└── api/             # 28 API route handlers
 ```
 
 ---
@@ -243,7 +249,7 @@ interface DiamondChartProps {
   houses: HouseData[];
   width?: number;
   height?: number;
-  showAscendantMarker?: boolean;
+  showAscLabel?: boolean;       // toggles "Asc" annotation — used by ChartFocusMode and DivisionalChartsTab
   onPlanetClick?: (planetKey: string) => void;
 }
 ```
@@ -536,6 +542,56 @@ interface ChartFocusModeProps {
 - Multiple chart instances (D1, Moon, D9)
 - Focus and compare modes
 - Keyboard shortcuts
+
+---
+
+#### PlanetsTab
+**File:** `src/components/chart/PlanetsTab.tsx`
+**Purpose:** Planets tab view — wraps PlanetaryTable with additional context display
+**Used by:** ChartClient
+
+---
+
+#### ChartLabelModal
+**File:** `src/components/chart/ChartLabelModal.tsx`
+**Purpose:** Save / rename a chart with label and is_favorite toggle
+**Used by:** ChartClient
+
+```typescript
+interface ChartLabelModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  chartId?: string;           // undefined = new save, string = edit existing
+  currentLabel?: string;
+  currentIsFavorite?: boolean;
+  onSave: (label: string, isFavorite: boolean) => Promise<void>;
+}
+```
+
+**Features:**
+- Radix Dialog
+- Label input + is_favorite checkbox ("Set as My Chart")
+- Handles both create and edit flows
+
+---
+
+#### DeleteChartDialog
+**File:** `src/components/chart/DeleteChartDialog.tsx`
+**Purpose:** Confirm-delete modal for saved charts
+**Used by:** ChartClient
+
+```typescript
+interface DeleteChartDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  chartLabel: string;
+  onConfirm: () => Promise<void>;
+}
+```
+
+**Features:**
+- Radix AlertDialog
+- Shows chart label in confirmation message
 
 ---
 
@@ -983,6 +1039,34 @@ import { ThemeProvider } from '@/components/theme-provider';
 
 ## Landing Components
 
+### Galaxy
+**File:** `src/components/landing/Galaxy.tsx`
+**Purpose:** Full-viewport canvas star/nebula animation for the homepage hero
+**Used by:** Home page
+
+**Features:**
+- `position: fixed` to escape hero `overflow: hidden`
+- 654 stars across 3 layers (tiny, medium, bright) + milky way band
+- Per-star twinkle + drift animation via `requestAnimationFrame`
+- 5 nebulae rendered as radial gradients
+- Pauses automatically when browser tab is hidden (`visibilitychange` API) — saves CPU
+- `MutationObserver` on `<html>` for instant dark/light theme switch
+- Uses `window.innerWidth/Height` not `offsetWidth` (avoids layout thrash)
+
+---
+
+### ZodiacWheel
+**File:** `src/components/landing/ZodiacWheel.tsx`
+**Purpose:** Rotating zodiac SVG wheel for the homepage hero
+**Used by:** Home page
+
+**Features:**
+- SVG-based rotating zodiac ring
+- 12 zodiac glyphs evenly spaced
+- CSS animation via `animateTransform`
+
+---
+
 ### NavagrahaSection
 **File:** `src/components/landing/NavagrahaSection.tsx`
 **Purpose:** Interactive section displaying 9 planetary deities
@@ -1103,6 +1187,76 @@ All auth forms use: Button, Input, Label, Logo from `@/components/ui/`
 
 ---
 
+## Panchang Components
+
+All in `src/components/panchang/`. Entry point is `PanchangHeader` + `DateNavigator`; the 14 section components are rendered by the panchang page in order.
+
+| Component | File | Purpose |
+|-----------|------|---------|
+| **DateNavigator** | `DateNavigator.tsx` | Prev/Next date navigation with calendar picker |
+| **PanchangHeader** | `PanchangHeader.tsx` | Header bar showing current date + location |
+| **PanchangDatePicker** | `PanchangDatePicker.tsx` | Calendar popup used by DateNavigator |
+| **CollapsibleSection** | `CollapsibleSection.tsx` | Wrapper for collapsible panchang sections |
+| **SpecialYogasPills** | `SpecialYogasPills.tsx` | Pill badges for special yoga combinations |
+| **SunriseMoonrise** | `sections/SunriseMoonrise.tsx` | Sunrise, sunset, moonrise, moonset times |
+| **RashiNakshatra** | `sections/RashiNakshatra.tsx` | Tithi, Nakshatra, Yoga, Karana, Vara |
+| **LunarCalendar** | `sections/LunarCalendar.tsx` | Vikram Samvat, Shaka Samvat, Masa, Paksha |
+| **AuspiciousTimings** | `sections/AuspiciousTimings.tsx` | Brahma, Abhijit, Vijaya muhurtas |
+| **InauspiciousTimings** | `sections/InauspiciousTimings.tsx` | Rahu Kalam, Dur Muhurtam, Yamaghanta |
+| **UdayaLagna** | `sections/UdayaLagna.tsx` | Rising ascendant slots + Panchaka type |
+| **ChandraTara** | `sections/ChandraTara.tsx` | Chandrabalam + Tarabalam favorability |
+| **AnandadiYoga** | `sections/AnandadiYoga.tsx` | Anandadi Yoga + Tamil 28-cycle |
+| **NivasShool** | `sections/NivasShool.tsx` | Nivas + Shool direction |
+| **MantriMandala** | `sections/MantriMandala.tsx` | Mantri Mandala for current Vikram Samvat year |
+| **PanchaBhuja** | `sections/PanchaBhuja.tsx` | Pancha Bhuja calculations |
+| **RituAyana** | `sections/RituAyana.tsx` | Ritu (season) + Ayana display |
+| **OtherCalendars** | `sections/OtherCalendars.tsx` | Other calendar epochs |
+| **FestivalsEvents** | `sections/FestivalsEvents.tsx` | Festivals from `festival_calendar` table |
+| **SpecialYogas** | `sections/SpecialYogas.tsx` (via SpecialYogasPills) | Auspicious/inauspicious yoga detection |
+
+---
+
+## Horoscope Components
+
+All in `src/components/horoscope/`. `HoroscopeShell` is the top-level orchestrator used by the SSR horoscope page.
+
+| Component | File | Purpose |
+|-----------|------|---------|
+| **HoroscopeShell** | `HoroscopeShell.tsx` | Main orchestrator — language toggle, type tabs, rashi selector, history nav, content display |
+| **HoroscopeContent** | `HoroscopeContent.tsx` | Renders the horoscope text (EN/HI) with section formatting |
+| **HoroscopeLoading** | `HoroscopeLoading.tsx` | Skeleton loading state |
+| **RashiSelector** | `RashiSelector.tsx` | 12-rashi grid selector |
+| **HistoryNavigator** | `HistoryNavigator.tsx` | Prev/Next navigation through past horoscopes |
+| **LanguageToggle** | `LanguageToggle.tsx` | EN ↔ HI toggle, preference persisted to `localStorage` (`horoscope_lang`) |
+| **SignTypeToggle** | `SignTypeToggle.tsx` | Moon sign / Sun sign toggle (sun sign currently disabled) |
+| **InsightChips** | `InsightChips.tsx` | Pill display for planet transit insights |
+
+---
+
+## Numerology Components
+
+All in `src/components/numerology/`. `NumerologyReport` is embeddable — used both standalone and inside `CompatibilityReport`.
+
+| Component | File | Purpose |
+|-----------|------|---------|
+| **NumerologyReport** | `NumerologyReport.tsx` | 6-tab report: Core Numbers, Lo Shu Grid, Chaldean, Planes, Arrows, Raj Yogas. Takes `NumerologyResult` prop. |
+| **CompatibilityReport** | `CompatibilityReport.tsx` | 5-tab compatibility report — embeds `NumerologyReport` for each person in "Full Reports" tab |
+| **LoShuGrid** | `LoShuGrid.tsx` | 3×3 Lo Shu grid with frequency-colored cells |
+| **CoreNumbers** | `CoreNumbers.tsx` | Life Path, Destiny, Soul Urge, Personality display cards |
+| **ChaldeanCard** | `ChaldeanCard.tsx` | Chaldean name number breakdown |
+| **PlanesAnalysis** | `PlanesAnalysis.tsx` | Mental / Physical / Emotional / Intuitive plane scores |
+| **ArrowsAnalysis** | `ArrowsAnalysis.tsx` | Present/missing Lo Shu arrows with meanings |
+| **RajYogas** | `RajYogas.tsx` | Detected Raj Yoga combinations |
+| **KarmicLessons** | `KarmicLessons.tsx` | Missing numbers → karmic lesson interpretations |
+| **SpecialConditions** | `SpecialConditions.tsx` | Master numbers (11/22/33), karmic debt numbers |
+| **SavedReadings** | `SavedReadings.tsx` | List of user's saved numerology readings (auth required) |
+| **CompatibilityScore** | `CompatibilityScore.tsx` | 100-point score breakdown display |
+| **GridComparison** | `GridComparison.tsx` | Side-by-side Lo Shu grid comparison |
+| **CompatibilityArrows** | `CompatibilityArrows.tsx` | Arrow harmony analysis for the pair |
+| **CompatibilityYogas** | `CompatibilityYogas.tsx` | Shared / complementary Raj Yoga display |
+
+---
+
 ## Custom Hooks
 
 ### Active Hooks
@@ -1139,21 +1293,21 @@ All auth forms use: Button, Input, Label, Logo from `@/components/ui/`
 
 ---
 
-### Unused Hooks
-
 #### useAuth
 **File:** `src/hooks/useAuth.ts`
 **Purpose:** Session management, user info, sign out
-**Status:** Only the `AuthUser` TYPE is imported (by Header.tsx). The hook function itself is never called.
+**Used by:** Header.tsx, HoroscopeTeaser, NumerologyClient, CompatibilityClient
 
 **Returns:** `{ user: AuthUser | null, loading, signOut, updateProfile }`
 
 ---
 
+### Unused Hooks
+
 #### useVargottama
 **File:** `src/hooks/useVargottama.ts`
 **Purpose:** Detect vargottama planets (same sign in D1 & D9)
-**Status:** Never imported anywhere
+**Status:** Never imported anywhere — candidate for removal
 
 **Returns:** `{ vargottamaPlanets, getVargottamaInsights() }`
 
@@ -1190,17 +1344,58 @@ All auth forms use: Button, Input, Label, Logo from `@/components/ui/`
 ### Chart Persistence (Authenticated)
 | Method | Endpoint | Purpose |
 |--------|----------|---------|
-| GET | `/api/SaveChart` | List user's saved charts |
-| POST | `/api/SaveChart` | Create new saved chart |
-| PATCH | `/api/SaveChart/[id]` | Update saved chart |
-| DELETE | `/api/SaveChart/[id]` | Delete saved chart |
+| GET | `/api/save-chart` | List user's saved charts |
+| POST | `/api/save-chart` | Create new saved chart |
+| PATCH | `/api/save-chart/[id]` | Update label / is_favorite (clears other favorites when setting new default) |
+| DELETE | `/api/save-chart/[id]` | Delete saved chart |
+
+### Panchang
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| GET | `/api/panchang` | Full daily panchang (date + lat/lng params); cached in `panchang_cache` table (24h TTL) |
+| GET | `/api/panchang/ip-location` | Auto-detect user location from IP for panchang |
+
+### Horoscope
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| GET | `/api/horoscope` | Fetch horoscope by type/rashi/sign_type/date; falls back to latest |
+| GET | `/api/horoscope/history` | Past N horoscopes (7 daily / 4 weekly / 6 monthly) |
+| POST | `/api/horoscope/generate` | Generate all 12 rashis for a type/date — admin only (`ADMIN_SECRET_TOKEN`) |
+
+### Numerology
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| GET | `/api/numerology` | List saved readings (auth required) |
+| POST | `/api/numerology` | Save a reading (auth required) |
+| DELETE | `/api/numerology/[id]` | Delete a saved reading (auth required) |
+| GET | `/api/numerology/compatibility` | List saved compatibility readings (auth required) |
+| POST | `/api/numerology/compatibility` | Save a compatibility reading (auth required) |
+| DELETE | `/api/numerology/compatibility/[id]` | Delete a compatibility reading (auth required) |
+
+### Payment
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| POST | `/api/payment/initiate` | Create PhonePe order → returns `checkoutUrl` |
+| GET | `/api/payment/status` | Poll order state (`?orderId=xxx`) |
+| POST | `/api/payment/webhook` | PhonePe server-to-server payment event notifications |
+
+### User Preferences
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| GET | `/api/user/theme` | Read stored theme preference (`null` if unset) |
+| PATCH | `/api/user/theme` | Save theme preference to `profiles.theme` |
+
+### Festivals
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| GET | `/api/festivals` | Festival calendar data |
 
 ### Authentication
 | Method | Endpoint | Purpose |
 |--------|----------|---------|
 | POST | `/api/auth/login` | Email/password login |
 | POST | `/api/auth/logout` | Logout |
-| GET | `/api/auth/me` | Current user info |
+| GET | `/api/auth/me` | Current user info (server-to-server only — do not use in UI) |
 
 ### Testing (Admin Only)
 | Method | Endpoint | Purpose |
@@ -1223,21 +1418,20 @@ These files exist in the codebase but are **not imported or rendered anywhere**:
 ### Chart Components
 | Component | File | Notes |
 |-----------|------|-------|
-| **BirthDetails** | `src/components/chart/BirthDetails.tsx` | Likely replaced by UserDetailsCard |
-| **PlanetDisplay** | `src/components/chart/PlanetDisplay.tsx` | Only imported by HouseBlock (which is also unused)  |
+| **BirthDetails** | `src/components/chart/BirthDetails.tsx` | Replaced by UserDetailsCard — safe to delete |
+| **PlanetDisplay** | `src/components/chart/PlanetDisplay.tsx` | Only imported by HouseBlock (also unused) — safe to delete |
 
 ### Auth Components
 | Component | File | Notes |
 |-----------|------|-------|
-| **SessionWatcher** | `src/components/auth/SessionWatcher.tsx` | Defined with JSDoc but never mounted in any layout or page |
+| **SessionWatcher** | `src/components/auth/SessionWatcher.tsx` | Defined but never mounted in any layout or page |
 
 ### Hooks
 | Hook | File | Notes |
 |------|------|-------|
-| **useAuth** | `src/hooks/useAuth.ts` | Only the `AuthUser` type is imported; hook function never called |
-| **useVargottama** | `src/hooks/useVargottama.ts` | Never imported anywhere (Deleted)  |
+| **useVargottama** | `src/hooks/useVargottama.ts` | Never imported anywhere — safe to delete |
 
-> **Recommendation:** Consider removing dead code or integrating these components where intended (e.g., mounting SessionWatcher in a layout, using useAuth in Header).
+> **Recommendation:** Remove BirthDetails, PlanetDisplay, and useVargottama. Consider mounting SessionWatcher in a protected layout or removing it too.
 
 ---
 
@@ -1356,46 +1550,46 @@ src/components/
 
 ### By Category (Active Only)
 - **UI Components:** 16 active (of 17 installed)
-- **Chart Components:** 16 active (of 22 files)
+- **Chart Components:** 12 active (of 15 files)
 - **Form Components:** 5 active (of 5)
 - **Layout Components:** 3 active (of 3)
-- **Landing Components:** 4 active (of 4)
+- **Landing Components:** 6 active (of 6)
 - **Auth Components:** 5 auth page forms active; SessionWatcher unused
-- **Custom Hooks:** 4 active (of 6)
+- **Panchang Components:** 20 active (of 20)
+- **Horoscope Components:** 8 active (of 8)
+- **Numerology Components:** 15 active (of 15)
+- **Custom Hooks:** 5 active (of 6)
 
-**Active Total:** 53 components + 4 hooks
-**Dead Code:** 7 components + 2 hooks
+**Active Total:** 90 components + 5 hooks
+**Dead Code:** 4 components + 1 hook
 
 ### Dead Code Summary
-9 files exist but are never imported: ScrollArea, BirthDetails, PlanetDisplay, SessionWatcher, useAuth (function),
+5 files exist but are never imported: `ScrollArea`, `BirthDetails`, `PlanetDisplay`, `SessionWatcher`, `useVargottama`
 
 ---
 
 ## Next Steps
 
 ### Recently Completed
-- [x] ChartLoader component (Feb 2026)
-- [x] Logo component (Feb 2026)
-- [x] Landing page components (Feb 2026)
-- [x] SessionWatcher auth component (Feb 2026)
-- [x] StatusBadges component (Feb 2026)
-- [x] ChartLegend component (Feb 2026)
-- [x] UserDetailsCard component (Feb 2026)
-- [x] AvakhadaTable component (Feb 2026)
-- [x] Full divisional chart set (D1-D60) (Feb 2026)
-- [x] Toast notification system (Feb 2026)
-- [x] BirthDataFormWrapper (Feb 2026)
+- [x] ChartLoader, Logo, StatusBadges, ChartLegend, UserDetailsCard, AvakhadaTable (Feb 2026)
+- [x] Full divisional chart set (D1-D60), Toast system, BirthDataFormWrapper (Feb 2026)
 - [x] Sade Sati / Dhaiya analysis (SadeSatiTableView + PeriodDetailView) (Mar 2026)
 - [x] DashaNavigator multi-level navigator (Mar 2026)
+- [x] Panchang module — 20 components (Mar–Apr 2026)
+- [x] Horoscope module — 8 components + SSR pages (Mar–Apr 2026)
+- [x] Numerology module — 15 components (Apr 2026)
+- [x] ChartLabelModal + DeleteChartDialog (Apr 2026)
+- [x] Galaxy canvas animation + ZodiacWheel landing components (Apr 2026)
+- [x] useAuth hook activated — now used in Header, HoroscopeTeaser, NumerologyClient (Apr 2026)
+- [x] Sitemap + robots.txt (Apr 2026)
 
 ### To Do
-- [ ] Mount SessionWatcher in a protected layout or remove
-- [ ] Integrate useAuth hook in Header (currently only type import)
-- [ ] Remove unused scroll-area.tsx or use it
-- [ ] ErrorBoundary wrapper for charts
+- [ ] Mount SessionWatcher in a protected layout or remove entirely
+- [ ] Remove dead code: BirthDetails, PlanetDisplay, useVargottama, scroll-area.tsx
+- [ ] ErrorBoundary wrapper for chart components
 - [ ] Chart export (PNG/PDF) functionality
 
 ---
 
-**Last Updated:** March 18, 2026
+**Last Updated:** April 24, 2026
 **Maintainer:** Aakash + AI Assistants

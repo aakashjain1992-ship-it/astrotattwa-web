@@ -460,20 +460,12 @@
   box-shadow: 0 8px 24px rgba(0,0,0,.5) !important;
 }
 
-/* ── Mobile drawer ── */
-.dark .header-mobile-drawer {
-  background: #0F0F28 !important;
-  box-shadow: 0 8px 24px rgba(0,0,0,.5) !important;
-}
-
 /* ── Header nav responsive ── */
 @media (max-width: 768px) {
-  .header-desktop-nav { display: none !important; }
+  .header-desktop-nav   { display: none !important; }
+  .header-auth-desktop  { display: none !important; }
   .header-mobile-menu-btn { display: flex !important; }
   .theme-switcher-icon-btn { display: none !important; }
-}
-@media (min-width: 769px) {
-  .header-mobile-drawer { display: none !important; }
 }
 
 /* ── Yantra SVG: blue → gold ── */

@@ -2,8 +2,6 @@
 # Runs every Saturday at 8:30 AM
 # Scans the codebase and saves a snapshot to Claude Memory for reuse by doc-audit
 
-set -e
-
 # Ensure node/claude work in cron (no nvm, no HOME by default)
 export PATH="/home/deploy/.nvm/versions/node/v20.20.0/bin:$PATH"
 export HOME="/home/deploy"
@@ -15,7 +13,9 @@ MEMORY_FILE="/var/www/astrotattwa-web/cron-scripts/memory/codebase_snapshot.md"
 mkdir -p "$(dirname "$LOG_FILE")"
 mkdir -p "$(dirname "$MEMORY_FILE")"
 
-echo "[$(date)] Starting codebase snapshot..." | tee -a "$LOG_FILE"
+log() { echo "[$(date '+%Y-%m-%d %H:%M:%S UTC')] $1" | tee -a "$LOG_FILE"; }
+
+log "Starting codebase snapshot..."
 
 cd "$PROJECT_DIR"
 
@@ -109,6 +109,18 @@ date: $(date +%Y-%m-%d)
 - Files changed this week: X
 - Snapshot generated: $(date +%Y-%m-%d %H:%M UTC)"
 
-/home/deploy/.nvm/versions/node/v20.20.0/bin/claude --dangerously-skip-permissions -p "$PROMPT" --model claude-sonnet-4-6 >> "$LOG_FILE" 2>&1
+log "Running Claude snapshot (timeout: 30 min)..."
+timeout 1800 /home/deploy/.nvm/versions/node/v20.20.0/bin/claude \
+  --dangerously-skip-permissions \
+  --max-turns 100 \
+  -p "$PROMPT" \
+  --model claude-sonnet-4-6 >> "$LOG_FILE" 2>&1
+CLAUDE_EXIT=$?
 
-echo "[$(date)] Codebase snapshot complete." | tee -a "$LOG_FILE"
+if [ $CLAUDE_EXIT -eq 124 ]; then
+  log "ERROR: Claude timed out after 30 minutes."
+elif [ $CLAUDE_EXIT -ne 0 ]; then
+  log "ERROR: Claude exited with code $CLAUDE_EXIT."
+else
+  log "Codebase snapshot complete."
+fi

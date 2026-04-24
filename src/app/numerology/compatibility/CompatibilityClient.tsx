@@ -248,7 +248,7 @@ export function CompatibilityClient() {
     <div style={{ maxWidth: 960, margin: '0 auto', padding: '0 16px 80px' }}>
 
       {/* Hero */}
-      <div style={{ textAlign: 'center', padding: '48px 0 40px' }}>
+      <div style={{ textAlign: 'center', padding: 'clamp(28px, 6vw, 48px) 0 clamp(24px, 5vw, 40px)' }}>
         <div style={{
           display: 'inline-flex',
           alignItems: 'center',
@@ -286,7 +286,7 @@ export function CompatibilityClient() {
         background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(13,17,23,0.02)',
         border: `1.5px solid ${borderColor}`,
         borderRadius: 20,
-        padding: '32px',
+        padding: 'clamp(16px, 4vw, 32px)',
         marginBottom: 32,
       }}>
         <form onSubmit={handleSubmit}>
@@ -425,7 +425,7 @@ export function CompatibilityClient() {
             background: isDark ? 'rgba(255,255,255,0.02)' : '#fff',
             border: `1.5px solid ${borderColor}`,
             borderRadius: 20,
-            padding: '32px',
+            padding: 'clamp(16px, 4vw, 32px)',
           }}
         >
           <CompatibilityReport

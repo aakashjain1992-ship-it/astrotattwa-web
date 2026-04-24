@@ -11,6 +11,12 @@ const VALID_TYPES = ['daily', 'weekly', 'monthly']
 
 type Params = { type: string; rashi: string }
 
+export function generateStaticParams() {
+  return VALID_TYPES.flatMap(type =>
+    RASHI_SLUGS.map(rashi => ({ type, rashi }))
+  )
+}
+
 async function fetchInitialHoroscope(type: string, rashi: string): Promise<HoroscopeRow | null> {
   const today = new Date().toISOString().slice(0, 10)
 
