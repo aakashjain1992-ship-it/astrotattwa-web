@@ -28,6 +28,7 @@ Note: `next.config.js` sets `ignoreBuildErrors: true` for TypeScript — type er
 - **Framework:** Next.js 16 (App Router, webpack) with React 18 and TypeScript
 - **Styling:** Tailwind CSS + shadcn/ui (new-york style, Radix primitives) + Framer Motion
 - **Backend:** Supabase (PostgreSQL 15, Auth via SSR cookies), Swiss Ephemeris (`swisseph` - server-external package)
+- **Payments:** PhonePe (`pg-sdk-node` v2.0.3) — Standard Checkout, **Production** credentials configured (pending PhonePe account activation). Webhook registered at `/api/payment/webhook` for order, refund and dispute events.
 - **State:** Component-local useState + localStorage (`lastChart` key) + custom hooks. No global store.
 - **Forms:** React Hook Form + Zod validation schemas (in `src/lib/validation/`)
 - **Rate Limiting:** Upstash Redis (`@upstash/ratelimit`) — presets in `src/lib/api/rateLimit.ts`
@@ -272,6 +273,28 @@ Pure client-side calculation — no server calls. All computation runs in the br
 
 **Strings in `meanings.ts` must use double quotes** — single-quoted strings with apostrophes caused a build failure previously.
 
+### Payment Module (`src/lib/payment/`, `src/app/api/payment/`)
+
+PhonePe Standard Checkout integration via `pg-sdk-node` v2.0.3.
+
+| File | Responsibility |
+|------|---------------|
+| `src/lib/payment/phonepe.ts` | Singleton `StandardCheckoutClient` — call `getPhonePeClient()` from any server-side code |
+| `src/app/api/payment/initiate/route.ts` | POST `{ amount: number (₹), name?: string }` → returns `{ merchantOrderId, checkoutUrl, state, expireAt }` |
+| `src/app/api/payment/status/route.ts` | GET `?orderId=xxx` → returns order state (`COMPLETED` / `FAILED` / `PENDING`), amount, error codes |
+| `src/app/api/payment/webhook/route.ts` | POST — receives PhonePe server-to-server payment notifications; validates via `validateCallback()` |
+| `src/app/payment-test/` | Test page at `/payment-test` — not linked from nav, not indexed by search engines |
+
+**Flow:** `POST /api/payment/initiate` → redirect user to `checkoutUrl` → PhonePe redirects back to `/payment-test?orderId=xxx` → `GET /api/payment/status` → show result.
+
+**Amount:** always in ₹ at the API boundary; converted to paisa (×100) internally before passing to SDK.
+
+**Merchant Order ID format:** `TEST_<20-char UUID fragment>` — update the prefix when moving beyond test page.
+
+**To go live:** Production credentials are already configured. PhonePe account activation is pending — once approved, test with ₹1 at `/payment-test`. No code changes needed.
+
+**Future mobile app:** the two API routes are reusable as-is. Mobile frontend will use PhonePe's React Native SDK to trigger native UPI flow, then call `/api/payment/status` to confirm.
+
 ### Database Tables (20 in Supabase)
 `profiles`, `charts`, `cities`, `reports`, `payments`, `test_cases`, `test_case_runs`, `astronomical_events`, `auth_login_attempts_v2`, `auth_login_events`, `planet_daily_positions`, `planet_retrograde_periods`, `planet_sign_transits`, `transit_generation_log`, `panchang_cache`, `festival_calendar`, `horoscopes`, `horoscope_generation_log`, `numerology_readings`, `compatibility_readings`. Note: `supabase/migrations/001_initial_schema.sql` only defines 4 tables; `supabase/panchang_tables.sql` defines 2 more — the rest were created directly in Supabase.
 
@@ -293,3 +316,9 @@ Required in `.env.local`:
 - `ADMIN_SECRET_TOKEN` — Protects `/api/horoscope/generate` and test endpoints
 - `ANTHROPIC_API_KEY` — AI generation for horoscopes
 - `APP_INTERNAL_URL` — Internal URL for cron→app HTTP calls (default: `http://localhost:3000`)
+- `PHONEPE_CLIENT_ID` — PhonePe merchant client ID
+- `PHONEPE_CLIENT_SECRET` — PhonePe merchant client secret
+- `PHONEPE_CLIENT_VERSION` — SDK client version (default: `1`)
+- `PHONEPE_ENV` — `SANDBOX` or `PRODUCTION` (currently `PRODUCTION`; account pending PhonePe activation)
+- `PHONEPE_WEBHOOK_USERNAME` — set when creating webhook on PhonePe Business dashboard
+- `PHONEPE_WEBHOOK_PASSWORD` — set when creating webhook on PhonePe Business dashboard

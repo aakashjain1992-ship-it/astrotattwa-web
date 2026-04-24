@@ -59,8 +59,9 @@ export function buildLagnaHouses(
     });
   }
 
-  // Place planets in houses based on their sign
+  // Place planets in houses based on their sign (skip Ascendant — shown via isAscendant/ASC label)
   Object.entries(planets).forEach(([planetKey, planetData]) => {
+    if (planetKey === 'Ascendant') return;
     const planetSignNumber = planetData.signNumber;
     
     // Calculate which house this sign falls into
@@ -125,10 +126,11 @@ export function buildMoonHouses(
     });
   }
 
-  // Place planets in houses based on their sign relative to Moon
+  // Place planets in houses based on their sign relative to Moon (skip Ascendant)
   Object.entries(planets).forEach(([planetKey, planetData]) => {
+    if (planetKey === 'Ascendant') return;
     const planetSignNumber = planetData.signNumber;
-    
+
     // Calculate which house this sign falls into relative to Moon's sign
     const houseIndex = (planetSignNumber - moonSignNumber + 12) % 12;
     

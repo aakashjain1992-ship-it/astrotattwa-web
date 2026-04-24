@@ -1,4 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
+import fs from 'fs'
+import path from 'path'
 import { supabaseAdmin } from '@/lib/supabase/server-admin'
 import { computePanchang } from '@/lib/panchang/compute'
 import { AI_CONFIG } from './config'
@@ -159,7 +161,17 @@ async function callAI(parts: PromptParts, model?: string, maxTokens?: number): P
     throw new Error('OpenAI provider not configured.')
   }
   const resolvedModel = model ?? AI_CONFIG.anthropicModels['daily']
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  // Defensive: if process.env has an empty key (contaminated by CI/Claude Code
+  // sessions that set ANTHROPIC_API_KEY=''), fall back to reading .env.local directly.
+  let apiKey = process.env.ANTHROPIC_API_KEY
+  if (!apiKey) {
+    try {
+      const envContent = fs.readFileSync(path.join(process.cwd(), '.env.local'), 'utf8')
+      const match = envContent.match(/^ANTHROPIC_API_KEY=(.+)$/m)
+      apiKey = match?.[1]?.trim()
+    } catch { /* ignore — will fail below with a clear SDK error */ }
+  }
+  const client = new Anthropic({ apiKey })
   const msg = await client.messages.create({
     model:       resolvedModel,
     max_tokens:  maxTokens ?? AI_CONFIG.maxTokens,
