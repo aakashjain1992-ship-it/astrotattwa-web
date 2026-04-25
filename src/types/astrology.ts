@@ -441,6 +441,8 @@ export interface ChartData {
   dasa: ChartDashaData;
   avakahada: ChartAvakhadaData;
   ayanamsha?: string;
+  /** Placidus house cusps [house1..house12] in sidereal degrees — used for house system comparison */
+  houseCusps?: number[];
   rahuKetuModes?: {
     trueNode: { Rahu: number | null; Ketu: number | null };
     meanNode: { Rahu: number | null; Ketu: number | null };

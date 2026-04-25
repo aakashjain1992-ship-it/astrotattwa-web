@@ -109,6 +109,13 @@ export async function sweCalcSidereal(jdUt: number, body: number): Promise<{ lon
 }
 
 export async function sweAscendantSidereal(jdUt: number, lat: number, lon: number): Promise<number> {
+  const { ascendant } = await sweHousesAndAscSidereal(jdUt, lat, lon);
+  return ascendant;
+}
+
+export async function sweHousesAndAscSidereal(
+  jdUt: number, lat: number, lon: number
+): Promise<{ ascendant: number; cusps: number[] }> {
   const s = await getSwe();
   const flags = s.SEFLG_SIDEREAL;
 
@@ -119,7 +126,11 @@ export async function sweAscendantSidereal(jdUt: number, lat: number, lon: numbe
 
   const asc = (Array.isArray(res?.ascmc) ? res.ascmc[0] : undefined) ?? res?.ascendant;
   if (typeof asc !== "number") throw new Error("Could not extract ascendant from houses result");
-  return asc;
+
+  // cusps[0] is unused (1-indexed), cusps[1..12] are house cusps
+  const cusps: number[] = Array.isArray(res?.cusps) ? res.cusps.slice(1, 13) : [];
+
+  return { ascendant: asc, cusps };
 }
 
 export async function getBodyIds() {

@@ -19,7 +19,7 @@ import { PlanetaryTable } from '@/components/chart/PlanetaryTable';
 import { AvakhadaTable } from '@/components/chart/AvakhadaTable';
 import { ChartLegend } from '@/components/chart/ChartLegend';
 import { DashaNavigator } from '@/components/chart/DashaNavigator';
-import { buildLagnaHouses, buildMoonHouses, buildNavamsaHouses } from '@/lib/utils/chartHelpers';
+import { buildLagnaHouses, buildPlacidusHouses, buildMoonHouses, buildNavamsaHouses } from '@/lib/utils/chartHelpers';
 import { SadeSatiTableView } from '@/components/chart/sadesati/SadeSatiTableView';
 import { PlanetsTab } from '@/components/chart/PlanetsTab';
 
@@ -27,6 +27,7 @@ import { PlanetsTab } from '@/components/chart/PlanetsTab';
 // Import proper types from astrology module
 import type {  PlanetData, AscendantData, ChartData, } from '@/types/astrology';
 import { useIdleLogout } from '@/hooks/useIdleLogout';
+import { useAuth } from '@/hooks/useAuth';
 
 import { useSavedCharts } from '@/hooks/useSavedCharts';
 import {
@@ -208,14 +209,18 @@ export default function ChartClient() {
 
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { user } = useAuth();
 
   // Data state
   const [chartData, setChartData] = useState<ChartData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  
+
   // UI state
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [mobileSubTab, setMobileSubTab] = useState<MobileSubTab>('planets');
+  const [houseSystem, setHouseSystem] = useState<'whole-sign' | 'placidus'>('whole-sign');
+
+  const isDevUser = user?.email === 'aakashjain1992@gmail.com';
   const [isEditing, setIsEditing] = useState(false);
   const [, setIsRecalculating] = useState(false);
 
@@ -526,8 +531,10 @@ export default function ChartClient() {
   // Cast ascendant to proper type
   const ascendant = chartData.planets.Ascendant as AscendantData;
 
-  // Build houses
-  const houses = buildLagnaHouses(chartData.planets, ascendant);
+  // Build houses — toggle between Whole Sign (default) and Placidus
+  const houses = (houseSystem === 'placidus' && chartData.houseCusps?.length === 12)
+    ? buildPlacidusHouses(chartData.planets, ascendant, chartData.houseCusps)
+    : buildLagnaHouses(chartData.planets, ascendant);
   const moonHouses = buildMoonHouses(chartData.planets, ascendant);
   const navamsaHouses = buildNavamsaHouses(chartData.planets, ascendant);
 
@@ -689,6 +696,26 @@ export default function ChartClient() {
                 <AvakhadaTable data={chartData.avakahada} variant="compact" />
               </div>
             </div>
+
+            {/* House system toggle — dev/testing only */}
+            {isDevUser && (
+              <div className="flex items-center gap-2 justify-end">
+                <span className="text-xs text-muted-foreground">House system:</span>
+                <button
+                  onClick={() => setHouseSystem(s => s === 'whole-sign' ? 'placidus' : 'whole-sign')}
+                  className={cn(
+                    'text-xs px-3 py-1 rounded-full border font-medium transition-colors',
+                    houseSystem === 'placidus'
+                      ? 'bg-amber-500/15 border-amber-500/50 text-amber-600 dark:text-amber-400'
+                      : 'bg-muted border-border text-muted-foreground hover:text-foreground'
+                  )}
+                  title={chartData.houseCusps?.length !== 12 ? 'Placidus cusps not available — recalculate chart to enable' : undefined}
+                  disabled={chartData.houseCusps?.length !== 12}
+                >
+                  {houseSystem === 'whole-sign' ? 'Whole Sign' : 'Placidus'}
+                </button>
+              </div>
+            )}
 
             <ChartFocusMode charts={chartConfigs} />
 

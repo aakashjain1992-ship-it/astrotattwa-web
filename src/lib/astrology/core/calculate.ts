@@ -1,4 +1,4 @@
-import { getBodyIds, sweAscendantSidereal, sweCalcSidereal, sweJuldayUTC } from "@/lib/astrology/swissEph";
+import { getBodyIds, sweHousesAndAscSidereal, sweCalcSidereal, sweJuldayUTC } from "@/lib/astrology/swissEph";
 import { localDateTimeToUtc, parseBirth } from "@/lib/astrology/time";
 import { AYANAMSHA_LABEL, norm360 } from "./constants";
 import { buildPlanet } from "./planets";
@@ -78,7 +78,7 @@ export async function calculateBirthChart(input: {
     }
   };
   
-  const ascLon = await sweAscendantSidereal(jdUt, input.latitude, input.longitude);
+  const { ascendant: ascLon, cusps: houseCusps } = await sweHousesAndAscSidereal(jdUt, input.latitude, input.longitude);
   const ascendant = buildPlanet("Ascendant", ascLon, undefined, sunLon);
 
   const dasa = vimshottariDasha(
@@ -119,6 +119,7 @@ export async function calculateBirthChart(input: {
       julianDayUT: jdUt,
     },
     ayanamsha: AYANAMSHA_LABEL,
+    houseCusps,
     planets: {
       ...planets,
       Ascendant: {
