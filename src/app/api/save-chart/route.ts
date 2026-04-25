@@ -3,8 +3,8 @@ export const dynamic = 'force-dynamic'
 import { NextResponse, type NextRequest } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { convert12to24 } from '@/lib/astrology/time'
-import { calculateKpChart } from '@/lib/astrology/kp/calculate'
-import { getCurrentPeriods } from '@/lib/astrology/kp/dasa'
+import { calculateBirthChart } from '@/lib/astrology/core/calculate'
+import { getCurrentPeriods } from '@/lib/astrology/core/dasa'
 
 export const runtime = 'nodejs'
 
@@ -134,7 +134,7 @@ interface ChartSnapshot {
 }
 
 /**
- * Runs calculateKpChart and extracts a minimal snapshot for DB storage.
+ * Runs calculateBirthChart and extracts a minimal snapshot for DB storage.
  * Returns null on any calculation error — caller should save without computed fields.
  * sun_sign uses Western tropical date ranges (the familiar birthday star sign).
  * moon_sign uses the KP sidereal chart position (used for Vedic horoscopes).
@@ -149,7 +149,7 @@ async function buildChartSnapshot(
   gender: string,
 ): Promise<ChartSnapshot | null> {
   try {
-    const chart = await calculateKpChart({
+    const chart = await calculateBirthChart({
       birthDate,
       birthTime: birthTime24,
       birthPlace,

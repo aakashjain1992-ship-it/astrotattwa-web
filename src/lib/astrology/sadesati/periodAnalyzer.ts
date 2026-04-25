@@ -30,8 +30,8 @@ import {
   calculateAntardashas,
   calculatePratyantars,
   calculateSookshmas,
-} from '@/lib/astrology/kp/dasa';
-import { DASHA_ORDER, NAKSHATRA_NAMES } from '@/lib/astrology/kp/constants';
+} from '@/lib/astrology/core/dasa';
+import { DASHA_ORDER, NAKSHATRA_NAMES } from '@/lib/astrology/core/constants';
 import { RASHI_NAMES, PHASE_REMEDIES, DHAIYA_REMEDIES } from './constants';
 import { analyzeMoonStrength, analyzeSaturnStrength } from './strengthAnalyzer';
 import { getJupiterTransitsFromDB } from './saturnTransitDB';

@@ -136,11 +136,11 @@ astrotattwa-web/
 │   │   ├── astrology/                # Calculation engine
 │   │   │   ├── swissEph.ts           # Swiss Ephemeris wrapper
 │   │   │   ├── time.ts               # Time conversions
-│   │   │   └── kp/                   # KP System
+│   │   │   └── core/                 # Core calculation engine (Lahiri + Placidus)
 │   │   │       ├── calculate.ts
 │   │   │       ├── dasa.ts
 │   │   │       ├── avakahada.ts
-│   │   │       └── kpLords.ts
+│   │   │       └── kpLords.ts        # Star lord / sub-lord (nakshatra subdivision)
 │   │   ├── utils/                    # Helper functions
 │   │   │   ├── chartHelpers.ts       # Chart building
 │   │   │   ├── divisional/           # Divisional calculations

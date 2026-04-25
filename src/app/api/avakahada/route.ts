@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { calculateAvakahada } from "@/lib/astrology/kp/avakahada";
+import { calculateAvakahada } from "@/lib/astrology/core/avakahada";
 import { successResponse, withErrorHandling, validationError } from "@/lib/api/errorHandling";
 import { rateLimit, RateLimitPresets } from "@/lib/api/rateLimit";
 import { logError } from "@/lib/monitoring/errorLogger";

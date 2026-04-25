@@ -8,7 +8,7 @@
  */
 
 import { NextRequest } from "next/server";
-import { vimshottariDasha } from "@/lib/astrology/kp/dasa";
+import { vimshottariDasha } from "@/lib/astrology/core/dasa";
 import { successResponse, withErrorHandling, validationError } from "@/lib/api/errorHandling";
 import { rateLimit, RateLimitPresets } from "@/lib/api/rateLimit";
 import { logError } from "@/lib/monitoring/errorLogger";
