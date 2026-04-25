@@ -1,8 +1,8 @@
 # Astrotattwa - Progress Tracker
 
-**Last Updated:** March 29, 2026
+**Last Updated:** April 25, 2026
 **Phase:** 3 (Feature Expansion) - In Progress
-**Overall Progress:** 82% Complete
+**Overall Progress:** 91% Complete
 
 ---
 
@@ -12,8 +12,8 @@
 |-------|--------|----------|----------|
 | Phase 1 - MVP | ✅ Complete | 100% | 6 weeks (Done) |
 | Phase 2 - Foundation | ✅ Complete | 100% | 4 weeks (Done) |
-| Phase 3 - Features | 🚧 In Progress | 73% (P4 ✅, P5 ⏳, P6 ✅, P7 ✅, P9 🚧) | 6 weeks |
-| Phase 4 - Advanced | 🔮 Future | 0% | 8+ weeks |
+| Phase 3 - Features | 🚧 In Progress | 89% (P4 ✅, P5 ⏳, P6 ✅, P7 ✅, P8 ✅, P9 🚧) | 6 weeks |
+| Phase 4 - Advanced | 🚧 Partial | 35% (Panchang ✅, Numerology ✅, Horoscope ✅, Payment 🚧, SEO 🚧, Redis 🚧) | 8+ weeks |
 
 ---
 
@@ -171,7 +171,7 @@
 - [x] **Rate Limiting** — src/lib/api/rateLimit.ts
   - [x] IP-based, per-endpoint limiting
   - [x] Presets: strict (5/min), standard (20/min), lenient (60/min), auth (3/5min)
-  - [x] Redis stub ready for scaling (P15)
+  - [x] Local Redis via ioredis (localhost:6379) — atomic Lua script for cross-process correctness (Apr 2026)
   - [x] logWarning on violations
 
 - [x] **Request Validation & Error Handling** — src/lib/api/errorHandling.ts
@@ -220,7 +220,7 @@
 
 ---
 
-## 📋 Phase 3: Feature Expansion (73% Complete - P4 ✅, P5 ⏳, P6 ✅, P7 ✅, P8 ⏳, P9 🚧)
+## 📋 Phase 3: Feature Expansion (89% Complete - P4 ✅, P5 ⏳, P6 ✅, P7 ✅, P8 ✅, P9 🚧)
 
 ### P4: Divisional Charts D1-D60 (100% ✅)
 **Completed:** February 28, 2026  
@@ -348,42 +348,42 @@
 
 ---
 
-### P8: Chart Saving & Dashboard (0%)
-**Timeline:** Week 5-6  
+### P8: Chart Saving & My Chart (100% ✅)
+**Completed:** March 30, 2026
+**Timeline:** Week 5-6
 **Effort:** 1 week
 
-- [ ] **Backend API** (0/5 tasks)
-  - [ ] POST /api/chart (create)
-  - [ ] GET /api/chart (list)
-  - [ ] GET /api/chart/:id (read)
-  - [ ] PUT /api/chart/:id (update)
-  - [ ] DELETE /api/chart/:id (delete)
+> **Implementation note:** Dashboard page was intentionally skipped in favour of a dropdown UX on the chart page itself (avoids page bloat, keeps all chart management in context).
 
-- [ ] **Dashboard Page** (0/4 tasks)
-  - [ ] Create /dashboard page
-  - [ ] List saved charts
-  - [ ] Search/filter
-  - [ ] Favorites system
+- [x] **Backend API** (5/5 tasks ✅)
+  - [x] GET /api/save-chart — list user's saved charts
+  - [x] POST /api/save-chart — create chart
+  - [x] PATCH /api/save-chart/[id] — rename, set is_favorite
+  - [x] DELETE /api/save-chart/[id] — delete chart
+  - [x] is_favorite uniqueness enforced server-side (clears all others before setting)
 
-- [ ] **Chart Management** (0/4 tasks)
-  - [ ] "Save Chart" button
-  - [ ] Edit saved chart
-  - [ ] Delete confirmation
-  - [ ] 10-chart limit
+- [x] **Chart Management UI** (4/4 tasks ✅)
+  - [x] Save Chart button on chart page
+  - [x] ChartLabelModal — label + is_favorite checkbox (Radix Dialog)
+  - [x] DeleteChartDialog — confirm-delete (Radix AlertDialog)
+  - [x] Dropdown of saved charts re-fills BirthDataForm for recalculation
 
-- [ ] **UX Enhancements** (0/4 tasks)
-  - [ ] Empty states
-  - [ ] Loading skeletons
-  - [ ] Toasts
-  - [ ] Keyboard shortcuts
+- [x] **Hooks & State** (2/2 tasks ✅)
+  - [x] useSavedCharts hook (fetch, save, update, delete, refresh)
+  - [x] BirthDataFormWrapper passes savedCharts + showSavedCharts to form
 
-**Progress:** 0/17 tasks (0%)
+- [x] **UX** (3/3 tasks ✅)
+  - [x] "My Chart" header button (loads is_favorite chart)
+  - [x] URL updated to /chart/[id] via replaceState when switching saved charts
+  - [x] 10-chart limit enforced
+
+**Progress:** 14/14 tasks (100%) ✅
 
 ---
 
-### P9: UX Enhancements (40% 🚧)
-**Timeline:** Week 6  
-**Effort:** 1 week  
+### P9: UX Enhancements (60% 🚧)
+**Timeline:** Week 6
+**Effort:** 1 week
 **Status:** In Progress
 
 #### Loaders & Animations (4/5 ✅)
@@ -393,12 +393,13 @@
 - [x] Micro-interactions (hover states, button feedback)
 - [ ] Additional skeleton loaders
 
-#### Landing Page Components (4/5 ✅)
+#### Landing Page Components (6/6 ✅)
 - [x] NavagrahaSection (9 planetary deities with animations)
 - [x] Yantra component (sacred geometry with framer-motion)
 - [x] Particles background effect (canvas-based)
 - [x] Glyphs (decorative astrological symbols)
-- [ ] Hero headline rewrite and CTA optimization
+- [x] Galaxy canvas animation (star/nebula, `position: fixed`, MutationObserver for theme, visibilitychange for CPU) — Apr 2026
+- [x] ZodiacWheel (rotating SVG zodiac ring) — Apr 2026 (added but not yet wired to any page)
 
 #### Design System (0/5)
 - [ ] Logo design brief
@@ -407,7 +408,7 @@
 - [ ] Mood board
 - [ ] Design system documentation
 
-**Progress:** 8/15 tasks (53%) 🚧
+**Progress:** 10/16 tasks (63%) 🚧
 
 ---
 
@@ -437,7 +438,7 @@
 
 ---
 
-## 🔮 Phase 4: Advanced Features (0% - FUTURE)
+## 🔮 Phase 4: Advanced Features (35% - Partial)
 
 ### P11: Advanced Astrology (0%)
 - [ ] Transit charts (0%)
@@ -446,31 +447,79 @@
 - [ ] Gemstone recommendations (0%)
 - [ ] Kundli Milan compatibility (0%)
 
-### P12: Additional Modules (0%)
-- [ ] Panchang module (0%)
-- [ ] Numerology module (0%)
+### P11b: Panchang Module (100% ✅)
+**Completed:** March–April 2026 (ahead of schedule — built during Phase 3)
 
-### P13: AI Reports (Paid) (0%)
+- [x] Full panchang calculation engine (12 modules in src/lib/panchang/)
+- [x] All 5 Pancha elements (Tithi, Nakshatra, Yoga, Karana, Vara)
+- [x] Muhurta windows (Brahma, Abhijit, Vijaya, Rahu Kalam, Dur Muhurtam, etc.)
+- [x] Udaya Lagna slots + Panchaka classification
+- [x] Chandrabalam + Tarabalam
+- [x] Anandadi Yoga (27-cycle + Tamil 28-cycle)
+- [x] Special yoga detection
+- [x] Vikram Samvat, Shaka Samvat, Ritu, Ayana epochs
+- [x] Festival calendar (festival_calendar table)
+- [x] 20 Panchang display components (src/components/panchang/)
+- [x] /panchang page with location auto-detect
+- [x] Panchang API (/api/panchang) with Supabase cache (24h TTL, v8)
+- [x] IP-based auto-location (/api/panchang/ip-location)
+
+### P12: Additional Modules (100% ✅)
+
+#### Numerology Module (100% ✅)
+**Completed:** April 2026 (ahead of schedule)
+
+- [x] Lo Shu Grid numerology engine (src/lib/numerology/)
+- [x] Compatibility engine (100-pt score)
+- [x] Chaldean name numerology
+- [x] 15 numerology display components (src/components/numerology/)
+- [x] /numerology and /numerology/compatibility pages
+- [x] Save/load readings (API + Supabase)
+
+#### Horoscope Module (100% ✅)
+**Completed:** March–April 2026 (not in original roadmap)
+
+- [x] General horoscope generation for 12 rashis (daily/weekly/monthly)
+- [x] Claude AI integration (Haiku for daily, Sonnet for weekly/monthly)
+- [x] EN + HI bilingual output (4 parallel AI calls)
+- [x] SSR horoscope pages with SEO metadata
+- [x] Cron worker for scheduled generation (PM2 `horoscope-cron`)
+- [x] Horoscope history and language toggle UI
+
+### P13: AI Reports (Paid) (10% 🚧)
+**Payment gateway integrated; AI report content not yet built**
+
+- [x] **PhonePe Standard Checkout** — integrated Apr 2026 (pending account activation)
+  - [x] pg-sdk-node v2.0.3 integration
+  - [x] /api/payment/initiate, /api/payment/status, /api/payment/webhook
+  - [x] Production credentials configured; test page at /payment-test
+  - [ ] PhonePe account activation pending
 - [ ] Career Report (0%)
 - [ ] Marriage Report (0%)
 - [ ] Finance Report (0%)
 - [ ] Health Report (0%)
 - [ ] Yearly Report (0%)
 - [ ] PDF generation (0%)
-- [ ] Razorpay integration (0%)
 
-### P14: SEO Optimization (0%)
-- [ ] On-page SEO (0%)
-- [ ] Structured data (0%)
+### P14: SEO Optimization (30% 🚧)
+**Completed:** sitemap + robots done; structured data + content SEO pending
+
+- [x] Sitemap.xml auto-generated (src/app/sitemap.ts — 40 URLs)
+- [x] robots.txt (blocks /admin, /payment-test, /settings, /api/)
+- [x] SSG for all 36 horoscope pages (generateStaticParams)
+- [x] SEO metadata on horoscope pages
+- [ ] Structured data / JSON-LD (0%)
 - [ ] Content SEO (0%)
 
 ### P15: Blog Section (0%)
 - [ ] Blog infrastructure (0%)
 - [ ] Educational content (0%)
 
-### P16: Scaling (0%)
-- [ ] Redis caching (0%)
-- [ ] Monitoring (0%)
+### P16: Scaling (40% 🚧)
+
+- [x] **Local Redis rate limiting** — ioredis (localhost:6379), PM2 cluster-safe via atomic Lua script (Apr 2026)
+- [x] **PM2 cluster mode** — 2 workers, rolling reload, near-zero downtime (Apr 2026)
+- [ ] Monitoring / error tracking (0%)
 - [ ] Analytics (0%)
 
 ---
@@ -478,16 +527,22 @@
 ## 📊 Overall Statistics
 
 ### Code Metrics
-- **Total Lines:** ~31,000 (TypeScript/TSX code only)
-- **TypeScript Files:** 185+ files
-- **Components:** 62+ documented (49 component files)
-- **API Routes:** 18 endpoints
+- **Total Lines:** ~55,000+ (TypeScript/TSX code only)
+- **TypeScript Files:** 300+ files
+- **Components:** 103 component files (101 active, 2 dead)
+- **API Routes:** 32 endpoints
   - Auth: 3 (login, logout, me) + callback
   - Core: 2 (calculate, avakahada)
   - Cities: 1 (search)
   - Dasha: 5 (mahadashas, current, antardasha, pratyantar, sookshma)
   - Saturn Transits: 2 (sadesati, period-analysis)
   - Chart Saving: 2 (save-chart, save-chart/[id])
+  - Panchang: 2 (panchang, panchang/ip-location)
+  - Horoscope: 3 (horoscope, horoscope/history, horoscope/generate)
+  - Numerology: 4 (numerology, numerology/[id], compatibility, compatibility/[id])
+  - Payment: 3 (payment/initiate, payment/status, payment/webhook)
+  - Festivals: 1 (festivals)
+  - User: 1 (user/theme)
   - Test: 3 (run-calculations, history, delete-runs)
 - **Divisional Charts:** 20 (all D1-D60 complete)
 - **Test Cases:** Database-driven accuracy tests (test_cases table)
@@ -508,6 +563,25 @@
 ---
 
 ## 📝 Recent Updates
+
+### April 2026
+- ✅ **PM2 Cluster Mode** — switched to 2-worker cluster (`ecosystem.config.js`), rolling reload via `pm2 reload`
+- ✅ **Local Redis Rate Limiting** — replaced Upstash/stub with local Redis via ioredis; atomic Lua script for cluster safety
+- ✅ **SEO** — sitemap.ts (40 URLs), robots.txt, SSG for all 36 horoscope pages
+- ✅ **PhonePe Payment** — pg-sdk-node v2.0.3 integrated; Production credentials configured; pending account activation
+- ✅ **ZodiacWheel** — added to landing/ but not yet wired to any page
+- ✅ **Galaxy canvas animation** — added to home hero (position: fixed, MutationObserver for theme, visibilitychange for CPU)
+
+### March 30, 2026
+- ✅ **P8 Complete: Chart Saving & My Chart**
+  - GET/POST /api/save-chart + PATCH/DELETE /api/save-chart/[id]
+  - useSavedCharts hook (CRUD + refresh)
+  - ChartLabelModal (label + is_favorite checkbox)
+  - DeleteChartDialog (confirm delete)
+  - "My Chart" header button (loads is_favorite chart)
+  - Dropdown pre-fills BirthDataForm from saved charts
+  - URL updates to /chart/[id] via replaceState (no remount)
+  - No dashboard page — dropdown UX on chart page instead
 
 ### February 28, 2026
 - ✅ **P4 Complete: All Divisional Charts (D1-D60)** 
@@ -592,37 +666,23 @@
 
 ## 🎯 Next Actions
 
-### Immediate Next (Mar 1-7, 2026) — Phase 3 Completion
-1. **Complete P9 UX Enhancements (47% remaining)** 
-   - Finalize landing page copy and CTAs
-   - Additional skeleton loaders for all components
+### Immediate Next (Late April–May 2026)
+1. **Activate PhonePe account** — once approved, test with ₹1 at /payment-test, then build paid report flow
+2. **Wire ZodiacWheel** — connect to home hero or delete if not needed
+3. **Complete P9 UX remaining** (37% left)
+   - Additional skeleton loaders
    - Design system documentation
-   - Brand colors finalization
-2. **Start P8 Chart Saving & Dashboard**
-   - P7 Authentication ✅ Complete (dependency satisfied)
-   - Build dashboard page
-   - Implement chart CRUD API
-   - 10-chart limit per user
-   - Chart management UI (save, edit, delete, favorites)
-3. **P5 Diamond Chart Improvements**
+4. **P5 Diamond Chart Improvements**
    - Multi-planet layout optimization
-   - Font sizing adjustments
-   - Visual polish
+   - Dynamic font sizing
    - Mobile rendering fixes
 
-### This Month (March 2026)
-1. ✅ Complete P4 All Divisional Charts (DONE Feb 28)
-2. ✅ Complete P7 Authentication (DONE Feb 28)
-3. 🚧 Complete P9 UX Enhancements (finish by Mar 7)
-4. 📋 Complete P8 Chart Saving & Dashboard (Mar 8-14)
-5. 📋 P5 Diamond Chart Improvements (Mar 15-18)
-6. 📋 Consider P10 AI Insights (if time permits, otherwise April)
-
-### Next Quarter (April-June 2026)
-1. P13: AI Reports & Monetization (Razorpay integration)
-2. P11: Advanced astrology features (transits, predictions)
-3. P14: SEO Optimization
-4. P15: Blog infrastructure
+### This Quarter (May–June 2026)
+1. 📋 P13: AI Report content (Career, Marriage, Finance reports) — PhonePe activation prerequisite
+2. 📋 P14: SEO — structured data (JSON-LD) + content SEO
+3. 📋 P10: AI-Powered Chart Insights — Claude integration for chart interpretation
+4. 📋 P11: Advanced astrology (transits, Kundli Milan)
+5. 📋 P15: Blog infrastructure
 
 ---
 
@@ -649,6 +709,6 @@
 - ⏳ Pending
 - ❌ Blocked
 
-**Last Updated:** March 29, 2026
-**Updated By:** Claude
-**Next Update:** April 5, 2026
+**Last Updated:** April 25, 2026
+**Updated By:** Claude (automated audit)
+**Next Update:** May 2, 2026
