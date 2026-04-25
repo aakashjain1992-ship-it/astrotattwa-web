@@ -489,11 +489,11 @@
 ### P13: AI Reports (Paid) (10% 🚧)
 **Payment gateway integrated; AI report content not yet built**
 
-- [x] **PhonePe Standard Checkout** — integrated Apr 2026 (pending account activation)
+- [x] **PhonePe Standard Checkout** — integrated & activated Apr 2026
   - [x] pg-sdk-node v2.0.3 integration
   - [x] /api/payment/initiate, /api/payment/status, /api/payment/webhook
   - [x] Production credentials configured; test page at /payment-test
-  - [ ] PhonePe account activation pending
+  - [x] PhonePe account activated — tested with ₹1000 live transaction (Apr 2026)
 - [ ] Career Report (0%)
 - [ ] Marriage Report (0%)
 - [ ] Finance Report (0%)
@@ -568,7 +568,7 @@
 - ✅ **PM2 Cluster Mode** — switched to 2-worker cluster (`ecosystem.config.js`), rolling reload via `pm2 reload`
 - ✅ **Local Redis Rate Limiting** — replaced Upstash/stub with local Redis via ioredis; atomic Lua script for cluster safety
 - ✅ **SEO** — sitemap.ts (40 URLs), robots.txt, SSG for all 36 horoscope pages
-- ✅ **PhonePe Payment** — pg-sdk-node v2.0.3 integrated; Production credentials configured; pending account activation
+- ✅ **PhonePe Payment** — pg-sdk-node v2.0.3 integrated; account activated; ₹1000 live test passed (Apr 2026)
 - ✅ **ZodiacWheel** — added to landing/ but not yet wired to any page
 - ✅ **Galaxy canvas animation** — added to home hero (position: fixed, MutationObserver for theme, visibilitychange for CPU)
 
@@ -667,7 +667,7 @@
 ## 🎯 Next Actions
 
 ### Immediate Next (Late April–May 2026)
-1. **Activate PhonePe account** — once approved, test with ₹1 at /payment-test, then build paid report flow
+1. **Build paid report flow** — PhonePe activated and tested ✅; next step is report selection UI + order creation
 2. **Wire ZodiacWheel** — connect to home hero or delete if not needed
 3. **Complete P9 UX remaining** (37% left)
    - Additional skeleton loaders
@@ -678,7 +678,7 @@
    - Mobile rendering fixes
 
 ### This Quarter (May–June 2026)
-1. 📋 P13: AI Report content (Career, Marriage, Finance reports) — PhonePe activation prerequisite
+1. 📋 P13: AI Report content (Career, Marriage, Finance reports) — PhonePe activated ✅, ready to build
 2. 📋 P14: SEO — structured data (JSON-LD) + content SEO
 3. 📋 P10: AI-Powered Chart Insights — Claude integration for chart interpretation
 4. 📋 P11: Advanced astrology (transits, Kundli Milan)

@@ -28,7 +28,7 @@ Note: `next.config.js` sets `ignoreBuildErrors: true` for TypeScript — type er
 - **Framework:** Next.js 16 (App Router, webpack) with React 18 and TypeScript
 - **Styling:** Tailwind CSS + shadcn/ui (new-york style, Radix primitives) + Framer Motion
 - **Backend:** Supabase (PostgreSQL 15, Auth via SSR cookies), Swiss Ephemeris (`swisseph` - server-external package)
-- **Payments:** PhonePe (`pg-sdk-node` v2.0.3) — Standard Checkout, **Production** credentials configured (pending PhonePe account activation). Webhook registered at `/api/payment/webhook` for order, refund and dispute events.
+- **Payments:** PhonePe (`pg-sdk-node` v2.0.3) — Standard Checkout, **Production** credentials configured, account activated (tested ₹1000 live, Apr 2026). Webhook registered at `/api/payment/webhook` for order, refund and dispute events.
 - **State:** Component-local useState + localStorage (`lastChart` key) + custom hooks. No global store.
 - **Forms:** React Hook Form + Zod validation schemas (in `src/lib/validation/`)
 - **Rate Limiting:** Local Redis via `ioredis` — runs on `localhost:6379`, auto-starts on boot (`systemctl enable redis-server`). Atomic Lua script for cross-process correctness. Presets in `src/lib/api/rateLimit.ts`. Fails open (allows request) if Redis is down.
@@ -296,7 +296,7 @@ PhonePe Standard Checkout integration via `pg-sdk-node` v2.0.3.
 
 **Merchant Order ID format:** `TEST_<20-char UUID fragment>` — update the prefix when moving beyond test page.
 
-**To go live:** Production credentials are already configured. PhonePe account activation is pending — once approved, test with ₹1 at `/payment-test`. No code changes needed.
+**Live:** Production credentials configured, account activated, ₹1000 live transaction tested (Apr 2026). Next step: build report selection UI and order flow.
 
 **Future mobile app:** the two API routes are reusable as-is. Mobile frontend will use PhonePe's React Native SDK to trigger native UPI flow, then call `/api/payment/status` to confirm.
 
@@ -324,6 +324,6 @@ Required in `.env.local`:
 - `PHONEPE_CLIENT_ID` — PhonePe merchant client ID
 - `PHONEPE_CLIENT_SECRET` — PhonePe merchant client secret
 - `PHONEPE_CLIENT_VERSION` — SDK client version (default: `1`)
-- `PHONEPE_ENV` — `SANDBOX` or `PRODUCTION` (currently `PRODUCTION`; account pending PhonePe activation)
+- `PHONEPE_ENV` — `SANDBOX` or `PRODUCTION` (currently `PRODUCTION`; account active)
 - `PHONEPE_WEBHOOK_USERNAME` — set when creating webhook on PhonePe Business dashboard
 - `PHONEPE_WEBHOOK_PASSWORD` — set when creating webhook on PhonePe Business dashboard
