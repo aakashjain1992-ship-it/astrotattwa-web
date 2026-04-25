@@ -40,8 +40,8 @@ Note: `next.config.js` sets `ignoreBuildErrors: true` for TypeScript — type er
 ### Calculation Flow
 
 1. User submits birth data via `BirthDataForm` → POST `/api/calculate`
-2. Server calls Swiss Ephemeris (`src/lib/astrology/core/calculate.ts`) using Lahiri ayanamsa + Placidus houses (Vedic/Parashari system)
-3. Returns planet positions, houses, nakshatra data (star lord, sub-lord, sub-sub-lord via Vimshottari proportions)
+2. Server calls Swiss Ephemeris (`src/lib/astrology/core/calculate.ts`) using Lahiri ayanamsa + **Whole Sign** house system (classical Parashari Vedic)
+3. Returns planet positions, houses, nakshatra data (star lord, sub-lord, sub-sub-lord via Vimshottari proportions), and Placidus cusps (`houseCusps`) for dev comparison only
 4. Client stores result in localStorage (`lastChart` key), redirects to `/chart`
 5. `ChartClient.tsx` reads localStorage and renders tabbed chart view
    - `/chart` and `/chart/[id]` both render `ChartClient` — the `[id]` variant is set via `window.history.replaceState` when switching saved charts, not via Next.js navigation
@@ -59,7 +59,7 @@ Note: `next.config.js` sets `ignoreBuildErrors: true` for TypeScript — type er
 ### Key Directories
 
 - `src/lib/astrology/` — Core calculation engine (~42 files): core engine (`core/`), planet strength (`strength/` — 18 files), Saturn transits (`sadesati/` — 8 files), divisional chart builder
-- `src/lib/astrology/core/calculate.ts` — Main birth chart calculation entry point (Lahiri ayanamsa + Placidus houses)
+- `src/lib/astrology/core/calculate.ts` — Main birth chart calculation entry point (Lahiri ayanamsa + Whole Sign houses). Also returns `houseCusps` (12 Placidus cusp degrees) for dev toggle only — not used in production display
 - `src/lib/astrology/core/dasa.ts` — Vimshottari Dasha: 4 levels (Mahadasha → Antardasha → Pratyantar → Sookshma)
 - `src/lib/astrology/core/kpLords.ts` — Star lord / sub-lord / sub-sub-lord divisions within each nakshatra (Vimshottari proportion math on sidereal longitude)
 - `src/lib/astrology/divisionalChartBuilder.ts` — Unified builder for all 20 divisional charts (D1–D60; 19 sub-files in `src/lib/utils/divisional/`)
