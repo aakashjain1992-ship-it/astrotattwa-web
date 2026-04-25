@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { calculateSookshmas } from "@/lib/astrology/kp/dasa";
+import { calculateSookshmas } from "@/lib/astrology/core/dasa";
 import { successResponse, withErrorHandling, validationError } from "@/lib/api/errorHandling";
 import { rateLimit, RateLimitPresets } from "@/lib/api/rateLimit";
 import { logError } from "@/lib/monitoring/errorLogger";

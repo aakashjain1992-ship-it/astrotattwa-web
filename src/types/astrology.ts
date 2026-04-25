@@ -403,7 +403,7 @@ export interface ChartDashaData {
 }
 
 /**
- * Avakahada data as returned from the API (flat shape from kp/avakahada.ts).
+ * Avakahada data as returned from the API (flat shape from core/avakahada.ts).
  * Distinct from AvakahaddaChakra which is the full 21-attribute shape.
  */
 export interface ChartAvakhadaData {

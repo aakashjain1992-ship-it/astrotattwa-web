@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { calculateKpChart } from "@/lib/astrology/kp/calculate";
+import { calculateBirthChart } from "@/lib/astrology/core/calculate";
 import { chartCalculationSchema } from "@/lib/validation/chart-calculation";
 import { roundAllPlanets } from "@/lib/utils";
 import { convert12to24 } from "@/lib/astrology/time";
@@ -62,7 +62,7 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
   // 3. Calculate chart
   let chart;
   try {
-  chart = await calculateKpChart({
+  chart = await calculateBirthChart({
       name,
       gender,
       birthDate,
