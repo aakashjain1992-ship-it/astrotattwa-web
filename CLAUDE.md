@@ -28,7 +28,7 @@ Note: `next.config.js` sets `ignoreBuildErrors: true` for TypeScript — type er
 - **Framework:** Next.js 16 (App Router, webpack) with React 18 and TypeScript
 - **Styling:** Tailwind CSS + shadcn/ui (new-york style, Radix primitives) + Framer Motion
 - **Backend:** Supabase (PostgreSQL 15, Auth via SSR cookies), Swiss Ephemeris (`swisseph` - server-external package)
-- **Payments:** PhonePe (`pg-sdk-node` v2.0.3) — Standard Checkout, **Production** credentials configured (pending PhonePe account activation). Webhook registered at `/api/payment/webhook` for order, refund and dispute events.
+- **Payments:** PhonePe (`pg-sdk-node` v2.0.3) — Standard Checkout, **Production** credentials configured, account activated (tested ₹1000 live, Apr 2026). Webhook registered at `/api/payment/webhook` for order, refund and dispute events.
 - **State:** Component-local useState + localStorage (`lastChart` key) + custom hooks. No global store.
 - **Forms:** React Hook Form + Zod validation schemas (in `src/lib/validation/`)
 - **Rate Limiting:** Local Redis via `ioredis` — runs on `localhost:6379`, auto-starts on boot (`systemctl enable redis-server`). Atomic Lua script for cross-process correctness. Presets in `src/lib/api/rateLimit.ts`. Fails open (allows request) if Redis is down.
@@ -40,8 +40,8 @@ Note: `next.config.js` sets `ignoreBuildErrors: true` for TypeScript — type er
 ### Calculation Flow
 
 1. User submits birth data via `BirthDataForm` → POST `/api/calculate`
-2. Server calls Swiss Ephemeris (`src/lib/astrology/kp/calculate.ts`) using KP (Krishnamurti Paddhati) system
-3. Returns planet positions, houses, KP data (star lord, sub-lord, sub-sub-lord)
+2. Server calls Swiss Ephemeris (`src/lib/astrology/core/calculate.ts`) using Lahiri ayanamsa + Placidus houses (Vedic/Parashari system)
+3. Returns planet positions, houses, nakshatra data (star lord, sub-lord, sub-sub-lord via Vimshottari proportions)
 4. Client stores result in localStorage (`lastChart` key), redirects to `/chart`
 5. `ChartClient.tsx` reads localStorage and renders tabbed chart view
    - `/chart` and `/chart/[id]` both render `ChartClient` — the `[id]` variant is set via `window.history.replaceState` when switching saved charts, not via Next.js navigation
@@ -58,16 +58,17 @@ Note: `next.config.js` sets `ignoreBuildErrors: true` for TypeScript — type er
 
 ### Key Directories
 
-- `src/lib/astrology/` — Core calculation engine (~42 files): KP system (`kp/`), planet strength (`strength/` — 18 files), Saturn transits (`sadesati/` — 8 files), divisional chart builder
-- `src/lib/astrology/kp/calculate.ts` — Main birth chart calculation entry point
-- `src/lib/astrology/kp/dasa.ts` — Vimshottari Dasha: 4 levels (Mahadasha → Antardasha → Pratyantar → Sookshma)
+- `src/lib/astrology/` — Core calculation engine (~42 files): core engine (`core/`), planet strength (`strength/` — 18 files), Saturn transits (`sadesati/` — 8 files), divisional chart builder
+- `src/lib/astrology/core/calculate.ts` — Main birth chart calculation entry point (Lahiri ayanamsa + Placidus houses)
+- `src/lib/astrology/core/dasa.ts` — Vimshottari Dasha: 4 levels (Mahadasha → Antardasha → Pratyantar → Sookshma)
+- `src/lib/astrology/core/kpLords.ts` — Star lord / sub-lord / sub-sub-lord divisions within each nakshatra (Vimshottari proportion math on sidereal longitude)
 - `src/lib/astrology/divisionalChartBuilder.ts` — Unified builder for all 20 divisional charts (D1–D60; 19 sub-files in `src/lib/utils/divisional/`)
 - `src/lib/astrology/strength/` — Planetary strength analysis engine (functional nature, dignity, varga, domain engines)
 - `src/lib/astrology/sadesati/` — Saturn transit (Sade Sati) analysis: `periodAnalyzer.ts` (1545 lines), `calculator-PROFESSIONAL.ts` (1183 lines)
 - `src/lib/panchang/` — Daily Panchang engine (12 files) — see section below
 - `src/lib/utils/divisional/` — Individual D2-D60 chart calculation files (legacy, mostly superseded by divisionalChartBuilder)
 - `src/lib/utils/chartHelpers.ts` — House building functions (Lagna, Moon, Navamsa)
-- `src/components/chart/` — Chart display components: `PlanetaryTable.tsx` (sorted in KP order), `PlanetsTab.tsx`, `DashaNavigator.tsx`, `AvakhadaTable.tsx`, `ChartFocusMode.tsx` (D1/Moon/D9 visual charts), `ChartLabelModal.tsx` (save/rename + is_favorite), `DeleteChartDialog.tsx`, `DiamondChart.tsx` (renders the diamond-grid chart layout — used by both ChartFocusMode and DivisionalChartsTab; accepts `showAscLabel` to toggle Asc annotation)
+- `src/components/chart/` — Chart display components: `PlanetaryTable.tsx` (sorted by nakshatra lord order), `PlanetsTab.tsx`, `DashaNavigator.tsx`, `AvakhadaTable.tsx`, `ChartFocusMode.tsx` (D1/Moon/D9 visual charts), `ChartLabelModal.tsx` (save/rename + is_favorite), `DeleteChartDialog.tsx`, `DiamondChart.tsx` (renders the diamond-grid chart layout — used by both ChartFocusMode and DivisionalChartsTab; accepts `showAscLabel` to toggle Asc annotation)
 - `src/components/chart/sadesati/` — `SadeSatiTableView.tsx` + supporting components
 - `src/components/chart/divisional/` — `DivisionalChartsTab.tsx` + config/selector/insights
 - `src/components/forms/` — Birth data forms with city autocomplete. `CitySearch` uses a `userTyped` ref to prevent the results dropdown from auto-opening when the parent updates the `value` prop (e.g. after IP detection) — only opens on actual user keystrokes.
@@ -295,7 +296,7 @@ PhonePe Standard Checkout integration via `pg-sdk-node` v2.0.3.
 
 **Merchant Order ID format:** `TEST_<20-char UUID fragment>` — update the prefix when moving beyond test page.
 
-**To go live:** Production credentials are already configured. PhonePe account activation is pending — once approved, test with ₹1 at `/payment-test`. No code changes needed.
+**Live:** Production credentials configured, account activated, ₹1000 live transaction tested (Apr 2026). Next step: build report selection UI and order flow.
 
 **Future mobile app:** the two API routes are reusable as-is. Mobile frontend will use PhonePe's React Native SDK to trigger native UPI flow, then call `/api/payment/status` to confirm.
 
@@ -323,6 +324,6 @@ Required in `.env.local`:
 - `PHONEPE_CLIENT_ID` — PhonePe merchant client ID
 - `PHONEPE_CLIENT_SECRET` — PhonePe merchant client secret
 - `PHONEPE_CLIENT_VERSION` — SDK client version (default: `1`)
-- `PHONEPE_ENV` — `SANDBOX` or `PRODUCTION` (currently `PRODUCTION`; account pending PhonePe activation)
+- `PHONEPE_ENV` — `SANDBOX` or `PRODUCTION` (currently `PRODUCTION`; account active)
 - `PHONEPE_WEBHOOK_USERNAME` — set when creating webhook on PhonePe Business dashboard
 - `PHONEPE_WEBHOOK_PASSWORD` — set when creating webhook on PhonePe Business dashboard

@@ -6,7 +6,7 @@ import { vimshottariDasha } from "./dasa";
 import { calculateAvakahada } from "./avakahada";
 
 
-export async function calculateKpChart(input: {
+export async function calculateBirthChart(input: {
   name?: string;
   gender?: string;
   birthDate: string;

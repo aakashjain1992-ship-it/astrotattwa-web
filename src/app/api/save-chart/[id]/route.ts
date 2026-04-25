@@ -3,8 +3,8 @@ export const dynamic = 'force-dynamic'
 import { NextResponse, type NextRequest } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { convert12to24 } from '@/lib/astrology/time'
-import { calculateKpChart } from '@/lib/astrology/kp/calculate'
-import { getCurrentPeriods } from '@/lib/astrology/kp/dasa'
+import { calculateBirthChart } from '@/lib/astrology/core/calculate'
+import { getCurrentPeriods } from '@/lib/astrology/core/dasa'
 
 export const runtime = 'nodejs'
 
@@ -109,7 +109,7 @@ async function buildChartSnapshot(
   gender: string,
 ) {
   try {
-    const chart = await calculateKpChart({ birthDate, birthTime: birthTime24, birthPlace, latitude, longitude, timezone, gender })
+    const chart = await calculateBirthChart({ birthDate, birthTime: birthTime24, birthPlace, latitude, longitude, timezone, gender })
 
     const asc = chart.planets.Ascendant
     const ascSignNum = asc.signNumber

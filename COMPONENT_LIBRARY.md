@@ -1,8 +1,8 @@
 # Component Library
 
-**Version:** 3.0
-**Last Updated:** April 24, 2026
-**Total Components:** 82 component files + 6 hooks + 28 API routes
+**Version:** 3.1
+**Last Updated:** April 25, 2026
+**Total Components:** 103 component files + 6 hooks + 32 API routes
 
 ---
 
@@ -32,10 +32,10 @@ This document catalogs all reusable components in the Astrotattwa codebase. Each
 - **Chart Components** - Astrology visualization (15 files; 12 active, 3 unused)
 - **Form Components** - Input and validation (5 components, all active)
 - **Layout Components** - Page structure (3 components: Header, Footer, ThemeProvider)
-- **Landing Components** - Landing page features (6 components, all active)
+- **Landing Components** - Landing page features (6 components; 5 active, 1 unused — ZodiacWheel unwired)
 - **Auth Components** - Authentication (1 component + 5 auth page forms)
 - **Panchang Components** - Daily panchang display (20 files; all active)
-- **Horoscope Components** - Horoscope shell + supporting UI (8 files; all active)
+- **Horoscope Components** - Horoscope shell + supporting UI (8 files; 7 active, 1 unused — HistoryNavigator)
 - **Numerology Components** - Numerology reports + compatibility (15 files; all active)
 - **Custom Hooks** - Shared React hooks (6 hooks; 5 active, 1 unused)
 
@@ -58,7 +58,7 @@ src/components/
 src/app/
 ├── (auth)/          # Auth page forms (Login, Signup, etc.)
 ├── chart/           # Chart page + ChartClient orchestrator
-└── api/             # 28 API route handlers
+└── api/             # 32 API route handlers
 ```
 
 ---
@@ -1030,10 +1030,10 @@ import { ThemeProvider } from '@/components/theme-provider';
 ```
 
 **Features:**
-- Uses next-themes
+- Custom ThemeProvider (NOT next-themes) — uses React context + MutationObserver on `<html>` for instant dark/light switch
 - System preference detection
-- Persistent theme storage
-- Context for theme state
+- Persistent theme storage (`localStorage` key: `theme`)
+- Context for theme state (`useTheme` hook)
 
 ---
 
@@ -1058,7 +1058,7 @@ import { ThemeProvider } from '@/components/theme-provider';
 ### ZodiacWheel
 **File:** `src/components/landing/ZodiacWheel.tsx`
 **Purpose:** Rotating zodiac SVG wheel for the homepage hero
-**Used by:** Home page
+**Status:** UNUSED — added Apr 2026, not yet wired to any page (0 imports)
 
 **Features:**
 - SVG-based rotating zodiac ring
@@ -1226,7 +1226,7 @@ All in `src/components/horoscope/`. `HoroscopeShell` is the top-level orchestrat
 | **HoroscopeContent** | `HoroscopeContent.tsx` | Renders the horoscope text (EN/HI) with section formatting |
 | **HoroscopeLoading** | `HoroscopeLoading.tsx` | Skeleton loading state |
 | **RashiSelector** | `RashiSelector.tsx` | 12-rashi grid selector |
-| **HistoryNavigator** | `HistoryNavigator.tsx` | Prev/Next navigation through past horoscopes |
+| **HistoryNavigator** | `HistoryNavigator.tsx` | Prev/Next navigation through past horoscopes — **UNUSED** (0 imports; history nav is inline in HoroscopeShell) |
 | **LanguageToggle** | `LanguageToggle.tsx` | EN ↔ HI toggle, preference persisted to `localStorage` (`horoscope_lang`) |
 | **SignTypeToggle** | `SignTypeToggle.tsx` | Moon sign / Sun sign toggle (sun sign currently disabled) |
 | **InsightChips** | `InsightChips.tsx` | Pill display for planet transit insights |
@@ -1323,11 +1323,11 @@ All in `src/components/numerology/`. `NumerologyReport` is embeddable — used b
 ### Dasha (Planetary Periods)
 | Method | Endpoint | Purpose |
 |--------|----------|---------|
-| POST | `/api/dasha/mahadashas` | All mahadashas in 120-year cycle |
-| POST | `/api/dasha/current` | Current mahadasha + balance |
-| POST | `/api/dasha/antardasha` | Antardashas for a specific mahadasha |
-| POST | `/api/dasha/pratyantar` | Pratyantar dashas |
-| POST | `/api/dasha/sookshma` | Sookshma dashas |
+| GET | `/api/dasha/mahadashas` | All mahadashas in 120-year cycle |
+| GET | `/api/dasha/current` | Current mahadasha + balance |
+| GET | `/api/dasha/antardasha` | Antardashas for a specific mahadasha |
+| GET | `/api/dasha/pratyantar` | Pratyantar dashas |
+| GET | `/api/dasha/sookshma` | Sookshma dashas |
 
 ### Saturn Transits
 | Method | Endpoint | Purpose |
@@ -1338,7 +1338,7 @@ All in `src/components/numerology/`. `NumerologyReport` is embeddable — used b
 ### Other Calculations
 | Method | Endpoint | Purpose |
 |--------|----------|---------|
-| POST | `/api/avakahada` | Auspicious timing (nakshatra, yoga, karan) |
+| GET | `/api/avakahada` | Auspicious timing (nakshatra, yoga, karan) |
 | GET | `/api/cities/search` | City lookup with timezone |
 
 ### Chart Persistence (Authenticated)
@@ -1401,7 +1401,7 @@ All in `src/components/numerology/`. `NumerologyReport` is embeddable — used b
 | Method | Endpoint | Purpose |
 |--------|----------|---------|
 | GET | `/api/test/history` | Test run history |
-| POST | `/api/test/run-calculations` | Run calculation tests |
+| GET | `/api/test/run-calculations` | Run calculation tests |
 | DELETE | `/api/test/delete-runs` | Clear test runs |
 
 ---
@@ -1421,6 +1421,16 @@ These files exist in the codebase but are **not imported or rendered anywhere**:
 | **BirthDetails** | `src/components/chart/BirthDetails.tsx` | Replaced by UserDetailsCard — safe to delete |
 | **PlanetDisplay** | `src/components/chart/PlanetDisplay.tsx` | Only imported by HouseBlock (also unused) — safe to delete |
 
+### Landing Components
+| Component | File | Notes |
+|-----------|------|-------|
+| **ZodiacWheel** | `src/components/landing/ZodiacWheel.tsx` | Added Apr 2026, not yet wired to any page — 0 imports |
+
+### Horoscope Components
+| Component | File | Notes |
+|-----------|------|-------|
+| **HistoryNavigator** | `src/components/horoscope/HistoryNavigator.tsx` | History nav is inline in HoroscopeShell — this file is never imported |
+
 ### Auth Components
 | Component | File | Notes |
 |-----------|------|-------|
@@ -1431,7 +1441,7 @@ These files exist in the codebase but are **not imported or rendered anywhere**:
 |------|------|-------|
 | **useVargottama** | `src/hooks/useVargottama.ts` | Never imported anywhere — safe to delete |
 
-> **Recommendation:** Remove BirthDetails, PlanetDisplay, and useVargottama. Consider mounting SessionWatcher in a protected layout or removing it too.
+> **Recommendation:** Remove BirthDetails, PlanetDisplay, HistoryNavigator, and useVargottama. Wire ZodiacWheel to the home page or remove it. Consider mounting SessionWatcher in a protected layout or removing it too.
 
 ---
 
@@ -1560,11 +1570,11 @@ src/components/
 - **Numerology Components:** 15 active (of 15)
 - **Custom Hooks:** 5 active (of 6)
 
-**Active Total:** 90 components + 5 hooks
-**Dead Code:** 4 components + 1 hook
+**Active Total:** 96 components + 5 hooks
+**Dead Code:** 7 components + 1 hook
 
 ### Dead Code Summary
-5 files exist but are never imported: `ScrollArea`, `BirthDetails`, `PlanetDisplay`, `SessionWatcher`, `useVargottama`
+8 files exist but are never imported: `ScrollArea`, `BirthDetails`, `PlanetDisplay`, `ZodiacWheel`, `HistoryNavigator`, `SessionWatcher`, `useVargottama`
 
 ---
 
@@ -1585,11 +1595,12 @@ src/components/
 
 ### To Do
 - [ ] Mount SessionWatcher in a protected layout or remove entirely
-- [ ] Remove dead code: BirthDetails, PlanetDisplay, useVargottama, scroll-area.tsx
+- [ ] Wire ZodiacWheel to home page or remove it
+- [ ] Remove dead code: BirthDetails, PlanetDisplay, HistoryNavigator, useVargottama, scroll-area.tsx
 - [ ] ErrorBoundary wrapper for chart components
 - [ ] Chart export (PNG/PDF) functionality
 
 ---
 
-**Last Updated:** April 24, 2026
+**Last Updated:** April 25, 2026
 **Maintainer:** Aakash + AI Assistants

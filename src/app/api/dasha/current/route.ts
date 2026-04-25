@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getCurrentPeriods } from "@/lib/astrology/kp/dasa";
+import { getCurrentPeriods } from "@/lib/astrology/core/dasa";
 import { successResponse, withErrorHandling, validationError, calculationError } from "@/lib/api/errorHandling";
 import { rateLimit, RateLimitPresets } from "@/lib/api/rateLimit";
 import { logError } from "@/lib/monitoring/errorLogger";

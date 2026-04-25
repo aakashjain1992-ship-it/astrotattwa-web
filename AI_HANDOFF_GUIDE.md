@@ -283,7 +283,7 @@ import { z } from 'zod';
 
 // 3. Internal utilities
 import { buildLagnaHouses } from '@/lib/utils/chartHelpers';
-import { calculateSubLord } from '@/lib/astrology/kp/calculate';
+import { calculateSubLord } from '@/lib/astrology/core/calculate';
 
 // 4. Components
 import { Button } from '@/components/ui/button';

@@ -16,7 +16,7 @@ import type { PlanetData, AscendantData, ChartDashaData } from '@/types/astrolog
 import {
   calculateAntardashas, calculatePratyantars,
   calculateSookshmas, vimshottariDasha,
-} from '@/lib/astrology/kp/dasa';
+} from '@/lib/astrology/core/dasa';
 import { HOUSE_MEANINGS, getHouseTypeLabel } from '@/lib/astrology/constants/houseMeanings';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
