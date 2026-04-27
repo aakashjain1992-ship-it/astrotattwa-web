@@ -9,7 +9,6 @@ import type { YogaAnalysisResponse } from '@/lib/astrology/yogas/types'
 import { YogaSummaryCard } from './YogaSummaryCard'
 import { TopPositiveYogas } from './TopPositiveYogas'
 import { ChallengingPatterns } from './ChallengingPatterns'
-import { LifeAreaImpact } from './LifeAreaImpact'
 import { YogaList } from './YogaList'
 import { SignInModal } from './SignInModal'
 
@@ -130,8 +129,6 @@ export function YogasTab({ chart, onAnalysisReady }: YogasTabProps) {
         allDoshas={analysis.allDoshas}
         emptyMessage={analysis.emptyDoshasMessage}
       />
-
-      <LifeAreaImpact areas={analysis.lifeAreas} />
 
       {!showFullList && (
         <div className="text-center pt-2">
