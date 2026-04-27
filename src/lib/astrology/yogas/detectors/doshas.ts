@@ -13,6 +13,7 @@ import {
   KENDRA_HOUSES,
   getPlanetHouseFromLagna,
   getHouseFromReference,
+  getHouseLord,
   getDignity,
   isExalted,
   planetAspectsPlanet,
@@ -103,10 +104,7 @@ function detectKaalSarp(ctx: YogaEngineInput): DoshaResult {
   let relief = 0
   if (isPartial) relief += 12
   // Strong Lagna lord
-  const ascSignNum = ctx.ascendant.signNumber
-  const lagnaLordKey: PlanetKey = (
-    ['Mars', 'Venus', 'Mercury', 'Moon', 'Sun', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn', 'Saturn', 'Jupiter'] as PlanetKey[]
-  )[ascSignNum - 1]
+  const lagnaLordKey = getHouseLord(1, ctx.ascendant)
   const lagnaLord = ctx.planets[lagnaLordKey]
   if (lagnaLord) {
     const d = getDignity(lagnaLordKey, lagnaLord)

@@ -439,7 +439,7 @@ export const DOSHA_MEANINGS: Record<string, DoshaMeaning> = {
     name: 'Kaal Sarp Dosha',
     defaultLifeAreas: ['emotional_life', 'spirituality', 'family'],
     whatItMeans:
-      'Indicates a karmic concentration pattern. It does not mean life is doomed — it suggests that effort brings results in waves and that important matters benefit from patience.',
+      'Indicates a karmic concentration pattern. It does not mean life is fated against you — it suggests that effort brings results in waves and that important matters benefit from patience.',
     whyItForms:
       'All seven visible planets are placed on one side of the Rahu-Ketu axis.',
     whatReducesIt:
