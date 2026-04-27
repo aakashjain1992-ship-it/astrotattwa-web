@@ -92,7 +92,12 @@ function isValidPlanetData(p: unknown): p is PlanetData {
   const x = p as Record<string, unknown>
   return (
     typeof x.signNumber === 'number' &&
+    Number.isInteger(x.signNumber) &&
+    (x.signNumber as number) >= 1 &&
+    (x.signNumber as number) <= 12 &&
     typeof x.longitude === 'number' &&
+    (x.longitude as number) >= 0 &&
+    (x.longitude as number) < 360 &&
     typeof x.sign === 'string'
   )
 }
@@ -100,7 +105,13 @@ function isValidPlanetData(p: unknown): p is PlanetData {
 function isValidAscendant(a: unknown): a is AscendantData {
   if (!a || typeof a !== 'object') return false
   const x = a as Record<string, unknown>
-  return typeof x.signNumber === 'number' && typeof x.sign === 'string'
+  return (
+    typeof x.signNumber === 'number' &&
+    Number.isInteger(x.signNumber) &&
+    (x.signNumber as number) >= 1 &&
+    (x.signNumber as number) <= 12 &&
+    typeof x.sign === 'string'
+  )
 }
 
 export const POST = withErrorHandling(async (req: NextRequest) => {

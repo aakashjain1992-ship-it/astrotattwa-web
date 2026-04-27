@@ -11,6 +11,7 @@ import {
   getHousesRuled,
   degreeDiff,
 } from '@/lib/astrology/strength'
+import { planetAspects } from '@/lib/astrology/strength/aspectEngine'
 
 export const KENDRA_HOUSES = [1, 4, 7, 10] as const
 export const TRIKONA_HOUSES = [1, 5, 9] as const
@@ -179,30 +180,12 @@ export function sameSign(a: PlanetData, b: PlanetData): boolean {
   return a.signNumber === b.signNumber
 }
 
-/**
- * Vedic sign-based aspects (matches strength engine's aspectEngine).
- * Returns true if planet `from` aspects sign `toSign`.
- */
-export function planetAspectsSign(
-  fromPlanet: PlanetKey,
-  fromSignNum: number,
-  toSignNum: number,
-): boolean {
-  const mod = (n: number) => ((n - 1 + 120) % 12) + 1
-  const offsets: number[] = [6] // 7th aspect — all planets
-  if (fromPlanet === 'Mars') offsets.push(3, 7)
-  else if (fromPlanet === 'Jupiter') offsets.push(4, 8)
-  else if (fromPlanet === 'Saturn') offsets.push(2, 9)
-  else if (fromPlanet === 'Rahu' || fromPlanet === 'Ketu') offsets.push(4, 8)
-  return offsets.some((o) => mod(fromSignNum + o) === toSignNum)
-}
-
 export function planetAspectsPlanet(
   fromKey: PlanetKey,
   fromData: PlanetData,
   toData: PlanetData,
 ): boolean {
-  return planetAspectsSign(fromKey, fromData.signNumber, toData.signNumber)
+  return planetAspects(fromKey, fromData.signNumber, toData.signNumber)
 }
 
 /** True if either A aspects B's sign or vice versa. */
