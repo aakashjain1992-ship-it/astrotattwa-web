@@ -182,15 +182,13 @@ function detectMangal(ctx: YogaEngineInput): DoshaResult {
   const fromLagna = MANGAL_HOUSES.includes(houseFromLagna)
   const fromMoon = MANGAL_HOUSES.includes(houseFromMoon)
   const fromVenus = MANGAL_HOUSES.includes(houseFromVenus)
-  if (!fromLagna && !fromMoon && !fromVenus) return emptyDosha('mangal')
+  // Strict rule: Lagna is required. Moon/Venus alone do not trigger the dosha.
+  if (!fromLagna) return emptyDosha('mangal')
 
-  // Placement severity
-  let placement = 0
-  if (fromLagna) {
-    if (houseFromLagna === 7 || houseFromLagna === 8) placement = 20
-    else placement = 15
-  }
-  // Multi-reference boost
+  // Placement severity based on which Lagna house Mars occupies
+  const placement = (houseFromLagna === 7 || houseFromLagna === 8) ? 20 : 15
+
+  // Moon/Venus boost severity only when Lagna is already triggered
   let afflictionBoost = 0
   if (fromMoon) afflictionBoost += 6
   if (fromVenus) afflictionBoost += 6
@@ -237,10 +235,10 @@ function detectMangal(ctx: YogaEngineInput): DoshaResult {
   })
   if (breakdown.final <= 0) return emptyDosha('mangal')
 
-  const refs: string[] = []
-  if (fromLagna) refs.push(`Lagna (house ${houseFromLagna})`)
-  if (fromMoon) refs.push(`Moon (house ${houseFromMoon})`)
-  if (fromVenus) refs.push(`Venus (house ${houseFromVenus})`)
+  const modifiers: string[] = []
+  if (fromMoon) modifiers.push(`also in Mangal house from Moon (house ${houseFromMoon})`)
+  if (fromVenus) modifiers.push(`also in Mangal house from Venus (house ${houseFromVenus})`)
+  const modStr = modifiers.length > 0 ? ` — ${modifiers.join('; ')}` : ''
 
   return {
     id: 'mangal',
@@ -251,7 +249,7 @@ function detectMangal(ctx: YogaEngineInput): DoshaResult {
     score: breakdown.final,
     severity: getSeverityLabel(breakdown.final),
     scoreBreakdown: breakdown,
-    technicalReason: `Mars is in a Mangal-house from: ${refs.join(', ')}.`,
+    technicalReason: `Mars is in the ${houseFromLagna}th house from Lagna${modStr}.`,
     planetsInvolved: ['Mars'],
     housesInvolved: [houseFromLagna],
     lifeAreas: m.defaultLifeAreas,
