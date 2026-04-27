@@ -208,11 +208,10 @@ export default function ChartClient() {
 
   const router = useRouter();
   const searchParams = useSearchParams();
-
   // Data state
   const [chartData, setChartData] = useState<ChartData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  
+
   // UI state
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [mobileSubTab, setMobileSubTab] = useState<MobileSubTab>('planets');
@@ -526,7 +525,6 @@ export default function ChartClient() {
   // Cast ascendant to proper type
   const ascendant = chartData.planets.Ascendant as AscendantData;
 
-  // Build houses
   const houses = buildLagnaHouses(chartData.planets, ascendant);
   const moonHouses = buildMoonHouses(chartData.planets, ascendant);
   const navamsaHouses = buildNavamsaHouses(chartData.planets, ascendant);
