@@ -78,12 +78,32 @@ export function YogaCard({ yoga, defaultExpanded = false, hero = false }: YogaCa
 
       {/* Expandable body */}
       {expanded && meaning && (
-        <div className="px-4 pb-4 space-y-2.5">
-          <div style={{ borderTop: '1px solid var(--border)', marginBottom: '12px' }} />
-          <DetailRow label="What it means" text={meaning.whatItMeans} />
-          <DetailRow label="What strengthens it" text={meaning.strengthens} />
-          <DetailRow label="What weakens it" text={meaning.weakens} />
-          <DetailRow label="When it gives results" text={meaning.whenItGivesResults} />
+        <div className="px-4 pb-4">
+          <div style={{ borderTop: '1px solid var(--border)', marginTop: '2px', marginBottom: '16px' }} />
+
+          {/* In your chart — chart-specific narrative */}
+          {yoga.chartNarrative && (
+            <div className="mb-5">
+              <p className="text-[10px] font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--text3)' }}>
+                In your chart
+              </p>
+              <div className="space-y-2.5">
+                {yoga.chartNarrative.split('\n\n').filter(Boolean).map((para, i) => (
+                  <p key={i} className="text-sm leading-relaxed" style={{ color: 'var(--text2)' }}>{para}</p>
+                ))}
+              </div>
+              <div style={{ borderTop: '1px solid var(--border)', marginTop: '16px', marginBottom: '16px' }} />
+            </div>
+          )}
+
+          {/* Generic explanations */}
+          <div className="space-y-4">
+            <DetailRow label="What it means" text={meaning.whatItMeans} />
+            <DetailRow label="What strengthens it" text={meaning.strengthens} />
+            <DetailRow label="What weakens it" text={meaning.weakens} />
+            <DetailRow label="When it gives results" text={meaning.whenItGivesResults} />
+          </div>
+
           <TechnicalDetailsAccordion
             technicalReason={yoga.technicalReason}
             planetsInvolved={yoga.planetsInvolved}
@@ -100,7 +120,7 @@ function DetailRow({ label, text }: { label: string; text: string }) {
   const paragraphs = text.split('\n\n').filter(Boolean)
   return (
     <div>
-      <p className="text-xs font-medium mb-1" style={{ color: 'var(--text3)' }}>{label}</p>
+      <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: 'var(--text3)' }}>{label}</p>
       <div className="space-y-2">
         {paragraphs.map((p, i) => (
           <p key={i} className="text-sm leading-relaxed" style={{ color: 'var(--text2)' }}>{p}</p>

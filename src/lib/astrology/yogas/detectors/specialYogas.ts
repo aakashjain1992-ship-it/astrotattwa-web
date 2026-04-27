@@ -228,6 +228,167 @@ function detectParivartana(ctx: YogaEngineInput): YogaResult {
   }
 }
 
+// ─── Dhana Yoga — "In your chart" narrative builder ─────────────────────────
+
+const WEALTH_HOUSE_MEANING: Record<number, string> = {
+  2:  'savings, family wealth, accumulated resources and speech',
+  5:  'intelligence, creativity, merit, planning and past-life purity',
+  9:  'fortune, dharma, higher wisdom and life opportunities',
+  11: 'income, gains, social networks and fulfilment of desires',
+}
+
+const CONJUNCTION_HOUSE_NARRATIVE: Partial<Record<number, string>> = {
+  1:  'This conjunction is in the 1st house — the house of self and overall life direction — tying wealth potential directly to personal drive and identity.',
+  2:  'This conjunction is in the 2nd house itself — the house of wealth and family — which intensifies the financial potential of the yoga.',
+  4:  'This conjunction is in the 4th house — the house of property, home and emotional comfort — suggesting wealth through real estate, family or private enterprise.',
+  5:  'This conjunction is in the 5th house — the house of intelligence and merit — strengthening the link between creative ability, strategy and financial growth.',
+  7:  'This conjunction is in the 7th house — the house of partnerships and business — suggesting wealth through relationships, deals or collaborative work.',
+  9:  'This conjunction is in the 9th house — the house of fortune, dharma and opportunity. This adds an element of luck and divine support, suggesting gains can come through knowledge, advisory roles, consulting, teaching, networking, foreign connections or positions of wisdom and professional authority.',
+  10: 'This conjunction is in the 10th house — the house of career and public standing — tying wealth directly to professional achievement and reputation.',
+  11: 'This conjunction is in the 11th house itself — the house of income and gains — which directly intensifies the earning and accumulation potential of the yoga.',
+}
+
+const DUSTHANA_LORD_EFFECT: Record<number, string> = {
+  6:  'can add effort, competition or health-related delays to how gains arrive. Working hard and managing obstacles will be part of the path.',
+  8:  'can introduce delays, transformation or sudden changes before gains fully materialise. Results may be slower, more mature and dependent on persistence through difficult phases.',
+  12: 'can create a tendency for wealth to flow out through expenditure, foreign dealings or spiritual investment. Gains are possible but may not accumulate as steadily.',
+}
+
+type WealthPair = { a: PlanetKey; b: PlanetKey; ah: number; bh: number; via: string[] }
+type LordEntry = { house: number; lord: PlanetKey }
+
+function buildDhanaNarrative(
+  ctx: YogaEngineInput,
+  lords: LordEntry[],
+  pairs: WealthPair[],
+): string {
+  const { ascendant, planets } = ctx
+  const DUSTHANA = [6, 8, 12]
+  const parts: string[] = []
+
+  const conjunctPairs = pairs.filter(p => p.via.includes('sameHouse'))
+  const otherPairs = pairs.filter(p => !p.via.includes('sameHouse'))
+
+  // ── Step 1: Main connection sentence ──────────────────────────────────────
+
+  if (conjunctPairs.length > 0) {
+    // Collect unique planets in all conjunct pairs — may be 2 or 3+
+    const conjunctPlanets = [...new Set(conjunctPairs.flatMap(p => [p.a, p.b]))]
+    const refPlanet = planets[conjunctPlanets[0]]
+    const conjunctHouse = getPlanetHouseFromLagna(refPlanet, ascendant)
+    const conjunctSign = refPlanet.sign
+
+    const lordLabels = conjunctPlanets.map(pk => {
+      const entry = lords.find(l => l.lord === pk)
+      return entry ? `${ordinalSuffix(entry.house)} lord ${pk}` : pk
+    })
+    const lordStr = lordLabels.length === 2
+      ? `${lordLabels[0]} and ${lordLabels[1]}`
+      : `${lordLabels.slice(0, -1).join(', ')} and ${lordLabels[lordLabels.length - 1]}`
+
+    parts.push(`Your ${lordStr} are conjunct in the ${ordinalSuffix(conjunctHouse)} house (${conjunctSign}).`)
+
+    // Explain what houses are being connected
+    const houseNums = [...new Set(conjunctPairs.flatMap(p => [p.ah, p.bh]))]
+    const houseDesc = houseNums
+      .filter(h => WEALTH_HOUSE_MEANING[h])
+      .map(h => `the ${ordinalSuffix(h)} house (${WEALTH_HOUSE_MEANING[h]})`)
+    if (houseDesc.length >= 2) {
+      parts.push(
+        `This directly connects ${houseDesc.slice(0, -1).join(', ')} and ${houseDesc[houseDesc.length - 1]}. When their lords meet in the same sign, the chart creates a clear channel between these wealth-supporting areas.`
+      )
+    }
+
+    // Significance of the conjunction house
+    const houseNarr = CONJUNCTION_HOUSE_NARRATIVE[conjunctHouse]
+    if (houseNarr) parts.push(houseNarr)
+
+  } else if (otherPairs.length > 0) {
+    const main = otherPairs[0]
+    const aHouse = getPlanetHouseFromLagna(planets[main.a], ascendant)
+    const bHouse = getPlanetHouseFromLagna(planets[main.b], ascendant)
+
+    if (main.via.includes('exchange')) {
+      parts.push(
+        `Your ${ordinalSuffix(main.ah)} lord ${main.a} and ${ordinalSuffix(main.bh)} lord ${main.b} exchange signs — each is placed in the other's house. This creates a strong mutual connection between ${WEALTH_HOUSE_MEANING[main.ah] ?? `the ${ordinalSuffix(main.ah)} house`} and ${WEALTH_HOUSE_MEANING[main.bh] ?? `the ${ordinalSuffix(main.bh)} house`}.`
+      )
+    } else if (main.via.includes('placedInOtherHouse')) {
+      if (aHouse === main.bh) {
+        parts.push(
+          `Your ${ordinalSuffix(main.ah)} lord ${main.a} is placed in the ${ordinalSuffix(main.bh)} house — the domain of ${main.b}. This links ${WEALTH_HOUSE_MEANING[main.ah] ?? `the ${ordinalSuffix(main.ah)} house`} to ${WEALTH_HOUSE_MEANING[main.bh] ?? `the ${ordinalSuffix(main.bh)} house`}, creating a wealth connection through placement.`
+        )
+      } else if (bHouse === main.ah) {
+        parts.push(
+          `Your ${ordinalSuffix(main.bh)} lord ${main.b} is placed in the ${ordinalSuffix(main.ah)} house — the domain of ${main.a}. This links ${WEALTH_HOUSE_MEANING[main.bh] ?? `the ${ordinalSuffix(main.bh)} house`} to ${WEALTH_HOUSE_MEANING[main.ah] ?? `the ${ordinalSuffix(main.ah)} house`}, forming a Dhana Yoga through placement.`
+        )
+      }
+    } else if (main.via.includes('mutualAspect') || main.via.includes('oneAspectsOther')) {
+      parts.push(
+        `Your ${ordinalSuffix(main.ah)} lord ${main.a} and ${ordinalSuffix(main.bh)} lord ${main.b} aspect each other, creating a connection between ${WEALTH_HOUSE_MEANING[main.ah] ?? `the ${ordinalSuffix(main.ah)} house`} and ${WEALTH_HOUSE_MEANING[main.bh] ?? `the ${ordinalSuffix(main.bh)} house`}.`
+      )
+    }
+  }
+
+  // ── Step 2: Complicating factors — connected lords in dusthana ─────────────
+
+  const connectedLords = [...new Set(pairs.flatMap(p => [p.a, p.b]))]
+  for (const pk of connectedLords) {
+    const entry = lords.find(l => l.lord === pk)
+    if (!entry) continue
+    const lordHouse = getPlanetHouseFromLagna(planets[pk], ascendant)
+    const effect = DUSTHANA_LORD_EFFECT[lordHouse]
+    if (effect) {
+      parts.push(
+        `However, the ${ordinalSuffix(entry.house)} lord ${pk} is placed in the ${ordinalSuffix(lordHouse)} house. This ${effect} It does not cancel the Dhana Yoga but can affect its timing and the ease with which results appear.`
+      )
+    }
+  }
+
+  // ── Step 3: Unconnected lords with notable associations ────────────────────
+
+  const disconnected = lords.filter(l => !connectedLords.includes(l.lord))
+  for (const { house, lord } of disconnected) {
+    const p = planets[lord]
+    if (!p) continue
+    const lordHouse = getPlanetHouseFromLagna(p, ascendant)
+    const cotenants = Object.entries(planets)
+      .filter(([k, v]) => k !== lord && k !== 'Ascendant' && v.signNumber === p.signNumber)
+      .map(([k]) => k)
+    const maleficCo = cotenants.filter(c => c === 'Rahu' || c === 'Ketu' || c === 'Saturn' || c === 'Mars')
+    const inDusthana = DUSTHANA.includes(lordHouse)
+
+    if (maleficCo.length > 0 || inDusthana) {
+      const coStr = cotenants.length > 0 ? ` with ${cotenants.join(' and ')}` : ''
+      const houseMeaning = WEALTH_HOUSE_MEANING[house] ?? `the ${ordinalSuffix(house)} house`
+      let effect = ''
+      if (maleficCo.includes('Rahu') || maleficCo.includes('Ketu')) {
+        effect = `${lord}'s association with ${maleficCo.filter(c => c === 'Rahu' || c === 'Ketu').join(' and ')} can create unconventional or fluctuating patterns around ${houseMeaning}. Gains are still possible, but they may come in irregular cycles or require careful management rather than steady accumulation.`
+      } else if (inDusthana) {
+        effect = `${lord} being in the ${ordinalSuffix(lordHouse)} house adds some complexity to ${houseMeaning} — more effort or delays may be needed in this area.`
+      } else {
+        effect = `${lord}'s association with ${maleficCo.join(' and ')} adds some tension to ${houseMeaning}, which may create pressure or mixed results in this area.`
+      }
+      parts.push(
+        `The ${ordinalSuffix(house)} lord ${lord} is in the ${ordinalSuffix(lordHouse)} house${coStr}. ${effect}`
+      )
+    }
+  }
+
+  // ── Step 4: Timing ──────────────────────────────────────────────────────────
+
+  const timingPlanets = connectedLords.slice(0, 3)
+  if (timingPlanets.length > 0) {
+    const tStr = timingPlanets.length === 1
+      ? timingPlanets[0]
+      : `${timingPlanets.slice(0, -1).join(', ')} or ${timingPlanets[timingPlanets.length - 1]}`
+    parts.push(
+      `Results are likely to be clearest during ${tStr} Mahadasha or Antardasha, especially when supported by favourable transits to the wealth houses in the chart.`
+    )
+  }
+
+  return parts.join('\n\n')
+}
+
 function viaDesc(via: string[]): string {
   if (via.includes('sameHouse')) return 'conjunct'
   if (via.includes('mutualAspect')) return 'mutual aspect'
@@ -339,6 +500,7 @@ function detectDhana(ctx: YogaEngineInput): YogaResult {
     strength: getStrengthLabel(breakdown.final),
     scoreBreakdown: breakdown,
     technicalReason,
+    chartNarrative: buildDhanaNarrative(ctx, lords, wealthLordPairs),
     planetsInvolved: allLordPlanets,
     housesInvolved: [...WEALTH_HOUSES],
     lifeAreas: m.defaultLifeAreas,

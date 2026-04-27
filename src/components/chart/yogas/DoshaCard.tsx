@@ -101,7 +101,7 @@ function DetailRow({ label, text }: { label: string; text: string }) {
   const paragraphs = text.split('\n\n').filter(Boolean)
   return (
     <div>
-      <p className="text-xs font-medium mb-1" style={{ color: 'var(--text3)' }}>{label}</p>
+      <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: 'var(--text3)' }}>{label}</p>
       <div className="space-y-2">
         {paragraphs.map((p, i) => (
           <p key={i} className="text-sm leading-relaxed" style={{ color: 'var(--text2)' }}>{p}</p>
