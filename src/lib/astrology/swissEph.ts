@@ -14,10 +14,12 @@ export interface SweCalcResult {
 
 
 export interface SweHousesResult {
-  cusps?: number[];
-  ascmc?: number[];
+  house?: number[];   // 1-indexed: house[1]..house[12] are the 12 cusps
   ascendant?: number;
   mc?: number;
+  armc?: number;
+  vertex?: number;
+  error?: string;
 }
 
 export interface SwissEph {
@@ -109,13 +111,6 @@ export async function sweCalcSidereal(jdUt: number, body: number): Promise<{ lon
 }
 
 export async function sweAscendantSidereal(jdUt: number, lat: number, lon: number): Promise<number> {
-  const { ascendant } = await sweHousesAndAscSidereal(jdUt, lat, lon);
-  return ascendant;
-}
-
-export async function sweHousesAndAscSidereal(
-  jdUt: number, lat: number, lon: number
-): Promise<{ ascendant: number; cusps: number[] }> {
   const s = await getSwe();
   const flags = s.SEFLG_SIDEREAL;
 
@@ -124,13 +119,9 @@ export async function sweHousesAndAscSidereal(
   else if (typeof s.swe_houses === "function") res = s.swe_houses(jdUt, lat, lon, "P");
   else throw new Error("Swiss Ephemeris houses function not available.");
 
-  const asc = (Array.isArray(res?.ascmc) ? res.ascmc[0] : undefined) ?? res?.ascendant;
+  const asc = res?.ascendant;
   if (typeof asc !== "number") throw new Error("Could not extract ascendant from houses result");
-
-  // cusps[0] is unused (1-indexed), cusps[1..12] are house cusps
-  const cusps: number[] = Array.isArray(res?.cusps) ? res.cusps.slice(1, 13) : [];
-
-  return { ascendant: asc, cusps };
+  return asc;
 }
 
 export async function getBodyIds() {

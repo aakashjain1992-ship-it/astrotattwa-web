@@ -95,68 +95,6 @@ export function buildLagnaHouses(
 }
 
 /**
- * Build houses for D1 chart using Placidus cusps.
- * cusps[0..11] = sidereal degrees of house 1..12 cusps (as returned by sweHousesAndAscSidereal).
- * A planet belongs to the house whose cusp it follows and precedes the next cusp.
- */
-export function buildPlacidusHouses(
-  planets: Record<string, PlanetData>,
-  ascendant: AscendantData,
-  cusps: number[]
-): HouseInfo[] {
-  if (cusps.length < 12) return buildLagnaHouses(planets, ascendant);
-
-  const houses: HouseInfo[] = [];
-
-  for (let i = 0; i < 12; i++) {
-    const cuspDeg = cusps[i];
-    const rasiNumber = (Math.floor(cuspDeg / 30) % 12) + 1;
-    houses.push({
-      houseNumber: (i + 1) as HouseNumber,
-      rasiNumber: rasiNumber as RashiNumber,
-      rasiName: RASHI_NAMES[rasiNumber - 1],
-      planets: [],
-      isAscendant: i === 0,
-    });
-  }
-
-  Object.entries(planets).forEach(([planetKey, planetData]) => {
-    if (planetKey === 'Ascendant') return;
-    const lon = planetData.longitude;
-
-    // Find which house this longitude belongs to
-    let houseIndex = 0;
-    for (let i = 0; i < 12; i++) {
-      const thisC = cusps[i];
-      const nextC = cusps[(i + 1) % 12];
-      // Handle wrap-around (e.g. cusp at 350° → next at 20°)
-      const spans = nextC > thisC
-        ? lon >= thisC && lon < nextC
-        : lon >= thisC || lon < nextC;
-      if (spans) { houseIndex = i; break; }
-    }
-
-    const statusFlags: StatusFlag[] = [];
-    if (planetData.retrograde) statusFlags.push('R');
-    if (planetData.combust) statusFlags.push('C');
-    if (planetData.exalted) statusFlags.push('↑');
-    if (planetData.debilitated) statusFlags.push('↓');
-
-    houses[houseIndex].planets.push({
-      key: planetKey as PlanetKey,
-      symbol: PLANET_SYMBOLS[planetKey] || planetKey.substring(0, 2),
-      degree: planetData.degreeInSign,
-      longitude: planetData.longitude,
-      statusFlags,
-      fullData: planetData,
-    });
-  });
-
-  houses.forEach(house => house.planets.sort((a, b) => a.degree - b.degree));
-  return houses;
-}
-
-/**
  * Build houses for Moon Chart (Chandra Lagna)
  * Uses Moon's position as the ascendant instead of actual ascendant
  */
