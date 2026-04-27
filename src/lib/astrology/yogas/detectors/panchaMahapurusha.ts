@@ -29,6 +29,81 @@ import {
 } from '../scoring'
 import { YOGA_MEANINGS } from '../meanings'
 
+// ─── Planet-specific theme text ───────────────────────────────────────────────
+
+const PLANET_THEME: Record<string, { quality: string; domains: string; strength: string }> = {
+  Mars: {
+    quality: 'Ruchaka',
+    domains: 'courage, drive, physical vitality, and the capacity to act decisively. Mars governs athletic ability, leadership in difficult conditions, and the willingness to push through resistance.',
+    strength: 'Your chart suggests a strong assertive energy — an ability to take initiative, defend what matters, and lead through action rather than words.',
+  },
+  Mercury: {
+    quality: 'Bhadra',
+    domains: 'intelligence, analytical precision, communication, and practical skill. Mercury governs the ability to learn, reason, articulate ideas, and excel in commerce, technology, writing, or advisory roles.',
+    strength: 'Your chart suggests a sharp and discerning mind — an ability to process information quickly, communicate with clarity, and find solutions where others see only complexity.',
+  },
+  Jupiter: {
+    quality: 'Hamsa',
+    domains: 'wisdom, knowledge, good judgment, and spiritual grace. Jupiter governs teaching, philosophy, law, and the ability to offer guidance that is genuinely beneficial to others.',
+    strength: 'Your chart suggests a naturally expansive and benevolent quality — a capacity for principled thinking, broad perspective, and earning trust through honesty and sound counsel.',
+  },
+  Venus: {
+    quality: 'Malavya',
+    domains: 'refinement, aesthetic sensibility, harmony, and the enjoyment of life\'s pleasures. Venus governs the arts, relationships, beauty, comfort, and the ability to create environments others find inspiring.',
+    strength: 'Your chart suggests a magnetic personal quality — an eye for beauty, a desire for harmony, and the ability to attract favourable relationships, resources, and creative opportunities.',
+  },
+  Saturn: {
+    quality: 'Shasha',
+    domains: 'discipline, endurance, structure, and the ability to build lasting results over time. Saturn governs service, administration, resource management, and achievement through sustained effort.',
+    strength: 'Your chart suggests a capacity for steady, methodical effort — a resilience that outlasts short-term obstacles and an ability to earn authority through demonstrated reliability.',
+  },
+}
+
+const KENDRA_HOUSE_MEANING: Record<number, string> = {
+  1: 'the 1st house — the house of self, body, and overall life direction',
+  4: 'the 4th house — the house of home, emotional foundation, and inner peace',
+  7: 'the 7th house — the house of partnerships, relationships, and public dealings',
+  10: 'the 10th house — the house of career, reputation, and public life',
+}
+
+const DIGNITY_LABEL: Record<string, string> = {
+  exalted: 'in its sign of exaltation',
+  own: 'in its own sign',
+  mooltrikona: 'in its Mooltrikona sign',
+}
+
+function buildMahapurushaaNarrative(
+  planet: string,
+  sign: string,
+  house: number,
+  dignity: string,
+): string {
+  const theme = PLANET_THEME[planet]
+  if (!theme) return ''
+  const dignityStr = DIGNITY_LABEL[dignity] ?? `in ${sign}`
+  const houseStr = KENDRA_HOUSE_MEANING[house] ?? `the ${house}th house`
+  const parts: string[] = []
+
+  parts.push(
+    `${planet} is placed ${dignityStr} (${sign}) in ${houseStr} of your chart. This is the classical condition for ${theme.quality} Yoga — a Pancha Mahapurusha configuration where ${planet} is at its strongest possible dignity and placed in a house of central importance to the life.`
+  )
+  parts.push(
+    `${planet} in this position governs ${theme.domains} ${theme.strength}`
+  )
+
+  if (house === 10) {
+    parts.push(
+      `The 10th house placement is particularly significant for career and public recognition — ${planet}'s qualities are likely to express themselves through your profession and the role you occupy in the wider world.`
+    )
+  } else if (house === 7) {
+    parts.push(
+      `The 7th house placement means ${planet}'s qualities also shape your relationships and how you engage in partnerships — professional and personal. Others are likely to experience this planetary energy directly through their dealings with you.`
+    )
+  }
+
+  return parts.join('\n\n')
+}
+
 interface MahapurushaSpec {
   id: keyof typeof YOGA_MEANINGS
   planet: PlanetKey
@@ -157,6 +232,7 @@ function detectOne(spec: MahapurushaSpec, ctx: YogaEngineInput): YogaResult {
     strength: getStrengthLabel(breakdown.final),
     scoreBreakdown: breakdown,
     technicalReason: `${spec.planet} is in ${planet.sign} (${dignity}) in house ${house} (Kendra).`,
+    chartNarrative: buildMahapurushaaNarrative(spec.planet, planet.sign, house, dignity),
     planetsInvolved: [spec.planet],
     housesInvolved: [house],
     lifeAreas: m.defaultLifeAreas,

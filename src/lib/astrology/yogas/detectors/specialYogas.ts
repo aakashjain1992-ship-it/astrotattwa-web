@@ -72,6 +72,86 @@ function empty(id: string): YogaResult {
   }
 }
 
+// ─── Narrative builders ───────────────────────────────────────────────────────
+
+const DEBILITATION_SIGN: Partial<Record<string, string>> = {
+  Sun: 'Libra', Moon: 'Scorpio', Mars: 'Cancer', Mercury: 'Pisces',
+  Jupiter: 'Capricorn', Venus: 'Virgo', Saturn: 'Aries',
+}
+
+function buildNeechaBhangaNarrative(
+  cancellations: { planet: string; rule: string }[],
+  planets: Record<string, { sign: string; combust: boolean }>,
+): string {
+  const parts: string[] = []
+  const planetStr = cancellations.map(c => `${c.planet} (debilitated in ${DEBILITATION_SIGN[c.planet] ?? planets[c.planet]?.sign ?? 'its sign'})`).join(' and ')
+  parts.push(
+    `Neecha Bhanga Raja Yoga arises when a debilitated planet has its weakness cancelled by specific chart conditions. In your chart, ${planetStr} — and the cancellation condition is met, converting the debilitation into a source of eventual strength rather than sustained weakness.`
+  )
+  const ruleDesc = cancellations.map(c => {
+    const combust = planets[c.planet]?.combust ? ' Note: the planet is also combust, which partially limits the cancellation — results are real but may arrive later or with more effort than a fully free planet would suggest.' : ''
+    return `For ${c.planet}: ${c.rule}.${combust}`
+  })
+  parts.push(ruleDesc.join('\n\n'))
+  parts.push(
+    `The classical understanding is that a debilitated planet with Neecha Bhanga often produces results late in life or after a period of struggle — but when the results come, they carry a depth and character that a naturally well-placed planet might not. The timing tends to coincide with the Mahadasha or Antardasha of the involved planet(s).`
+  )
+  return parts.join('\n\n')
+}
+
+const PARIVARTANA_HOUSE_THEME: Record<number, string> = {
+  1: 'self, identity, and health', 2: 'resources and speech', 3: 'communication and initiative',
+  4: 'home and emotional security', 5: 'intelligence and creativity', 6: 'obstacles and service',
+  7: 'relationships and partnerships', 8: 'transformation and hidden matters',
+  9: 'fortune and higher wisdom', 10: 'career and public life', 11: 'income and social networks',
+  12: 'retreat, loss, and spiritual life',
+}
+
+const PARIVARTANA_SUBTYPE_TEXT: Record<string, string> = {
+  maha: 'Both planets are in good houses (Kendra, Trikona, 2nd, or 11th), making this a Maha Parivartana — a strongly positive sign exchange that tends to support both houses involved and the domains they rule.',
+  dainya: 'One of the planets is in a dusthana house (6th, 8th, or 12th), making this a Dainya Parivartana. The exchange is present but one side carries a complicating quality — gains are possible but may come with effort, delay, or a degree of challenge in one of the two areas involved.',
+  khala: 'One of the planets is in the 3rd house, making this a Khala Parivartana — a mixed exchange that can bring ambition and effort but with less consistent or settled results than a Maha exchange.',
+  mixed: 'This is a general Parivartana — a sign exchange with a mixed placement profile.',
+}
+
+function buildParivartanaNarrative(
+  a: string, aHouse: number, aSign: string,
+  b: string, bHouse: number, bSign: string,
+  subtype: string, allExchangeCount: number,
+): string {
+  const parts: string[] = []
+  parts.push(
+    `${a} in ${aSign} (${ordinalSuffix(aHouse)} house) and ${b} in ${bSign} (${ordinalSuffix(bHouse)} house) are in sign exchange — each planet is placed in the sign owned by the other. This is Parivartana Yoga: the two planets behave as though conjunct, creating a deep mutual link between ${PARIVARTANA_HOUSE_THEME[aHouse] ?? `the ${ordinalSuffix(aHouse)} house`} and ${PARIVARTANA_HOUSE_THEME[bHouse] ?? `the ${ordinalSuffix(bHouse)} house`}.`
+  )
+  parts.push(PARIVARTANA_SUBTYPE_TEXT[subtype] ?? PARIVARTANA_SUBTYPE_TEXT.mixed)
+  if (allExchangeCount > 1) {
+    parts.push(`Your chart contains ${allExchangeCount} sign exchanges in total — the one shown here is the most favourably placed. Multiple exchanges intensify the mutual weaving between houses and can create a chart with unusually strong inter-house connections.`)
+  }
+  return parts.join('\n\n')
+}
+
+function buildKartariNarrative(isBenefic: boolean, in12: string[], in2: string[]): string {
+  const parts: string[] = []
+  const planetStr12 = in12.join(' and ')
+  const planetStr2 = in2.join(' and ')
+  if (isBenefic) {
+    parts.push(
+      `Your Lagna (Ascendant) is flanked by natural benefics — ${planetStr12} in the 12th house and ${planetStr2} in the 2nd house. This is Shubha Kartari Yoga: the Lagna is enclosed by planets of grace and support on both sides.`
+    )
+    parts.push(
+      `The 12th and 2nd houses are the immediate neighbours of the 1st. When benefics occupy both, they create a cushioning effect around the self and the life in general — supporting resilience, protecting against severe difficulty, and lending a quality of grace to circumstances that might otherwise be harder. The Lagna lord and the planet itself still matter, but the surrounding benefic field is a meaningful background support.`
+    )
+  } else {
+    parts.push(
+      `Your Lagna (Ascendant) is flanked by natural malefics — ${planetStr12} in the 12th house and ${planetStr2} in the 2nd house. This is Paap Kartari Yoga: the Lagna is enclosed by planets that carry a more pressuring or restricting quality.`
+    )
+    parts.push(
+      `The 12th and 2nd are the immediate neighbours of the 1st house. When malefics occupy both, they create a kind of friction or resistance around the life in general — which can manifest as recurring effort required to maintain stability, a tendency to face obstacles from both sides of a situation, or a sense that progress comes through persistence rather than ease. The effect is meaningful but rarely severe on its own — the Lagna lord's condition and dignity also play a central role in how this operates.`
+    )
+  }
+  return parts.join('\n\n')
+}
+
 function detectNeechaBhanga(ctx: YogaEngineInput): YogaResult {
   const m = YOGA_MEANINGS.neechaBhanga
   const cancellations: { planet: PlanetKey; rule: string }[] = []
@@ -95,7 +175,9 @@ function detectNeechaBhanga(ctx: YogaEngineInput): YogaResult {
   )
   const houses = cancellations.map((c) => getPlanetHouseFromLagna(ctx.planets[c.planet], ctx.ascendant))
   const houseStrength = scoreHousePlacement(houses)
-  const dignity = 8 // mid — debilitated by definition, but cancelled
+  // Dignity reflects partial recovery: 4 for single rule, +2 per additional rule, capped at 10
+  // (planet is still debilitated by nature — cancellation is never complete restoration)
+  const dignity = Math.min(10, 4 + (cancellations.length - 1) * 2)
   const aspect = scoreAspectSupport({})
   const relationship = scoreLordRelationship(['placedInOtherHouse'])
   const involved = cancellations.map((c) => c.planet)
@@ -105,6 +187,9 @@ function detectNeechaBhanga(ctx: YogaEngineInput): YogaResult {
     pratyantarIsYogaPlanet: involved.includes(ctx.currentDasha?.pratyantar as PlanetKey),
     dashaUnavailable: !ctx.currentDasha,
   })
+  const afflictionPenalty = scoreAfflictionPenalty({
+    involvedCombust: cancellations.some((c) => ctx.planets[c.planet].combust),
+  })
   const breakdown = computeYogaScore({
     planetStrength,
     houseStrength,
@@ -112,7 +197,7 @@ function detectNeechaBhanga(ctx: YogaEngineInput): YogaResult {
     aspect,
     relationship,
     dasha,
-    afflictionPenalty: 0,
+    afflictionPenalty,
     cancellationPenalty: 0,
   })
   return {
@@ -125,8 +210,15 @@ function detectNeechaBhanga(ctx: YogaEngineInput): YogaResult {
     strength: getStrengthLabel(breakdown.final),
     scoreBreakdown: breakdown,
     technicalReason: cancellations
-      .map((c) => `${c.planet} debilitated — ${c.rule}`)
+      .map((c) => {
+        const combust = ctx.planets[c.planet].combust ? ' (combust — partial cancellation only)' : ''
+        return `${c.planet} debilitated — ${c.rule}${combust}`
+      })
       .join('; '),
+    chartNarrative: buildNeechaBhangaNarrative(
+      cancellations,
+      Object.fromEntries(Object.entries(ctx.planets).map(([k, v]) => [k, { sign: v.sign, combust: v.combust }])),
+    ),
     planetsInvolved: involved,
     housesInvolved: houses,
     lifeAreas: m.defaultLifeAreas,
@@ -220,6 +312,11 @@ function detectParivartana(ctx: YogaEngineInput): YogaResult {
     strength: getStrengthLabel(breakdown.final),
     scoreBreakdown: breakdown,
     technicalReason: `${best.a} (house ${best.aHouse}) and ${best.b} (house ${best.bHouse}) are in sign-exchange${found.length > 1 ? ` (${found.length} exchanges total)` : ''}. Subtype: ${subtype}.`,
+    chartNarrative: buildParivartanaNarrative(
+      best.a, best.aHouse, aData.sign,
+      best.b, best.bHouse, bData.sign,
+      subtype, found.length,
+    ),
     planetsInvolved: [best.a, best.b],
     housesInvolved: [best.aHouse, best.bHouse],
     lifeAreas: m.defaultLifeAreas,
@@ -564,6 +661,7 @@ function detectKartari(
     strength: getStrengthLabel(breakdown.final),
     scoreBreakdown: breakdown,
     technicalReason: `${isBenefic ? 'Benefic' : 'Malefic'}(s) in 12th: ${in12.join(', ') || '—'}; in 2nd: ${in2.join(', ') || '—'}.`,
+    chartNarrative: buildKartariNarrative(isBenefic, in12, in2),
     planetsInvolved: involved,
     housesInvolved: [2, 12],
     lifeAreas: m.defaultLifeAreas,

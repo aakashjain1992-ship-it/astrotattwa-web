@@ -19,6 +19,7 @@ import {
   isExalted,
   isDebilitated,
   planetAspectsPlanet,
+  ordinalSuffix,
 } from '../helpers'
 import {
   computeYogaScore,
@@ -33,6 +34,76 @@ import {
   getStrengthLabel,
 } from '../scoring'
 import { YOGA_MEANINGS } from '../meanings'
+
+// ─── Narrative builders ───────────────────────────────────────────────────────
+
+function buildGajaKesariNarrative(
+  moonSign: string, moonHouse: number,
+  jupSign: string, jupHouseFromLagna: number, houseFromMoon: number,
+): string {
+  const parts: string[] = []
+  parts.push(
+    `Your Moon is in ${moonSign} in the ${ordinalSuffix(moonHouse)} house, and Jupiter is in ${jupSign} in the ${ordinalSuffix(jupHouseFromLagna)} house — placing Jupiter in the ${ordinalSuffix(houseFromMoon)} from the Moon (a Kendra position). This is the classical arrangement for Gaja-Kesari Yoga, one of the most celebrated configurations in Vedic astrology.`
+  )
+  parts.push(
+    `Jupiter's Kendra placement from the Moon brings its qualities of wisdom, generosity, and sound judgment into direct support of the emotional self. The Moon represents your inner world, instincts, and public reputation; Jupiter's strength here can lend a quality of grace and optimism to your emotional responses and how others perceive you.`
+  )
+  return parts.join('\n\n')
+}
+
+function buildSunaphaAnaphaNarrative(
+  side: 2 | 12,
+  planets: PlanetKey[],
+  moonSign: string,
+  moonHouse: number,
+): string {
+  const sideLabel = side === 2 ? '2nd' : '12th'
+  const sideTheme = side === 2
+    ? 'the house of resources, speech, and what you accumulate'
+    : 'the house of release, retreat, and what lies beyond the visible'
+  const planetStr = planets.length === 1 ? planets[0] : `${planets.slice(0, -1).join(', ')} and ${planets[planets.length - 1]}`
+  const parts: string[] = []
+  parts.push(
+    `Your Moon is in ${moonSign} in the ${ordinalSuffix(moonHouse)} house, with ${planetStr} placed in the ${sideLabel} house from the Moon — ${sideTheme}. This is the condition for ${side === 2 ? 'Sunapha' : 'Anapha'} Yoga, formed when a planet (other than the Sun or nodes) supports the Moon from this adjacent position.`
+  )
+  if (side === 2) {
+    parts.push(
+      `The 2nd from the Moon supports your capacity to gather, sustain, and give voice to your inner life. ${planetStr} in this position can bring a quality of resourcefulness and expressive strength — a tendency to back up emotional awareness with practical action or meaningful speech.`
+    )
+  } else {
+    parts.push(
+      `The 12th from the Moon supports the Moon's capacity to rest, reflect, and release. ${planetStr} here can bring a contemplative or spiritually inclined quality to the emotional nature — a comfort with solitude and an ability to process experience inwardly before it surfaces outwardly.`
+    )
+  }
+  return parts.join('\n\n')
+}
+
+function buildDurudharaNarrative(
+  secPlanets: PlanetKey[], twelfthPlanets: PlanetKey[],
+  moonSign: string, moonHouse: number,
+): string {
+  const secStr = secPlanets.join(' and ')
+  const twelfthStr = twelfthPlanets.join(' and ')
+  const parts: string[] = []
+  parts.push(
+    `Your Moon in ${moonSign} (${ordinalSuffix(moonHouse)} house) is flanked on both sides — ${secStr} in the 2nd from the Moon and ${twelfthStr} in the 12th from the Moon. This is Durudhura Yoga: the Moon receives planetary support from both adjacent houses simultaneously.`
+  )
+  parts.push(
+    `This surrounding pattern gives the Moon a quality of containment and stability — it is neither entirely solitary nor pulled in only one direction. Resources, expression, and contemplative depth are all active around your emotional centre, which can make for a rich inner life and a personality that others find well-rounded and grounded.`
+  )
+  return parts.join('\n\n')
+}
+
+function buildKemadrumaNarrative(moonSign: string, moonHouse: number): string {
+  const parts: string[] = []
+  parts.push(
+    `Your Moon in ${moonSign} (${ordinalSuffix(moonHouse)} house) has no planets in the 2nd or 12th from it — the classical condition for Kemadruma Yoga. The Moon stands without adjacent planetary support, which can create an emotional self that must rely on its own inner resources rather than outer reinforcement.`
+  )
+  parts.push(
+    `This placement does not mean difficulty is inevitable — many Kemadruma cancellation factors are recognised in classical texts (Jupiter's aspect, Moon in a Kendra, or planets in the Moon's Kendra). The yoga's effect is most significant when few or none of these relief conditions are present. Where it does operate, it can manifest as a tendency to feel emotionally self-sufficient or, at times, unsupported — but also as genuine resilience and independence of spirit.`
+  )
+  return parts.join('\n\n')
+}
 
 function emptyResult(id: string): YogaResult {
   const m = YOGA_MEANINGS[id]
@@ -130,6 +201,10 @@ function detectGajaKesari(ctx: YogaEngineInput): YogaResult {
     strength: getStrengthLabel(breakdown.final),
     scoreBreakdown: breakdown,
     technicalReason: `Jupiter is in house ${houseFromMoon} from the Moon (Kendra).`,
+    chartNarrative: buildGajaKesariNarrative(
+      moon.sign, getPlanetHouseFromLagna(moon, ctx.ascendant),
+      jup.sign, getPlanetHouseFromLagna(jup, ctx.ascendant), houseFromMoon,
+    ),
     planetsInvolved: ['Jupiter', 'Moon'],
     housesInvolved: [houseFromMoon],
     lifeAreas: m.defaultLifeAreas,
@@ -207,6 +282,9 @@ function buildSideYoga(
     strength: getStrengthLabel(breakdown.final),
     scoreBreakdown: breakdown,
     technicalReason: `Planets in ${side === 2 ? '2nd' : '12th'} from Moon: ${planets.join(', ')}.`,
+    chartNarrative: ctx.planets.Moon
+      ? buildSunaphaAnaphaNarrative(side, planets, ctx.planets.Moon.sign, getPlanetHouseFromLagna(ctx.planets.Moon, ctx.ascendant))
+      : undefined,
     planetsInvolved: ['Moon', ...planets],
     housesInvolved: [side],
     lifeAreas: m.defaultLifeAreas,
@@ -268,6 +346,9 @@ function detectDurudhura(ctx: YogaEngineInput): YogaResult {
     strength: getStrengthLabel(breakdown.final),
     scoreBreakdown: breakdown,
     technicalReason: `Planets surround the Moon — 2nd: ${sec.planets.join(', ')}; 12th: ${twelfth.planets.join(', ')}. Includes Sunapha and Anapha conditions.`,
+    chartNarrative: ctx.planets.Moon
+      ? buildDurudharaNarrative(sec.planets, twelfth.planets, ctx.planets.Moon.sign, getPlanetHouseFromLagna(ctx.planets.Moon, ctx.ascendant))
+      : undefined,
     planetsInvolved: Array.from(yogaPlanets),
     housesInvolved: [2, 12],
     lifeAreas: m.defaultLifeAreas,
@@ -345,6 +426,7 @@ function detectKemadruma(ctx: YogaEngineInput): YogaResult {
     scoreBreakdown: breakdown,
     technicalReason:
       'No supportive planets in the 2nd or 12th from the Moon (excluding Sun and nodes).',
+    chartNarrative: moon ? buildKemadrumaNarrative(moon.sign, moonHouse) : undefined,
     planetsInvolved: ['Moon'],
     housesInvolved: [moonHouse],
     lifeAreas: m.defaultLifeAreas,

@@ -14,6 +14,7 @@ import {
   isDebilitated,
   isExalted,
   degreeDiff,
+  ordinalSuffix,
 } from '../helpers'
 import {
   computeYogaScore,
@@ -28,6 +29,60 @@ import {
   getStrengthLabel,
 } from '../scoring'
 import { YOGA_MEANINGS } from '../meanings'
+
+// ─── Narrative builders ───────────────────────────────────────────────────────
+
+const HOUSE_THEME: Record<number, string> = {
+  1:  'self, identity, and the overall direction of life',
+  2:  'speech, resources, and accumulated knowledge',
+  3:  'communication, initiative, writing, and short-distance travel',
+  4:  'home, emotional security, and private life',
+  5:  'intelligence, creativity, learning, and children',
+  6:  'service, health, problem-solving, and overcoming obstacles',
+  7:  'partnerships, relationships, and public dealings',
+  8:  'depth, transformation, research, and hidden knowledge',
+  9:  'higher wisdom, fortune, teaching, and long-distance connections',
+  10: 'career, reputation, and public contribution',
+  11: 'income, social networks, and the fulfilment of ambitions',
+  12: 'spiritual insight, private reflection, and release',
+}
+
+function buildBudhadityaNarrative(sign: string, house: number, orb: number, combust: boolean): string {
+  const parts: string[] = []
+  parts.push(
+    `Sun and Mercury are both placed in ${sign} in the ${ordinalSuffix(house)} house — the house of ${HOUSE_THEME[house] ?? 'life experience'}. This is the condition for Budhaditya Yoga: Mercury, the planet of intellect and communication, is conjunct the Sun, lending a sharpness and directness to how you think and express yourself.`
+  )
+  if (combust) {
+    parts.push(
+      `Mercury is in close proximity to the Sun (orb ${orb.toFixed(1)}°) — a condition known as combustion. While Mercury's qualities of analysis and expression are still present, combustion can internalise them: the thinking becomes intense and self-directed rather than easily shared with others. Insight may run ahead of the ability to communicate it.`
+    )
+  } else {
+    parts.push(
+      `The ${ordinalSuffix(house)} house placement channels these combined Sun-Mercury qualities into ${HOUSE_THEME[house] ?? 'this area of life'} — there is a natural tendency to pursue clarity, articulate your understanding with conviction, and apply your mind with purpose in this domain.`
+    )
+  }
+  return parts.join('\n\n')
+}
+
+function buildGuruChandalNarrative(jupSign: string, jupHouse: number, node: string, orb: number): string {
+  const parts: string[] = []
+  const nodeDesc = node === 'Rahu'
+    ? 'Rahu, the north node — associated with ambition, unconventional desire, and the pull toward unfamiliar experience'
+    : 'Ketu, the south node — associated with detachment, past-life wisdom, and a tendency toward non-attachment or disillusionment'
+  parts.push(
+    `Jupiter is placed in ${jupSign} in the ${ordinalSuffix(jupHouse)} house, conjunct ${nodeDesc} (orb ${orb.toFixed(1)}°). This is the condition for Guru Chandal Yoga — a configuration where the planet of wisdom and principles comes into contact with a node of the Moon.`
+  )
+  if (node === 'Rahu') {
+    parts.push(
+      `This conjunction can manifest as an unusually ambitious or unconventional orientation to knowledge, teaching, philosophy, or belief. The desire to learn and grow may be intensified but also coloured by restlessness — a tendency to question established frameworks and explore beyond traditional boundaries. At its best, this produces original thinking; at its most challenging, it can make it harder to settle on a stable worldview.`
+    )
+  } else {
+    parts.push(
+      `Ketu's conjunction with Jupiter can produce a dispassionate or spiritually inclined relationship with knowledge and wisdom. There may be an instinctive understanding of deeper truths that bypasses conventional learning — but also a tendency to dismiss or undervalue formal education, conventional guidance, or the accumulated wisdom of tradition.`
+    )
+  }
+  return parts.join('\n\n')
+}
 
 function empty(id: string): YogaResult {
   const m = YOGA_MEANINGS[id]
@@ -113,6 +168,7 @@ function detectBudhaditya(ctx: YogaEngineInput): YogaResult {
     strength: getStrengthLabel(breakdown.final),
     scoreBreakdown: breakdown,
     technicalReason: `Sun and Mercury both in ${sun.sign} (orb ${orb.toFixed(1)}°) in house ${sunHouse}.`,
+    chartNarrative: buildBudhadityaNarrative(sun.sign, sunHouse, orb, mer.combust),
     planetsInvolved: ['Sun', 'Mercury'],
     housesInvolved: [sunHouse],
     lifeAreas: m.defaultLifeAreas,
@@ -198,6 +254,7 @@ function detectGuruChandal(ctx: YogaEngineInput): YogaResult {
     strength: getStrengthLabel(breakdown.final),
     scoreBreakdown: breakdown,
     technicalReason: `Jupiter is conjunct ${node} in ${jup.sign} (orb ${orb.toFixed(1)}°).`,
+    chartNarrative: buildGuruChandalNarrative(jup.sign, jupHouse, node, orb),
     planetsInvolved: ['Jupiter', node],
     housesInvolved: [jupHouse],
     lifeAreas: m.defaultLifeAreas,

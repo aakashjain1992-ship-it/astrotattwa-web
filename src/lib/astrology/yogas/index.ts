@@ -95,7 +95,7 @@ export function analyzeYogas(input: YogaEngineInput): YogaAnalysisResponse {
   const activeNow = dedupedYogas.find((y) => y.currentlyActive)
 
   return {
-    version: 1,
+    version: 2,
     generatedAt: new Date().toISOString(),
     summary: {
       text: buildSummaryText(dedupedYogas, presentDoshas),

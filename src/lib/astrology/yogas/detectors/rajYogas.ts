@@ -24,6 +24,7 @@ import {
   isExalted,
   isDebilitated,
   lordsConnected,
+  ordinalSuffix,
 } from '../helpers'
 import {
   computeYogaScore,
@@ -39,6 +40,91 @@ import {
   type RelationshipKind,
 } from '../scoring'
 import { YOGA_MEANINGS } from '../meanings'
+
+// ─── Narrative builders ───────────────────────────────────────────────────────
+
+type RelVia = ReadonlyArray<string>
+
+function viaLabel(via: RelVia): string {
+  if (via.includes('sameHouse')) return 'conjunct in the same sign'
+  if (via.includes('exchange')) return 'in mutual sign exchange'
+  if (via.includes('mutualAspect')) return 'in mutual aspect'
+  if (via.includes('oneAspectsOther')) return 'aspecting each other'
+  if (via.includes('placedInOtherHouse')) return 'placed in each other\'s house'
+  return 'connected'
+}
+
+function buildRajNarrative(
+  lordA: string, houseA: number, signA: string, houseAPlaced: number,
+  lordB: string, houseB: number, signB: string, houseBPlaced: number,
+  via: RelVia,
+  type: 'raj9_10' | 'kendraTrikona' | 'dharmaKarma',
+): string {
+  const viaStr = viaLabel(via)
+  const parts: string[] = []
+
+  if (type === 'raj9_10' || type === 'dharmaKarma') {
+    parts.push(
+      `The ${ordinalSuffix(houseA)} lord of your chart is ${lordA} (in ${signA}, placed in the ${ordinalSuffix(houseAPlaced)} house), and the ${ordinalSuffix(houseB)} lord is ${lordB} (in ${signB}, placed in the ${ordinalSuffix(houseBPlaced)} house). These two lords are ${viaStr} — connecting the house of dharma and fortune (9th) with the house of career and public standing (10th).`
+    )
+    parts.push(
+      `This is one of the most powerful Raj Yoga combinations in classical Vedic astrology. The alignment of fortune and purposeful action in the same stream gives your efforts a quality of timing and direction that supports recognition, advancement, and meaningful achievement. Results tend to consolidate during the Mahadasha or Antardasha of ${lordA} or ${lordB}.`
+    )
+  } else {
+    const kendraDesc = houseA >= houseB
+      ? `the ${ordinalSuffix(houseA)} house (Kendra — a house of central importance in the chart)`
+      : `the ${ordinalSuffix(houseA)} house`
+    const trikonaDesc = houseA < houseB
+      ? `the ${ordinalSuffix(houseB)} house (Trikona — a house of fortune and dharma)`
+      : `the ${ordinalSuffix(houseB)} house`
+    parts.push(
+      `The lord of ${kendraDesc} is ${lordA} (${signA}, in the ${ordinalSuffix(houseAPlaced)} house), and the lord of ${trikonaDesc} is ${lordB} (${signB}, in the ${ordinalSuffix(houseBPlaced)} house). These two lords are ${viaStr} — forming a Kendra-Trikona Raj Yoga.`
+    )
+    parts.push(
+      `Kendra-Trikona connections bring the stability and force of the Kendra houses into alliance with the grace and fortune of the Trikona houses. The combination supports sustained progress in practical life — where effort meets opportunity. The yoga expresses most clearly during ${lordA} or ${lordB} Mahadasha and Antardasha.`
+    )
+  }
+  return parts.join('\n\n')
+}
+
+function buildLakshmiNarrative(
+  lord9: string, l9Dignity: string, l9House: number, l9Sign: string,
+  lord1: string, l1Dignity: string, l1House: number, l1Sign: string,
+): string {
+  const parts: string[] = []
+  parts.push(
+    `Lakshmi Yoga arises when both the 9th lord and Lagna lord are well-dignified and well-placed. In your chart, ${lord9} — the 9th lord — is ${l9Dignity} in ${l9Sign} in the ${ordinalSuffix(l9House)} house, and ${lord1} — your Lagna lord — is ${l1Dignity} in ${l1Sign} in the ${ordinalSuffix(l1House)} house.`
+  )
+  parts.push(
+    `The 9th lord governs fortune, dharma, and the quality of opportunities that flow naturally into your life. The Lagna lord governs your overall vitality, identity, and the capacity to act on those opportunities. When both are strong and well-placed simultaneously, it creates a condition where good fortune aligns with personal capability — and this alignment tends to sustain rather than fluctuate.`
+  )
+  return parts.join('\n\n')
+}
+
+function buildAmalaNarrative(benefics: string[], referenceLabel: string, sign: string): string {
+  const planetStr = benefics.length === 1 ? benefics[0] : `${benefics.slice(0, -1).join(', ')} and ${benefics[benefics.length - 1]}`
+  const parts: string[] = []
+  parts.push(
+    `${planetStr} in ${sign} is placed in the 10th from ${referenceLabel} — the most prominent house for career, public life, and lasting contribution. This is the condition for Amala Yoga: a natural benefic in the 10th creates a quality of ethical clarity and genuine goodness in how you engage with your work and the world.`
+  )
+  parts.push(
+    `The 10th house represents what you build that is visible and enduring. A benefic here — particularly Jupiter or Venus — tends to support a reputation built on integrity rather than mere ambition, and a professional life that carries a quality of service or creative merit rather than purely transactional outcomes.`
+  )
+  return parts.join('\n\n')
+}
+
+function buildVasumatiNarrative(planets: string[], count: number, fromMoon: boolean): string {
+  const planetStr = planets.length === 1 ? planets[0] : `${planets.slice(0, -1).join(', ')} and ${planets[planets.length - 1]}`
+  const ref = fromMoon ? 'Moon' : 'Lagna'
+  const parts: string[] = []
+  parts.push(
+    `Vasumati Yoga forms when two or more natural benefics occupy upachaya houses (3rd, 6th, 10th, or 11th). In your chart, ${planetStr} — ${count >= 3 ? 'three' : 'two'} benefic planet${count > 1 ? 's' : ''} — are placed in the upachaya houses from ${ref}.`
+  )
+  parts.push(
+    `Upachaya houses are growth houses — their themes strengthen and expand over time rather than peaking early. Benefics in these positions support material growth, the expansion of your professional and social sphere, and a steady accumulation of resources and influence. The effect of this yoga tends to build progressively through life rather than arriving as a single peak.`
+  )
+  return parts.join('\n\n')
+}
 
 function empty(id: string): YogaResult {
   const m = YOGA_MEANINGS[id]
@@ -78,6 +164,7 @@ function buildLordConnectionResult(
   houseB: number,
   via: ReadonlyArray<RelationshipKind>,
   ctx: YogaEngineInput,
+  narrativeType?: 'raj9_10' | 'kendraTrikona' | 'dharmaKarma',
 ): YogaResult {
   const m = YOGA_MEANINGS[id]
   const a = ctx.planets[lordA]!
@@ -128,6 +215,12 @@ function buildLordConnectionResult(
     strength: getStrengthLabel(breakdown.final),
     scoreBreakdown: breakdown,
     technicalReason: `${houseA}th lord ${lordA} (in house ${aHouse}) is connected with ${houseB}th lord ${lordB} (in house ${bHouse}) via ${via.join(', ')}.`,
+    chartNarrative: buildRajNarrative(
+      lordA, houseA, a.sign, aHouse,
+      lordB, houseB, b.sign, bHouse,
+      via,
+      narrativeType ?? (id === 'kendraTrikona' ? 'kendraTrikona' : id === 'dharmaKarmadhipati' ? 'dharmaKarma' : 'raj9_10'),
+    ),
     planetsInvolved: lordA === lordB ? [lordA] : [lordA, lordB],
     housesInvolved: [houseA, houseB],
     lifeAreas: m.defaultLifeAreas,
@@ -262,6 +355,7 @@ function detectLakshmi(ctx: YogaEngineInput): YogaResult {
     strength: getStrengthLabel(breakdown.final),
     scoreBreakdown: breakdown,
     technicalReason: `9th lord ${lord9} (${l9Dignity}, house ${l9House}) and Lagna lord ${lord1} (${l1Dignity}, house ${l1House}) are both well-placed.`,
+    chartNarrative: buildLakshmiNarrative(lord9, l9Dignity, l9House, l9.sign, lord1, l1Dignity, l1House, l1.sign),
     planetsInvolved: involved,
     housesInvolved: [1, 9, l9House, l1House],
     lifeAreas: m.defaultLifeAreas,
@@ -335,6 +429,7 @@ function detectAmala(ctx: YogaEngineInput): YogaResult {
     strength: getStrengthLabel(breakdown.final),
     scoreBreakdown: breakdown,
     technicalReason: `Benefic(s) in ${referenceLabel}: ${beneficsInTenth.join(', ')}.`,
+    chartNarrative: buildAmalaNarrative(beneficsInTenth, referenceLabel, ctx.planets[beneficsInTenth[0]]?.sign ?? ''),
     planetsInvolved: beneficsInTenth,
     housesInvolved: [10],
     lifeAreas: m.defaultLifeAreas,
@@ -419,6 +514,7 @@ function detectVasumati(ctx: YogaEngineInput): YogaResult {
     strength: getStrengthLabel(breakdown.final),
     scoreBreakdown: breakdown,
     technicalReason: `${best.count} benefic(s) in upachaya houses from ${useMoon ? 'Moon' : 'Lagna'}: ${best.planets.join(', ')}.`,
+    chartNarrative: buildVasumatiNarrative(best.planets, best.count, useMoon),
     planetsInvolved: best.planets,
     housesInvolved: [...UPACHAYA_HOUSES],
     lifeAreas: m.defaultLifeAreas,

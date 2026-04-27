@@ -33,10 +33,9 @@ export function YogasTab({ chart, onAnalysisReady }: YogasTabProps) {
   const [loading, setLoading] = useState(!chart.yogaAnalysis)
   const [error, setError] = useState<string | null>(null)
   const [signInOpen, setSignInOpen] = useState(false)
-  const [showFullList, setShowFullList] = useState(false)
 
   useEffect(() => {
-    if (chart.yogaAnalysis) {
+    if (chart.yogaAnalysis && (chart.yogaAnalysis.version ?? 0) >= 2) {
       setAnalysis(chart.yogaAnalysis)
       setLoading(false)
       return
@@ -106,48 +105,47 @@ export function YogasTab({ chart, onAnalysisReady }: YogasTabProps) {
 
   if (!analysis) return null
 
-  const handleViewAll = () => {
-    if (user) {
-      setShowFullList(true)
-    } else {
-      setSignInOpen(true)
-    }
+  if (user) {
+    return (
+      <div className="space-y-6">
+        <YogaSummaryCard summary={analysis.summary} allYogas={analysis.allYogas} />
+        <YogaList yogas={analysis.allYogas} doshas={analysis.allDoshas} />
+      </div>
+    )
   }
 
   return (
     <div className="space-y-6">
-      <YogaSummaryCard summary={analysis.summary} />
+      <YogaSummaryCard summary={analysis.summary} allYogas={analysis.allYogas} />
 
       <TopPositiveYogas
         items={analysis.topPositive}
         allYogas={analysis.allYogas}
         emptyMessage={analysis.emptyYogasMessage}
+        isLocked
+        onSignIn={() => setSignInOpen(true)}
       />
 
       <ChallengingPatterns
         items={analysis.topChallenging}
         allDoshas={analysis.allDoshas}
         emptyMessage={analysis.emptyDoshasMessage}
+        isLocked
+        onSignIn={() => setSignInOpen(true)}
       />
 
-      {!showFullList && (
-        <div className="text-center pt-2">
-          <Button variant="outline" onClick={handleViewAll}>
-            {user ? 'View complete yoga list' : 'Sign in to see all yogas'}
-          </Button>
-        </div>
-      )}
+      <div className="text-center pt-2">
+        <Button variant="outline" onClick={() => setSignInOpen(true)}>
+          Sign in to see all yogas
+        </Button>
+      </div>
 
-      {showFullList && (
-        <section>
-          <h3 className="text-sm font-semibold uppercase tracking-wider mb-4" style={{ color: 'var(--text3)' }}>
-            Complete Yoga & Dosha List
-          </h3>
-          <YogaList yogas={analysis.allYogas} doshas={analysis.allDoshas} />
-        </section>
-      )}
-
-      <SignInModal open={signInOpen} onClose={() => setSignInOpen(false)} />
+      <SignInModal
+        open={signInOpen}
+        onClose={() => setSignInOpen(false)}
+        title="Sign in to unlock yoga details"
+        description="Read what each yoga means specifically in your chart."
+      />
     </div>
   )
 }

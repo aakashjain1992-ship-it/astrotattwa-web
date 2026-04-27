@@ -18,12 +18,139 @@ import {
   isExalted,
   planetAspectsPlanet,
   degreeDiff,
+  ordinalSuffix,
 } from '../helpers'
 import {
   computeDoshaScore,
   getSeverityLabel,
 } from '../scoring'
 import { DOSHA_MEANINGS } from '../meanings'
+
+// ─── Narrative builders ───────────────────────────────────────────────────────
+
+function buildKaalSarpNarrative(
+  rahuSign: string, rahuHouse: number,
+  ketuSign: string, ketuHouse: number,
+  isFull: boolean, isReduced: boolean,
+): string {
+  const parts: string[] = []
+  parts.push(
+    `In your chart, Rahu is in ${rahuSign} (${ordinalSuffix(rahuHouse)} house) and Ketu is in ${ketuSign} (${ordinalSuffix(ketuHouse)} house). ${isFull ? 'All seven visible planets fall on one side of the Rahu-Ketu axis' : 'Six of the seven visible planets fall on one side of the Rahu-Ketu axis (partial Kaal Sarp)'} — the condition for Kaal Sarp Yoga.`
+  )
+  parts.push(
+    `This axis defines the primary tension in your chart between worldly ambition and spiritual release. Planets hemmed within this axis tend to experience their results more intensely — with periods of significant focus and momentum, as well as periods where things feel held back or directed by forces beyond your control. There can be a quality of fateful patterning in life events, particularly around the themes of the houses Rahu and Ketu occupy.`
+  )
+  if (isReduced) {
+    parts.push(
+      `Your chart has meaningful relief conditions — such as a strong Lagna lord or Jupiter aspecting the Moon or Ascendant — which soften the intensity of this dosha. The effect is present but moderated.`
+    )
+  }
+  return parts.join('\n\n')
+}
+
+const MANGAL_HOUSE_THEME: Record<number, string> = {
+  1: 'the 1st house — the house of self and overall health, making Mars a prominent force in your personal energy and how you assert yourself',
+  4: 'the 4th house — the house of home and emotional security, creating tension or intensity within the domestic sphere and private life',
+  7: 'the 7th house — the house of marriage and partnerships, which is the house most associated with Mangal Dosha\'s effects on relationships',
+  8: 'the 8th house — the house of transformation and sudden events, which is considered one of the stronger positions for this dosha\'s impact',
+  12: 'the 12th house — the house of loss, isolation, and the hidden, which can affect the quality of private and intimate life',
+}
+
+function buildMangalNarrative(
+  marsSign: string, houseFromLagna: number,
+  fromMoon: boolean, houseFromMoon: number,
+  fromVenus: boolean, houseFromVenus: number,
+  isReduced: boolean,
+): string {
+  const parts: string[] = []
+  const houseTheme = MANGAL_HOUSE_THEME[houseFromLagna] ?? `the ${ordinalSuffix(houseFromLagna)} house`
+  parts.push(
+    `Mars is placed in ${marsSign} in ${houseTheme}. In classical Vedic astrology, Mangal Dosha arises when Mars occupies the 1st, 4th, 7th, 8th, or 12th house from the Lagna — positions that can intensify Mars's energy in domains connected to relationships, health, and home life.`
+  )
+  const modifiers: string[] = []
+  if (fromMoon) modifiers.push(`Mars also occupies the ${ordinalSuffix(houseFromMoon)} house from the Moon`)
+  if (fromVenus) modifiers.push(`and the ${ordinalSuffix(houseFromVenus)} house from Venus`)
+  if (modifiers.length > 0) {
+    parts.push(`${modifiers.join(', ')} — which reinforces the dosha across multiple reference points in the chart.`)
+  }
+  if (isReduced) {
+    parts.push(
+      `Your chart has cancellation factors that reduce the intensity of this dosha. Mars in its own sign or exaltation, or Jupiter's aspect, are among the classical relief conditions — and one or more of these are present in your chart. The dosha still exists but operates at a moderated level.`
+    )
+  } else {
+    parts.push(
+      `In practice, Mangal Dosha does not automatically create difficulty — its expression depends on the rest of the chart and the period in question. It can manifest as intensity, drive, or impatience in relationships and the areas of life Mars touches rather than as a predictable negative outcome.`
+    )
+  }
+  return parts.join('\n\n')
+}
+
+function buildGrahanNarrative(
+  matches: { lum: string; node: string; orb: number }[],
+  lumHouse: number, lumSign: string,
+  isReduced: boolean,
+): string {
+  const parts: string[] = []
+  const matchDesc = matches.map(mt => `${mt.lum} conjunct ${mt.node} (orb ${mt.orb.toFixed(1)}°)`).join(' and ')
+  const primaryLum = matches[0].lum
+  const primaryNode = matches[0].node
+  parts.push(
+    `In your chart, ${matchDesc} — in ${lumSign} in the ${ordinalSuffix(lumHouse)} house. This is the condition for Grahan Yoga: when a luminary (Sun or Moon) is in the same sign as a lunar node, the node\'s shadowing quality affects the luminary's expression.`
+  )
+  parts.push(
+    `${primaryLum === 'Moon' ? 'The Moon governs the emotional mind, instincts, and receptivity. Ketu or Rahu conjunct the Moon can intensify emotional sensitivity, create unusual perceptual awareness, or produce a tendency toward anxiety, detachment, or obsessive thought patterns — depending on the node involved and the overall chart.' : 'The Sun governs vitality, self-expression, and authority. When conjunct a node, it can produce an unusual or unconventional relationship with self-image, authority, or the father figure — sometimes manifesting as intensity of purpose, sometimes as a tendency to obscure or overstate personal identity.'}`
+  )
+  if (primaryNode === 'Rahu') {
+    parts.push(`Rahu's conjunction with ${primaryLum} tends to amplify and obsess — intensifying the luminary's significations and pulling them toward unfamiliar or unconventional territory.`)
+  } else {
+    parts.push(`Ketu's conjunction with ${primaryLum} tends to dissociate — creating a quality of past-life familiarity with the luminary's domain, sometimes producing deep insight but also a detachment from its ordinary satisfactions.`)
+  }
+  if (isReduced) {
+    parts.push(`Jupiter's aspect on the luminary in your chart provides meaningful relief, softening the eclipse quality of this configuration.`)
+  }
+  return parts.join('\n\n')
+}
+
+function buildAngarakNarrative(sign: string, house: number, orb: number, isReduced: boolean): string {
+  const parts: string[] = []
+  parts.push(
+    `Mars and Rahu are conjunct in ${sign} in the ${ordinalSuffix(house)} house of your chart (orb ${orb.toFixed(1)}°). This is Angarak Yoga — the combination of Mars (the planet of drive, aggression, and action) and Rahu (the node associated with amplification and unconventional desire) in the same sign.`
+  )
+  parts.push(
+    `This conjunction can intensify both planets' qualities: Mars's assertiveness and Rahu's restlessness combine to produce a strong, sometimes volatile, energy. There can be a compulsive or driven quality to how effort is expressed — an ability to act boldly and break through obstacles, alongside a tendency toward impulsiveness or excess. The house placement shapes where this energy concentrates most.`
+  )
+  if (isReduced) {
+    parts.push(`Jupiter's aspect on this conjunction in your chart provides a moderating influence, lending a degree of wisdom and restraint to this intense combination.`)
+  }
+  return parts.join('\n\n')
+}
+
+function buildVishNarrative(
+  moonSign: string, moonHouse: number,
+  satSign: string, isSameSign: boolean, orb: number,
+  isReduced: boolean,
+): string {
+  const parts: string[] = []
+  if (isSameSign) {
+    parts.push(
+      `The Moon and Saturn are conjunct in ${moonSign} in the ${ordinalSuffix(moonHouse)} house of your chart (orb ${orb.toFixed(1)}°). This is Vish Yoga — named for the friction that arises when the Moon (emotional, responsive, fluid) and Saturn (slow, restricting, structuring) share the same sign.`
+    )
+    parts.push(
+      `Saturn's nature is to limit and crystallise; the Moon's is to flow and respond. Their conjunction can create an emotional quality that tends toward seriousness, caution, or a feeling of emotional heaviness — particularly in the areas of life governed by the house they share. At the same time, this combination can produce a depth of character, practicality under pressure, and an ability to endure difficulty with steadiness.`
+    )
+  } else {
+    parts.push(
+      `Saturn in ${satSign} casts an aspect on your Moon in ${moonSign} (${ordinalSuffix(moonHouse)} house). This is Vish Yoga — the Moon under Saturn's restricting aspect can create emotional caution, seriousness, or a tendency to feel the weight of circumstances more than others.`
+    )
+    parts.push(
+      `An aspecting Saturn is generally milder than a conjunction in the same sign, but the effect remains — emotional responses may be measured, contained, or slower to express. This can also manifest as emotional maturity, a strong sense of responsibility, and a capacity for sustained effort in areas that matter most.`
+    )
+  }
+  if (isReduced) {
+    parts.push(`Your chart has relief conditions — such as Jupiter's aspect on the Moon or the Moon in its own or exalted sign — which moderate the restrictive quality of this combination.`)
+  }
+  return parts.join('\n\n')
+}
 
 function emptyDosha(id: string): DoshaResult {
   const m = DOSHA_MEANINGS[id]
@@ -151,6 +278,11 @@ function detectKaalSarp(ctx: YogaEngineInput): DoshaResult {
     technicalReason: isFull
       ? 'All seven visible planets are on one side of the Rahu-Ketu axis.'
       : `Six of seven visible planets are on one side of the Rahu-Ketu axis (partial).`,
+    chartNarrative: buildKaalSarpNarrative(
+      rahu.sign, getPlanetHouseFromLagna(rahu, ctx.ascendant),
+      ketu.sign, getPlanetHouseFromLagna(ketu, ctx.ascendant),
+      isFull, relief >= 12,
+    ),
     planetsInvolved: ['Rahu', 'Ketu'],
     housesInvolved: [
       getPlanetHouseFromLagna(rahu, ctx.ascendant),
@@ -250,6 +382,12 @@ function detectMangal(ctx: YogaEngineInput): DoshaResult {
     severity: getSeverityLabel(breakdown.final),
     scoreBreakdown: breakdown,
     technicalReason: `Mars is in the ${houseFromLagna}th house from Lagna${modStr}.`,
+    chartNarrative: buildMangalNarrative(
+      mars.sign, houseFromLagna,
+      fromMoon, houseFromMoon,
+      fromVenus, houseFromVenus,
+      relief >= 8,
+    ),
     planetsInvolved: ['Mars'],
     housesInvolved: [houseFromLagna],
     lifeAreas: m.defaultLifeAreas,
@@ -329,6 +467,12 @@ function detectGrahan(ctx: YogaEngineInput): DoshaResult {
     technicalReason: matches
       .map((mt) => `${mt.lum} conjunct ${mt.node} (orb ${mt.orb.toFixed(1)}°)`)
       .join('; '),
+    chartNarrative: buildGrahanNarrative(
+      matches,
+      houseInv[0] ?? 0,
+      lumData?.sign ?? '',
+      relief >= 10,
+    ),
     planetsInvolved: Array.from(new Set(involved)),
     housesInvolved: houseInv,
     lifeAreas: m.defaultLifeAreas,
@@ -384,6 +528,7 @@ function detectAngarak(ctx: YogaEngineInput): DoshaResult {
     severity: getSeverityLabel(breakdown.final),
     scoreBreakdown: breakdown,
     technicalReason: `Mars conjunct Rahu in ${mars.sign} (orb ${orb.toFixed(1)}°).`,
+    chartNarrative: buildAngarakNarrative(mars.sign, getPlanetHouseFromLagna(mars, ctx.ascendant), orb, relief >= 10),
     planetsInvolved: ['Mars', 'Rahu'],
     housesInvolved: [getPlanetHouseFromLagna(mars, ctx.ascendant)],
     lifeAreas: m.defaultLifeAreas,
@@ -445,6 +590,11 @@ function detectVish(ctx: YogaEngineInput): DoshaResult {
     technicalReason: sameSignBoth
       ? `Moon conjunct Saturn in ${moon.sign} (orb ${orb.toFixed(1)}°).`
       : `Saturn aspects the Moon.`,
+    chartNarrative: buildVishNarrative(
+      moon.sign, getPlanetHouseFromLagna(moon, ctx.ascendant),
+      sat.sign, sameSignBoth, orb === 999 ? 0 : orb,
+      relief >= 10,
+    ),
     planetsInvolved: ['Moon', 'Saturn'],
     housesInvolved: [getPlanetHouseFromLagna(moon, ctx.ascendant)],
     lifeAreas: m.defaultLifeAreas,
