@@ -56,7 +56,11 @@ export function TechnicalDetailsAccordion({
           )}
           <div>
             <p className="text-xs font-medium mb-1" style={{ color: 'var(--text3)' }}>Why it formed</p>
-            <p className="text-xs leading-relaxed" style={{ color: 'var(--text2)' }}>{technicalReason}</p>
+            <div className="space-y-1.5">
+              {technicalReason.split('\n\n').filter(Boolean).map((para, i) => (
+                <p key={i} className="text-xs leading-relaxed whitespace-pre-line" style={{ color: 'var(--text2)' }}>{para}</p>
+              ))}
+            </div>
           </div>
           <div>
             <p className="text-xs font-medium mb-1.5" style={{ color: 'var(--text3)' }}>Score breakdown</p>

@@ -24,6 +24,9 @@ import {
   isContextualMalefic,
   exchangeSigns,
   lordsConnected,
+  signNumToName,
+  ordinalSuffix,
+  getSignInHouse,
 } from '../helpers'
 import {
   computeYogaScore,
@@ -225,9 +228,18 @@ function detectParivartana(ctx: YogaEngineInput): YogaResult {
   }
 }
 
+function viaDesc(via: string[]): string {
+  if (via.includes('sameHouse')) return 'conjunct'
+  if (via.includes('mutualAspect')) return 'mutual aspect'
+  if (via.includes('oneAspectsOther')) return 'aspect'
+  if (via.includes('exchange')) return 'sign exchange'
+  if (via.includes('placedInOtherHouse')) return 'placed in each other\'s house'
+  return 'connected'
+}
+
 function detectDhana(ctx: YogaEngineInput): YogaResult {
   const m = YOGA_MEANINGS.dhana
-  const wealthLordPairs: { a: PlanetKey; b: PlanetKey; ah: number; bh: number }[] = []
+  const wealthLordPairs: { a: PlanetKey; b: PlanetKey; ah: number; bh: number; via: string[] }[] = []
   const lords = WEALTH_HOUSES.map((h) => ({ house: h, lord: getHouseLord(h, ctx.ascendant) }))
 
   for (let i = 0; i < lords.length; i++) {
@@ -237,7 +249,7 @@ function detectDhana(ctx: YogaEngineInput): YogaResult {
       if (A.lord === B.lord) continue
       const conn = lordsConnected(A.lord, A.house, B.lord, B.house, ctx.planets, ctx.ascendant)
       if (conn.connected) {
-        wealthLordPairs.push({ a: A.lord, b: B.lord, ah: A.house, bh: B.house })
+        wealthLordPairs.push({ a: A.lord, b: B.lord, ah: A.house, bh: B.house, via: conn.via })
       }
     }
   }
@@ -294,6 +306,29 @@ function detectDhana(ctx: YogaEngineInput): YogaResult {
     // Bonuses via base
     base: 30 + (has2_11 ? 5 : 0) + (has5_9 ? 5 : 0),
   })
+  // Build rich per-chart technical reason
+  const lagnaSign = ctx.ascendant.sign
+  const lordLines = lords.map(({ house, lord }) => {
+    if (!ctx.planets[lord]) return null
+    const p = ctx.planets[lord]
+    const houseSign = signNumToName(getSignInHouse(house, ctx.ascendant.signNumber))
+    const placedHouse = getPlanetHouseFromLagna(p, ctx.ascendant)
+    const cotenants = Object.entries(ctx.planets)
+      .filter(([k, v]) => k !== lord && k !== 'Ascendant' && v.signNumber === p.signNumber)
+      .map(([k]) => k)
+    const coStr = cotenants.length > 0 ? `, with ${cotenants.join(' + ')}` : ''
+    return `${ordinalSuffix(house)} lord ${lord} (${houseSign}) → ${ordinalSuffix(placedHouse)} house, ${p.sign}${coStr}`
+  }).filter(Boolean)
+
+  const connLines = wealthLordPairs
+    .map((p) => `${ordinalSuffix(p.ah)} lord ${p.a} ↔ ${ordinalSuffix(p.bh)} lord ${p.b} (${viaDesc(p.via)})`)
+    .join('; ')
+
+  const technicalReason = `Lagna: ${lagnaSign}\n\nWealth lords:\n${lordLines.join('\n')}\n\nConnected pairs: ${connLines}.`
+
+  // Include ALL wealth lords in planetsInvolved, not just the connected ones
+  const allLordPlanets = [...new Set(lords.map((l) => l.lord))]
+
   return {
     id: 'dhana',
     name: m.name,
@@ -303,10 +338,8 @@ function detectDhana(ctx: YogaEngineInput): YogaResult {
     score: breakdown.final,
     strength: getStrengthLabel(breakdown.final),
     scoreBreakdown: breakdown,
-    technicalReason: `Wealth-house lords connected: ${wealthLordPairs
-      .map((p) => `${p.a}(${p.ah}L) ↔ ${p.b}(${p.bh}L)`)
-      .join('; ')}.`,
-    planetsInvolved: involved,
+    technicalReason,
+    planetsInvolved: allLordPlanets,
     housesInvolved: [...WEALTH_HOUSES],
     lifeAreas: m.defaultLifeAreas,
     currentlyActive: dasha > 0,

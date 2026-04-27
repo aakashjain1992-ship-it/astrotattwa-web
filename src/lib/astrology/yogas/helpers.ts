@@ -85,6 +85,17 @@ export function signNameToNumber(sign: string): number {
   return i === -1 ? 0 : i + 1
 }
 
+export function signNumToName(num: number): string {
+  return SIGN_ORDER[((num - 1 + 12) % 12)] ?? ''
+}
+
+export function ordinalSuffix(n: number): string {
+  if (n === 1) return '1st'
+  if (n === 2) return '2nd'
+  if (n === 3) return '3rd'
+  return `${n}th`
+}
+
 // ---------- House / placement helpers ----------
 
 /**
