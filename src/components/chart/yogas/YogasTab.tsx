@@ -119,9 +119,17 @@ export function YogasTab({ chart, onAnalysisReady }: YogasTabProps) {
     <div className="space-y-6">
       <YogaSummaryCard summary={analysis.summary} />
 
-      <TopPositiveYogas items={analysis.topPositive} emptyMessage={analysis.emptyYogasMessage} />
+      <TopPositiveYogas
+        items={analysis.topPositive}
+        allYogas={analysis.allYogas}
+        emptyMessage={analysis.emptyYogasMessage}
+      />
 
-      <ChallengingPatterns items={analysis.topChallenging} emptyMessage={analysis.emptyDoshasMessage} />
+      <ChallengingPatterns
+        items={analysis.topChallenging}
+        allDoshas={analysis.allDoshas}
+        emptyMessage={analysis.emptyDoshasMessage}
+      />
 
       <LifeAreaImpact areas={analysis.lifeAreas} />
 

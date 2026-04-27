@@ -1,5 +1,7 @@
 'use client'
 
+import { useState } from 'react'
+import { ChevronDown } from 'lucide-react'
 import { useTheme } from '@/components/theme-provider'
 import type { YogaResult } from '@/lib/astrology/yogas/types'
 import { YOGA_MEANINGS } from '@/lib/astrology/yogas/meanings'
@@ -15,9 +17,12 @@ const STRENGTH_BADGE: Record<string, string> = {
 
 interface YogaCardProps {
   yoga: YogaResult
+  defaultExpanded?: boolean
+  hero?: boolean
 }
 
-export function YogaCard({ yoga }: YogaCardProps) {
+export function YogaCard({ yoga, defaultExpanded = false, hero = false }: YogaCardProps) {
+  const [expanded, setExpanded] = useState(defaultExpanded)
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
   const tw = (a: number) => isDark ? `rgba(255,255,255,${a})` : `rgba(13,17,23,${a})`
@@ -25,40 +30,68 @@ export function YogaCard({ yoga }: YogaCardProps) {
   const meaning = YOGA_MEANINGS[yoga.id]
   const badgeClass = yoga.strength ? (STRENGTH_BADGE[yoga.strength] ?? STRENGTH_BADGE.moderate) : STRENGTH_BADGE.moderate
 
+  const borderColor = hero
+    ? isDark ? 'rgba(52,211,153,0.25)' : 'rgba(16,185,129,0.2)'
+    : tw(0.08)
+
   return (
     <div
-      className="rounded-xl p-4"
-      style={{ background: 'hsl(var(--card))', border: `1px solid ${tw(0.1)}` }}
+      className="rounded-xl overflow-hidden"
+      style={{ background: 'hsl(var(--card))', border: `1px solid ${borderColor}` }}
     >
-      <div className="flex items-start justify-between gap-3 mb-3">
-        <div className="flex items-center gap-2 min-w-0">
-          {yoga.currentlyActive && (
-            <span className="shrink-0 inline-flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+      {/* Header — always visible, clickable */}
+      <button
+        type="button"
+        className="w-full text-left px-4 py-3.5 flex items-start gap-3"
+        onClick={() => setExpanded(v => !v)}
+      >
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-0.5">
+            {yoga.currentlyActive && (
+              <span className="shrink-0 inline-flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+            )}
+            <span className="font-semibold text-sm leading-snug" style={{ color: 'var(--text)' }}>
+              {yoga.name}
+            </span>
+          </div>
+          {!expanded && meaning && (
+            <p className="text-xs truncate pr-2" style={{ color: 'var(--text3)' }}>
+              {meaning.shortMeaning}
+            </p>
           )}
-          <span className="font-semibold text-sm truncate" style={{ color: 'var(--text)' }}>{yoga.name}</span>
         </div>
-        {yoga.strength && (
-          <span className={`shrink-0 text-xs font-medium px-2 py-0.5 rounded-full ${badgeClass}`}>
-            {yoga.strength.replace('_', ' ')}
-          </span>
-        )}
-      </div>
+        <div className="flex items-center gap-2 shrink-0 mt-0.5">
+          {yoga.strength && (
+            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${badgeClass}`}>
+              {yoga.strength.replace('_', ' ')}
+            </span>
+          )}
+          <ChevronDown
+            className="h-3.5 w-3.5 transition-transform duration-200"
+            style={{
+              color: 'var(--text3)',
+              transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)',
+            }}
+          />
+        </div>
+      </button>
 
-      {meaning && (
-        <div className="space-y-2.5">
+      {/* Expandable body */}
+      {expanded && meaning && (
+        <div className="px-4 pb-4 space-y-2.5">
+          <div style={{ borderTop: '1px solid var(--border)', marginBottom: '12px' }} />
           <DetailRow label="What it means" text={meaning.whatItMeans} />
           <DetailRow label="What strengthens it" text={meaning.strengthens} />
           <DetailRow label="What weakens it" text={meaning.weakens} />
           <DetailRow label="When it gives results" text={meaning.whenItGivesResults} />
+          <TechnicalDetailsAccordion
+            technicalReason={yoga.technicalReason}
+            planetsInvolved={yoga.planetsInvolved}
+            housesInvolved={yoga.housesInvolved}
+            scoreBreakdown={yoga.scoreBreakdown}
+          />
         </div>
       )}
-
-      <TechnicalDetailsAccordion
-        technicalReason={yoga.technicalReason}
-        planetsInvolved={yoga.planetsInvolved}
-        housesInvolved={yoga.housesInvolved}
-        scoreBreakdown={yoga.scoreBreakdown}
-      />
     </div>
   )
 }

@@ -6,40 +6,28 @@ interface YogaSummaryCardProps {
   summary: YogaAnalysisResponse['summary']
 }
 
-interface MetricRowProps {
-  label: string
-  value: string | null
-  accent?: boolean
-}
-
-function MetricRow({ label, value, accent }: MetricRowProps) {
-  if (value === null) return null
-  return (
-    <div className="flex items-start justify-between gap-4 py-2.5 border-b last:border-b-0" style={{ borderColor: 'var(--border)' }}>
-      <span className="text-sm" style={{ color: 'var(--text3)' }}>{label}</span>
-      <span className={`text-sm font-medium text-right max-w-[60%] ${accent ? 'text-emerald-600 dark:text-emerald-400' : ''}`} style={accent ? {} : { color: 'var(--text)' }}>
-        {value}
-      </span>
-    </div>
-  )
-}
-
 export function YogaSummaryCard({ summary }: YogaSummaryCardProps) {
   const { text, metrics } = summary
-  const { positiveYogasFound, challengingPatternsFound, strongestYoga, mostImportantCaution, currentlyActive } = metrics
+  const { positiveYogasFound, challengingPatternsFound, currentlyActive } = metrics
 
   return (
-    <div className="rounded-xl p-5" style={{ background: 'hsl(var(--card))', border: '1px solid var(--border)' }}>
-      <p className="text-sm leading-relaxed mb-4" style={{ color: 'var(--text2)' }}>{text}</p>
-      <div>
-        <MetricRow label="Positive yogas found" value={String(positiveYogasFound)} accent />
-        <MetricRow label="Challenging patterns" value={String(challengingPatternsFound)} />
-        <MetricRow label="Strongest yoga" value={strongestYoga} />
-        <MetricRow label="Most important caution" value={mostImportantCaution} />
-        <MetricRow
-          label="Currently active"
-          value={currentlyActive ?? 'Timing analysis will be added soon.'}
-        />
+    <div className="space-y-3">
+      <p className="text-sm leading-relaxed" style={{ color: 'var(--text2)' }}>{text}</p>
+      <div className="flex flex-wrap gap-2">
+        <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+          {positiveYogasFound} supportive {positiveYogasFound === 1 ? 'yoga' : 'yogas'}
+        </span>
+        {challengingPatternsFound > 0 && (
+          <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+            {challengingPatternsFound} challenging {challengingPatternsFound === 1 ? 'pattern' : 'patterns'}
+          </span>
+        )}
+        {currentlyActive && (
+          <span className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full font-medium bg-slate-100 text-slate-600 dark:bg-slate-800/60 dark:text-slate-300">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            {currentlyActive} active now
+          </span>
+        )}
       </div>
     </div>
   )
