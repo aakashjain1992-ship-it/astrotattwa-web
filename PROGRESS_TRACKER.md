@@ -571,6 +571,9 @@
 - ✅ **PhonePe Payment** — pg-sdk-node v2.0.3 integrated; account activated; ₹1000 live test passed (Apr 2026)
 - ✅ **ZodiacWheel** — added to landing/ but not yet wired to any page
 - ✅ **Galaxy canvas animation** — added to home hero (position: fixed, MutationObserver for theme, visibilitychange for CPU)
+- ✅ **Engine audit & rename** — `src/lib/astrology/kp/` → `core/`; `calculateKpChart` → `calculateBirthChart`; confirmed engine is Lahiri ayanamsa + Whole Sign (not KP system)
+- ✅ **House system confirmed** — Whole Sign throughout: D1 (`buildLagnaHouses`), all 20 divisional charts (D2–D60 via `buildDivisionalHouses`). Placidus cusps computed but only exposed as dev toggle on /chart for aakashjain1992@gmail.com
+- ✅ **Report engine readiness audit** — gaps identified: Shadbala, Ashtakavarga, yoga detection, dosha detection (see next actions)
 
 ### March 30, 2026
 - ✅ **P8 Complete: Chart Saving & My Chart**
