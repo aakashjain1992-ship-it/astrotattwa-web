@@ -41,12 +41,12 @@ export type {
 
 function buildSummaryText(yogas: YogaResult[], doshas: DoshaResult[]): string {
   if (yogas.length === 0 && doshas.length === 0) {
-    return 'This chart does not show strong patterns from the Phase 1 yoga/dosha list. A full reading depends on planet strength, dashas, houses, and divisional charts.'
+    return 'No classical yoga or dosha combinations are strongly formed in this chart. A full reading also depends on planet strength, dashas, houses, and divisional charts.'
   }
   const parts: string[] = []
   if (yogas.length > 0) {
     parts.push(
-      `Your chart shows ${yogas.length} supportive yoga${yogas.length === 1 ? '' : 's'} from the Phase 1 list`,
+      `Your chart shows ${yogas.length} supportive yoga${yogas.length === 1 ? '' : 's'}`,
     )
   }
   if (doshas.length > 0) {

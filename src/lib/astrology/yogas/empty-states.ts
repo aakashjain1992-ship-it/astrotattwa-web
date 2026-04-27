@@ -3,10 +3,10 @@
  */
 
 export const NO_YOGAS_TEXT =
-  'No major Phase 1 yogas were strongly detected in this chart. This does not mean the chart is weak. It simply means the selected classical combinations are not strongly formed. A full chart reading also depends on planet strength, dashas, houses, and divisional charts.'
+  'No classical yoga combinations are strongly formed in this chart. This does not mean the chart is weak — a full reading also considers planet strength, dashas, houses, and divisional charts.'
 
 export const NO_DOSHAS_TEXT =
-  'No major dosha from the Phase 1 list is strongly detected.'
+  'No major dosha is strongly detected in this chart.'
 
 export const DASHA_PENDING_TEXT =
   'Current timing analysis will be added soon.'
