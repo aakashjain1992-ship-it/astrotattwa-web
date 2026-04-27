@@ -65,6 +65,7 @@ Note: `next.config.js` sets `ignoreBuildErrors: true` for TypeScript — type er
 - `src/lib/astrology/divisionalChartBuilder.ts` — Unified builder for all 20 divisional charts (D1–D60; 19 sub-files in `src/lib/utils/divisional/`)
 - `src/lib/astrology/strength/` — Planetary strength analysis engine (functional nature, dignity, varga, domain engines)
 - `src/lib/astrology/sadesati/` — Saturn transit (Sade Sati) analysis: `periodAnalyzer.ts` (1545 lines), `calculator-PROFESSIONAL.ts` (1183 lines)
+- `src/lib/astrology/yogas/` — Yoga & Dosha detection engine (17 files): 26 yogas + 5 doshas, scoring (0-100), display priority, life-area aggregation. See "Yoga & Dosha Module" section below.
 - `src/lib/panchang/` — Daily Panchang engine (12 files) — see section below
 - `src/lib/utils/divisional/` — Individual D2-D60 chart calculation files (legacy, mostly superseded by divisionalChartBuilder)
 - `src/lib/utils/chartHelpers.ts` — House building functions (Lagna, Moon, Navamsa)
@@ -176,6 +177,7 @@ Cache key: `${CACHE_VERSION}_${dateParam}_${lat.toFixed(2)}_${lng.toFixed(2)}`
 | `/api/numerology/[id]` | DELETE: remove saved reading — requires auth |
 | `/api/numerology/compatibility` | GET: saved compatibility readings; POST: save — requires auth |
 | `/api/numerology/compatibility/[id]` | DELETE: remove saved compatibility reading — requires auth |
+| `/api/yogas` | POST: detect yogas + doshas from chart payload; persists to `charts.yoga_analysis` if `chartId` + auth supplied; works for guests too (rate limit: standard) |
 
 ### Theming Pattern
 
@@ -302,6 +304,42 @@ PhonePe Standard Checkout integration via `pg-sdk-node` v2.0.3.
 
 ### Database Tables (20 in Supabase)
 `profiles`, `charts`, `cities`, `reports`, `payments`, `test_cases`, `test_case_runs`, `astronomical_events`, `auth_login_attempts_v2`, `auth_login_events`, `planet_daily_positions`, `planet_retrograde_periods`, `planet_sign_transits`, `transit_generation_log`, `panchang_cache`, `festival_calendar`, `horoscopes`, `horoscope_generation_log`, `numerology_readings`, `compatibility_readings`. Note: `supabase/migrations/001_initial_schema.sql` only defines 4 tables; `supabase/panchang_tables.sql` defines 2 more — the rest were created directly in Supabase.
+
+`charts` table notable column: `yoga_analysis jsonb` (added Apr 2026, populated lazily by `/api/yogas` when a logged-in user opens the Yogas tab; mirrors how `saturnTransits` is cached client-side).
+
+### Yoga & Dosha Module (`src/lib/astrology/yogas/`)
+
+`index.ts` is the single entry point: `analyzeYogas(input) → YogaAnalysisResponse`. Pure-function detectors return uniform `YogaResult` / `DoshaResult` objects.
+
+| File | Responsibility |
+|------|---------------|
+| `index.ts` | Orchestrator — runs all detectors, applies dedup + display priority, builds response |
+| `types.ts` | All shared types: `YogaResult`, `DoshaResult`, `YogaAnalysisResponse`, `LifeArea`, score breakdowns |
+| `helpers.ts` | House/lord/aspect/connection helpers — reuses `getLordOfSignPublic`, `getHousesRuled`, `degreeDiff`, `planetAspects` from strength engine (no duplication) |
+| `scoring.ts` | Per-spec scoring (yoga 0-100, dosha 0-100), strength + severity labels, category weights |
+| `displayPriority.ts` | `selectTopPositive` (default 3), `selectTopChallenging` (default 2). Formula: score + categoryWeight + activationBonus + lifeAreaBonus − fearSensitivityPenalty |
+| `displayRules.ts` | Dedup: Dharma-Karmadhipati supersedes Raj 9-10; Durudhura supersedes Sunapha + Anapha |
+| `lifeAreas.ts` | Maps each yoga/dosha to 9 life areas; `aggregateLifeAreaImpact` returns net ±100 per area |
+| `meanings.ts` | All user-facing copy. Soft language only — never `dangerous`, `fatal`, `destroyed`, `poverty`, `curse`, `doomed`, `divorce`, `death` |
+| `empty-states.ts` | `NO_YOGAS_TEXT`, `NO_DOSHAS_TEXT` |
+| `detectors/panchaMahapurusha.ts` | Ruchaka, Bhadra, Hamsa, Malavya, Shasha (5) |
+| `detectors/moonYogas.ts` | Gaja-Kesari, Sunapha, Anapha, Durudhura, Kemadruma (5) |
+| `detectors/conjunctionYogas.ts` | Budhaditya, Guru Chandal (2) |
+| `detectors/vipreetRaj.ts` | Harsha, Sarala, Vimala (3) — uses `scoreVipreetHousePlacement` (dusthana = condition, not penalty) |
+| `detectors/rajYogas.ts` | Raj 9-10, Kendra-Trikona, Dharma-Karmadhipati, Lakshmi, Amala, Vasumati (6) |
+| `detectors/specialYogas.ts` | Neecha Bhanga (uses `checkNeechaBhanga` from strength), Parivartana, Dhana, Shubha Kartari, Paap Kartari (5) |
+| `detectors/doshas.ts` | Kaal Sarp, Mangal (Lagna+Moon+Venus refs), Grahan, Angarak, Vish (5) |
+
+**API contract:** Response only includes items where `present && score > 0`. Absent yogas/doshas are NOT returned (no "coming soon" stubs, no zero-score noise). UI consumes `topPositive`, `topChallenging`, `allYogas`, `allDoshas`, `lifeAreas` directly.
+
+**Pitra Dosha + Shrapit Dosha**: deferred — not in V1.
+
+**Display tier model (PR2 UI must enforce):**
+- Free chart page (no login): summary + top 3 positive + top 2 challenging + life-area impact
+- Login required: complete yoga list + basic strength + technical reason — sign-in modal (Google OAuth + email)
+- Paid report: deferred — do NOT add to UI yet
+
+**API caller pattern (matches Sadesati):** Lazy fetch on tab open. Body: `{ planets, ascendant, birthDateUtc?, nakshatraLord?, balanceYears?, chartId? }`. The dasha trio is optional — engine sets `dashaUnavailable: true` when missing and skips the dasha factor (max 5 pts).
 
 ## Known Issues
 
