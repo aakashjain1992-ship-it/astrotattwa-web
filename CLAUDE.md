@@ -21,7 +21,7 @@ pm2 reload astrotattwa-web   # Reload production process (near-zero downtime)
 
 Note: `next.config.js` sets `ignoreBuildErrors: true` for TypeScript — type errors won't fail the build. Run `npm run type-check` separately.
 
-**Deploy sequence (production):** `npm run build && pm2 reload astrotattwa-web && pm2 save` — **NEVER stop PM2 before building.** Build first while the old server keeps serving from memory, then reload after. Do NOT `rm -rf .next` first. Use `pm2 reload` not `pm2 restart` — in cluster mode, reload does a rolling restart (one worker at a time, zero downtime). `npm run build` already sets `NODE_OPTIONS='--max-old-space-size=512'`. Server has 4 GB RAM total; build is capped at 512 MB to leave headroom for the 2 running workers.
+**Deploy sequence (production):** `npm run build && pm2 reload astrotattwa-web && pm2 save` — **NEVER stop PM2 before building.** Build first while the old server keeps serving from memory, then reload after. Do NOT `rm -rf .next` first. Use `pm2 reload` not `pm2 restart` — in cluster mode, reload does a rolling restart (one worker at a time, zero downtime). `npm run build` already sets `NODE_OPTIONS='--max-old-space-size=768'`. Server has 4 GB RAM total; PM2 workers use ~360 MB combined; build capped at 768 MB to leave headroom. (Was 512 MB — raised Apr 2026 because CI/CD `npm install` → `npm run build` sequence was OOMing at 484 MB.)
 
 ## Tech Stack
 
