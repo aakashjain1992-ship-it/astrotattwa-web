@@ -12,7 +12,7 @@ Astrotattwa is a Vedic astrology web application that generates birth charts (Ku
 
 ```bash
 npm run dev              # Start dev server (webpack, not Turbopack)
-npm run build            # Production build (512MB memory limit)
+npm run build            # Production build (768MB memory limit)
 npm run lint             # ESLint via next lint
 npm run type-check       # TypeScript check (tsc --noEmit)
 npm start                # Start production server
@@ -65,10 +65,12 @@ Note: `next.config.js` sets `ignoreBuildErrors: true` for TypeScript — type er
 - `src/lib/astrology/divisionalChartBuilder.ts` — Unified builder for all 20 divisional charts (D1–D60; 19 sub-files in `src/lib/utils/divisional/`)
 - `src/lib/astrology/strength/` — Planetary strength analysis engine (functional nature, dignity, varga, domain engines)
 - `src/lib/astrology/sadesati/` — Saturn transit (Sade Sati) analysis: `periodAnalyzer.ts` (1545 lines), `calculator-PROFESSIONAL.ts` (1183 lines)
+- `src/lib/astrology/yogas/` — Yoga & Dosha detection engine (17 files): 26 yogas + 5 doshas, scoring (0-100), display priority, life-area aggregation. See "Yoga & Dosha Module" section below.
 - `src/lib/panchang/` — Daily Panchang engine (12 files) — see section below
 - `src/lib/utils/divisional/` — Individual D2-D60 chart calculation files (legacy, mostly superseded by divisionalChartBuilder)
 - `src/lib/utils/chartHelpers.ts` — House building functions (Lagna, Moon, Navamsa)
 - `src/components/chart/` — Chart display components: `PlanetaryTable.tsx` (sorted by nakshatra lord order), `PlanetsTab.tsx`, `DashaNavigator.tsx`, `AvakhadaTable.tsx`, `ChartFocusMode.tsx` (D1/Moon/D9 visual charts), `ChartLabelModal.tsx` (save/rename + is_favorite), `DeleteChartDialog.tsx`, `DiamondChart.tsx` (renders the diamond-grid chart layout — used by both ChartFocusMode and DivisionalChartsTab; accepts `showAscLabel` to toggle Asc annotation)
+- `src/components/chart/yogas/` — Yogas & Doshas tab: `YogasTab.tsx` (container), `YogaCard.tsx` / `DoshaCard.tsx` (two-tab layout: Your Chart | About), `YogaSummaryCard.tsx` (summary + strength distribution bar), `YogaList.tsx` (flat strength-sorted list), `TopPositiveYogas.tsx` / `ChallengingPatterns.tsx` (guest preview), `SignInModal.tsx` (dynamic title/description), `LifeAreaImpact.tsx`, `TechnicalDetailsAccordion.tsx` (supports `noWrapper` prop)
 - `src/components/chart/sadesati/` — `SadeSatiTableView.tsx` + supporting components
 - `src/components/chart/divisional/` — `DivisionalChartsTab.tsx` + config/selector/insights
 - `src/components/forms/` — Birth data forms with city autocomplete. `CitySearch` uses a `userTyped` ref to prevent the results dropdown from auto-opening when the parent updates the `value` prop (e.g. after IP detection) — only opens on actual user keystrokes.
@@ -101,7 +103,7 @@ Note: `next.config.js` sets `ignoreBuildErrors: true` for TypeScript — type er
 
 ### Header & Mobile Navigation
 
-`src/components/layout/Header.tsx` contains a `MobileDrawer` component (defined in the same file, before `Header`). It renders as a full-height `position: fixed` side panel with a dimmed backdrop. Sub-menus (Horoscope, Numerology) are collapsed by default via `useState` — a `useEffect` resets them whenever the drawer closes. Bottom section shows Sign in + Get started for guests, or avatar + actions for logged-in users, with 44px bottom padding for iPhone home indicator. Desktop auth buttons are wrapped in `<div className="header-auth-desktop">` which is hidden via a media query in `globals.css` at ≤768px.
+`src/components/layout/Header.tsx` contains a `MobileDrawer` component (defined in the same file, before `Header`). It renders as a full-height `position: fixed` side panel with a dimmed backdrop. Sub-menus (Horoscope, Numerology) are collapsed by default via `useState` — a `useEffect` resets them whenever the drawer closes. Bottom section shows Sign in for guests (solid blue button — no "Get started" button), or avatar + actions for logged-in users, with 44px bottom padding for iPhone home indicator. Desktop auth buttons are wrapped in `<div className="header-auth-desktop">` which is hidden via a media query in `globals.css` at ≤768px.
 
 ### PM2 Processes
 
@@ -176,6 +178,7 @@ Cache key: `${CACHE_VERSION}_${dateParam}_${lat.toFixed(2)}_${lng.toFixed(2)}`
 | `/api/numerology/[id]` | DELETE: remove saved reading — requires auth |
 | `/api/numerology/compatibility` | GET: saved compatibility readings; POST: save — requires auth |
 | `/api/numerology/compatibility/[id]` | DELETE: remove saved compatibility reading — requires auth |
+| `/api/yogas` | POST: detect yogas + doshas from chart payload; persists to `charts.yoga_analysis` if `chartId` + auth supplied; works for guests too (rate limit: standard) |
 
 ### Theming Pattern
 
@@ -302,6 +305,52 @@ PhonePe Standard Checkout integration via `pg-sdk-node` v2.0.3.
 
 ### Database Tables (20 in Supabase)
 `profiles`, `charts`, `cities`, `reports`, `payments`, `test_cases`, `test_case_runs`, `astronomical_events`, `auth_login_attempts_v2`, `auth_login_events`, `planet_daily_positions`, `planet_retrograde_periods`, `planet_sign_transits`, `transit_generation_log`, `panchang_cache`, `festival_calendar`, `horoscopes`, `horoscope_generation_log`, `numerology_readings`, `compatibility_readings`. Note: `supabase/migrations/001_initial_schema.sql` only defines 4 tables; `supabase/panchang_tables.sql` defines 2 more — the rest were created directly in Supabase.
+
+`charts` table notable column: `yoga_analysis jsonb` (added Apr 2026, populated lazily by `/api/yogas` when a logged-in user opens the Yogas tab; mirrors how `saturnTransits` is cached client-side).
+
+### Yoga & Dosha Module (`src/lib/astrology/yogas/`)
+
+`index.ts` is the single entry point: `analyzeYogas(input) → YogaAnalysisResponse`. Pure-function detectors return uniform `YogaResult` / `DoshaResult` objects.
+
+| File | Responsibility |
+|------|---------------|
+| `index.ts` | Orchestrator — runs all detectors, applies dedup + display priority, builds response |
+| `types.ts` | All shared types: `YogaResult`, `DoshaResult`, `YogaAnalysisResponse`, `LifeArea`, score breakdowns |
+| `helpers.ts` | House/lord/aspect/connection helpers — reuses `getLordOfSignPublic`, `getHousesRuled`, `degreeDiff`, `planetAspects` from strength engine (no duplication) |
+| `scoring.ts` | Per-spec scoring (yoga 0-100, dosha 0-100), strength + severity labels, category weights |
+| `displayPriority.ts` | `selectTopPositive` (default 3), `selectTopChallenging` (default 2). Formula: score + categoryWeight + activationBonus + lifeAreaBonus − fearSensitivityPenalty |
+| `displayRules.ts` | Dedup: Dharma-Karmadhipati supersedes Raj 9-10; Durudhura supersedes Sunapha + Anapha |
+| `lifeAreas.ts` | Maps each yoga/dosha to 9 life areas; `aggregateLifeAreaImpact` returns net ±100 per area |
+| `meanings.ts` | All user-facing copy. Soft language only — never `dangerous`, `fatal`, `destroyed`, `poverty`, `curse`, `doomed`, `divorce`, `death` |
+| `empty-states.ts` | `NO_YOGAS_TEXT`, `NO_DOSHAS_TEXT` |
+| `detectors/panchaMahapurusha.ts` | Ruchaka, Bhadra, Hamsa, Malavya, Shasha (5) |
+| `detectors/moonYogas.ts` | Gaja-Kesari, Sunapha, Anapha, Durudhura, Kemadruma (5) |
+| `detectors/conjunctionYogas.ts` | Budhaditya, Guru Chandal (2) |
+| `detectors/vipreetRaj.ts` | Harsha, Sarala, Vimala (3) — uses `scoreVipreetHousePlacement` (dusthana = condition, not penalty) |
+| `detectors/rajYogas.ts` | Raj 9-10, Kendra-Trikona, Dharma-Karmadhipati, Lakshmi, Amala, Vasumati (6) |
+| `detectors/specialYogas.ts` | Neecha Bhanga (uses `checkNeechaBhanga` from strength), Parivartana, Dhana, Shubha Kartari, Paap Kartari (5) |
+| `detectors/doshas.ts` | Kaal Sarp, Mangal (Lagna+Moon+Venus refs), Grahan, Angarak, Vish (5) |
+
+**API contract:** Response only includes items where `present && score > 0`. Absent yogas/doshas are NOT returned (no "coming soon" stubs, no zero-score noise). UI consumes `topPositive`, `topChallenging`, `allYogas`, `allDoshas`, `lifeAreas` directly. Schema `version: 2` (bumped Apr 2026 when `chartNarrative` was added to all yogas and doshas). `YogasTab` invalidates any cached `version < 2` and re-fetches.
+
+**Pitra Dosha + Shrapit Dosha**: deferred — not in V1.
+
+**Display tier model (live in production — do not change without approval):**
+- Guest (no login): `YogaSummaryCard` + `TopPositiveYogas` (locked) + `ChallengingPatterns` (locked) + "Sign in to see all yogas" button. Clicking any locked card opens `SignInModal` — real content never in DOM for guests.
+- Logged-in: `YogaSummaryCard` + `YogaList` (flat list sorted by strength: exceptional → very_strong → strong → moderate → weak, then by score). No intermediate sections.
+- Paid report: deferred entirely — no "Upgrade" CTA anywhere.
+
+**YogaCard / DoshaCard design:** 3px left accent border (color = strength/severity), life area chips (up to 3) on collapsed header, two-tab expanded body ("Your Chart" = chart-specific narrative; "About this yoga/dosha" = generic explanation), `Code2` icon button for technical details (`TechnicalDetailsAccordion` with `noWrapper={true}`). All 26 yogas and 5 doshas now have `chartNarrative` — dynamically built inside each detector from actual planet/sign/house data. `DoshaResult` has a `chartNarrative?: string` field; `DoshaCard` prefers it over `technicalReason`.
+
+**Sign-in gating across all chart tabs (Apr 2026):** Every tab gates deeper content behind `SignInModal` with dynamic `title` + `description`:
+- Planets tab (`PlanetsTab.tsx`): clicking any planet card when guest → modal
+- Sade Sati (`SadeSatiTableView.tsx`): "See full analysis" when guest → modal
+- Dasha Timeline (`DashaNavigator.tsx`): Pratyantar + Sookshma rows when guest → modal (Mahadasha + Antardasha free)
+- Divisional Charts (`DivisionalChartsTab.tsx`): importance !== 'essential' when guest → modal (Essential charts always free)
+
+**API caller pattern (matches Sadesati):** Lazy fetch on tab open. Body: `{ planets, ascendant, birthDateUtc?, nakshatraLord?, balanceYears?, chartId? }`. The dasha trio is optional — engine sets `dashaUnavailable: true` when missing and skips the dasha factor (max 5 pts).
+
+**Neecha Bhanga scoring:** `dignity` is dynamic — `Math.min(10, 4 + (cancellations.length - 1) * 2)`. Single-rule combust case scores ~51 (moderate), not 70+.
 
 ## Known Issues
 

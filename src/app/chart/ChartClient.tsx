@@ -22,7 +22,8 @@ import { DashaNavigator } from '@/components/chart/DashaNavigator';
 import { buildLagnaHouses, buildMoonHouses, buildNavamsaHouses } from '@/lib/utils/chartHelpers';
 import { SadeSatiTableView } from '@/components/chart/sadesati/SadeSatiTableView';
 import { PlanetsTab } from '@/components/chart/PlanetsTab';
-
+import { YogasTab } from '@/components/chart/yogas/YogasTab';
+import type { YogaAnalysisResponse } from '@/lib/astrology/yogas/types';
 
 // Import proper types from astrology module
 import type {  PlanetData, AscendantData, ChartData, } from '@/types/astrology';
@@ -41,7 +42,7 @@ import { DeleteChartDialog } from '@/components/chart/DeleteChartDialog';
 
 
 
-type TabType = 'overview' | 'planets'| 'dasha'| 'divisional' | 'sadesati';
+type TabType = 'overview' | 'planets' | 'yogas' | 'dasha' | 'divisional' | 'sadesati';
 type MobileSubTab = 'planets' | 'avakahada';
 
 // ============================================
@@ -229,6 +230,17 @@ export default function ChartClient() {
     return null
   });
 
+  const handleYogasReady = useCallback((analysis: YogaAnalysisResponse) => {
+    setChartData((prev) => {
+      if (!prev) return prev;
+      const updated = { ...prev, yogaAnalysis: analysis };
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+  }, []);
+
   // Modal state
   const [saveModalOpen, setSaveModalOpen] = useState(false);
   const [editLabelModalOpen, setEditLabelModalOpen] = useState(false);
@@ -241,7 +253,7 @@ export default function ChartClient() {
   const tabParam = searchParams.get('tab') as TabType | null;
 
   useEffect(() => {
-    if (tabParam === 'overview' ||tabParam === 'planets' || tabParam === 'dasha' || tabParam === 'divisional' || tabParam === 'sadesati') {
+    if (tabParam === 'overview' || tabParam === 'planets' || tabParam === 'yogas' || tabParam === 'dasha' || tabParam === 'divisional' || tabParam === 'sadesati') {
       setActiveTab(tabParam);
     } else {
       setActiveTab('overview');
@@ -647,6 +659,12 @@ export default function ChartClient() {
             Planets
           </TabButton>
           <TabButton
+            active={activeTab === 'yogas'}
+            onClick={() => setTab('yogas')}
+          >
+            Yogas
+          </TabButton>
+          <TabButton
             active={activeTab === 'dasha'}
             onClick={() => setTab('dasha')}
           >
@@ -703,6 +721,12 @@ export default function ChartClient() {
               dashaInfo={chartData.dasa}
               birthDate={chartData.calculated?.utcDateTime}
             />
+          </div>
+        )}
+
+        {activeTab === 'yogas' && (
+          <div className="animate-fade-in">
+            <YogasTab chart={chartData} onAnalysisReady={handleYogasReady} />
           </div>
         )}
 
