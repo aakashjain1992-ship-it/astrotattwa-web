@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Instrument_Serif, DM_Sans } from 'next/font/google'
 import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster } from '@/components/ui/toaster'
+import { GoogleOneTap } from '@/components/auth/GoogleOneTap'
 import 'react-day-picker/dist/style.css'
 import '@/styles/globals.css'
 
@@ -51,6 +52,7 @@ export default function RootLayout({
         <ThemeProvider>
           {children}
           <Toaster />
+          <GoogleOneTap clientId={process.env.GOOGLE_CLIENT_ID!} />
         </ThemeProvider>
       </body>
     </html>

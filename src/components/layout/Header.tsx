@@ -909,29 +909,15 @@ export function Header({ showNav = true }: HeaderProps) {
                     <Link
                       href="/login"
                       style={{
-                        fontSize: '13.5px', fontWeight: 500, color: 'var(--text2)',
-                        background: 'transparent', border: '1px solid var(--border2)',
+                        fontSize: '13.5px', fontWeight: 500, color: '#fff',
+                        background: 'var(--blue)', border: '1px solid var(--blue)',
                         padding: '7px 18px', borderRadius: 8, textDecoration: 'none', transition: 'all .18s',
                       }}
-                      onMouseEnter={(e) => { const el = e.currentTarget; el.style.borderColor = 'var(--blue)'; el.style.color = 'var(--blue)'; el.style.background = 'var(--blue-light)' }}
-                      onMouseLeave={(e) => { const el = e.currentTarget; el.style.borderColor = 'var(--border2)'; el.style.color = 'var(--text2)'; el.style.background = 'transparent' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--blue-dark)'; e.currentTarget.style.borderColor = 'var(--blue-dark)' }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--blue)'; e.currentTarget.style.borderColor = 'var(--blue)' }}
                     >
                       Sign in
                     </Link>
-                    {showNav && (
-                      <Link
-                        href="/signup"
-                        style={{
-                          fontSize: '13.5px', fontWeight: 500, color: '#fff',
-                          background: 'var(--blue)', border: '1px solid var(--blue)',
-                          padding: '7px 18px', borderRadius: 8, textDecoration: 'none', transition: 'background .18s',
-                        }}
-                        onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--blue-dark)' }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--blue)' }}
-                      >
-                        Get started
-                      </Link>
-                    )}
                   </>
                 )}
               </div>

@@ -8,9 +8,11 @@ interface TopPositiveYogasProps {
   items: YogaDisplayCard[]
   allYogas: YogaResult[]
   emptyMessage: string | null
+  isLocked?: boolean
+  onSignIn?: () => void
 }
 
-export function TopPositiveYogas({ items, allYogas, emptyMessage }: TopPositiveYogasProps) {
+export function TopPositiveYogas({ items, allYogas, emptyMessage, isLocked, onSignIn }: TopPositiveYogasProps) {
   if (items.length === 0) {
     return (
       <section>
@@ -36,10 +38,10 @@ export function TopPositiveYogas({ items, allYogas, emptyMessage }: TopPositiveY
       </h3>
       <div className="space-y-2.5">
         {hero && (
-          <YogaCard yoga={hero} defaultExpanded hero />
+          <YogaCard yoga={hero} defaultExpanded hero isLocked={isLocked} onSignIn={onSignIn} />
         )}
         {rest.map(yoga => (
-          <YogaCard key={yoga.id} yoga={yoga} />
+          <YogaCard key={yoga.id} yoga={yoga} isLocked={isLocked} onSignIn={onSignIn} />
         ))}
       </div>
     </section>

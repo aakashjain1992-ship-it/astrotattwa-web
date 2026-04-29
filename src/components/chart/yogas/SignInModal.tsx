@@ -1,15 +1,16 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { createClient } from '@/lib/supabase/client'
+import { triggerGoogleOneTap } from '@/lib/auth/googleOneTap'
 
 interface SignInModalProps {
   open: boolean
   onClose: () => void
+  title?: string
+  description?: string
 }
 
 function GoogleIcon() {
@@ -23,35 +24,26 @@ function GoogleIcon() {
   )
 }
 
-export function SignInModal({ open, onClose }: SignInModalProps) {
-  const router = useRouter()
+export function SignInModal({
+  open, onClose,
+  title = 'Sign in to unlock this',
+  description = 'Create a free account to access the full chart analysis.',
+}: SignInModalProps) {
   const [googleLoading, setGoogleLoading] = useState(false)
   const [error, setError] = useState('')
 
   const handleGoogle = async () => {
     setGoogleLoading(true)
-    setError('')
-    const supabase = createClient()
-    const { error: oauthError } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback?returnUrl=${encodeURIComponent('/chart')}`,
-      },
-    })
-    if (oauthError) {
-      setError(oauthError.message)
-      setGoogleLoading(false)
-    }
+    await triggerGoogleOneTap('/chart')
+    setGoogleLoading(false)
   }
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose() }}>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>Sign in to see all yogas</DialogTitle>
-          <DialogDescription>
-            The complete list of detected yogas and doshas is available to signed-in users.
-          </DialogDescription>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3 pt-2">

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { triggerGoogleOneTap } from '@/lib/auth/googleOneTap'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -101,17 +102,8 @@ if (!res.ok) {
 
   const handleGoogleLogin = async () => {
     setGoogleLoading(true)
-    setError('')
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback?returnUrl=${encodeURIComponent(returnUrl)}`,
-      },
-    })
-    if (error) {
-      setError(error.message)
-      setGoogleLoading(false)
-    }
+    await triggerGoogleOneTap(returnUrl)
+    setGoogleLoading(false)
   }
 
   return (

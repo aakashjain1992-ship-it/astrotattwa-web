@@ -29,7 +29,7 @@ module.exports = {
       script: "node_modules/.bin/next",
       args: "start",
       exec_mode: "cluster",
-      instances: 2,
+      instances: 4,
       env: {
         NODE_ENV: "production",
         // All secrets from .env.local — explicitly listed so PM2 always wins
@@ -48,6 +48,9 @@ module.exports = {
         PHONEPE_ENV:                   local.PHONEPE_ENV                   || '',
         PHONEPE_WEBHOOK_USERNAME:      local.PHONEPE_WEBHOOK_USERNAME      || '',
         PHONEPE_WEBHOOK_PASSWORD:      local.PHONEPE_WEBHOOK_PASSWORD      || '',
+        GOOGLE_CLIENT_ID:              local.GOOGLE_CLIENT_ID              || '',
+        GOOGLE_CLIENT_SECRET:          local.GOOGLE_CLIENT_SECRET          || '',
+        NEXT_PUBLIC_GOOGLE_CLIENT_ID:  local.NEXT_PUBLIC_GOOGLE_CLIENT_ID  || '',
         // Optional vars — only set if present in .env.local
         ...(local.NEXT_PUBLIC_APP_URL          && { NEXT_PUBLIC_APP_URL:          local.NEXT_PUBLIC_APP_URL }),
         ...(local.UPSTASH_REDIS_REST_URL       && { UPSTASH_REDIS_REST_URL:       local.UPSTASH_REDIS_REST_URL }),

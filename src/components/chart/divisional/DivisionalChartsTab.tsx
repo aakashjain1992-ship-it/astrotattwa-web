@@ -10,6 +10,8 @@ import { ChartInsights } from './ChartInsights';
 import { calculateDivisionalChart, isChartImplemented, type DivisionalChartId } from '@/lib/utils/divisional';
 import { getChartById } from './DivisionalChartConfig';
 import type { PlanetData, AscendantData } from '@/types/astrology';
+import { useAuth } from '@/hooks/useAuth';
+import { SignInModal } from '@/components/chart/yogas/SignInModal';
 
 interface DivisionalChartsTabProps {
   planets: Record<string, PlanetData>;
@@ -18,8 +20,19 @@ interface DivisionalChartsTabProps {
 }
 
 export function DivisionalChartsTab({ planets, ascendant, className }: DivisionalChartsTabProps) {
+  const { user } = useAuth();
   const [selectedChartId, setSelectedChartId] = useState<DivisionalChartId>('d9');
   const [error, setError] = useState<string | null>(null);
+  const [signInOpen, setSignInOpen] = useState(false);
+
+  const handleSelectChart = (id: string) => {
+    const info = getChartById(id as DivisionalChartId);
+    if (!user && info && info.importance !== 'essential') {
+      setSignInOpen(true);
+      return;
+    }
+    setSelectedChartId(id as DivisionalChartId);
+  };
   
   const houses = useMemo(() => {
     try {
@@ -53,7 +66,7 @@ export function DivisionalChartsTab({ planets, ascendant, className }: Divisiona
       <div className="mb-6 lg:hidden">
         <ChartSelector
           selectedChartId={selectedChartId}
-          onSelectChart={(id) => setSelectedChartId(id as DivisionalChartId)}
+          onSelectChart={handleSelectChart}
           variant="horizontal"
         />
       </div>
@@ -66,7 +79,7 @@ export function DivisionalChartsTab({ planets, ascendant, className }: Divisiona
           <div className="sticky top-24">
             <ChartSelector
               selectedChartId={selectedChartId}
-              onSelectChart={(id) => setSelectedChartId(id as DivisionalChartId)}
+              onSelectChart={handleSelectChart}
               variant="sidebar"
             />
           </div>
@@ -127,6 +140,13 @@ export function DivisionalChartsTab({ planets, ascendant, className }: Divisiona
           )}
         </div>
       </div>
+
+      <SignInModal
+        open={signInOpen}
+        onClose={() => setSignInOpen(false)}
+        title="Sign in to unlock more charts"
+        description="Important and Advanced divisional charts are available to signed-in users."
+      />
     </div>
   );
 }

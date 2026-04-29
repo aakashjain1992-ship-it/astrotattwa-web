@@ -8,6 +8,9 @@ import { supabaseAdmin } from '@/lib/supabase/server-admin'
 import { computePanchang } from '@/lib/panchang/compute'
 import { mapFestivalRow } from '@/lib/panchang/festivals'
 import type { FestivalRow } from '@/lib/panchang/festivals'
+import { getRedis } from '@/lib/redis'
+
+const PANCHANG_TTL = 24 * 60 * 60 // 24 hours in seconds
 
 export const GET = withErrorHandling(async (req: NextRequest) => {
   await rateLimit(req, RateLimitPresets.lenient) // 60/min — public read-only endpoint
@@ -37,7 +40,20 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
   const lngR = lng.toFixed(2)
   const cacheKey = `${CACHE_VERSION}_${dateParam}_${latR}_${lngR}`
 
-  // ── Check cache ────────────────────────────────────────────────────
+  const redis = getRedis()
+
+  // ── 1. Redis cache (hot path ~0.3ms) ───────────────────────────────
+  try {
+    const hit = await redis.get(`panchang:${cacheKey}`)
+    if (hit) {
+      const festivals = await fetchFestivals(dateParam)
+      return successResponse({ ...JSON.parse(hit), festivals }, { cached: true, source: 'redis' })
+    }
+  } catch {
+    // Redis down — continue to Supabase
+  }
+
+  // ── 2. Supabase cache (warm path ~10ms) ───────────────────────────
   const { data: cached } = await supabaseAdmin
     .from('panchang_cache')
     .select('data, computed_at')
@@ -47,14 +63,14 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
   if (cached) {
     const ageMs = Date.now() - new Date(cached.computed_at).getTime()
     if (ageMs < 24 * 60 * 60 * 1000) {
-      // Fetch festivals for this date
+      // Backfill Redis so next request is hot
+      try { await redis.setex(`panchang:${cacheKey}`, PANCHANG_TTL, JSON.stringify(cached.data)) } catch {}
       const festivals = await fetchFestivals(dateParam)
-      const data = { ...cached.data, festivals }
-      return successResponse(data, { cached: true })
+      return successResponse({ ...cached.data, festivals }, { cached: true, source: 'supabase' })
     }
   }
 
-  // ── Compute fresh ──────────────────────────────────────────────────
+  // ── 3. Compute fresh (cold path) ───────────────────────────────────
   const panchangData = await computePanchang({
     date: dateParam,
     lat,
@@ -63,7 +79,9 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
     locationName: locationParam,
   })
 
-  // ── Store in cache ─────────────────────────────────────────────────
+  // ── Store in Redis + Supabase ──────────────────────────────────────
+  try { await redis.setex(`panchang:${cacheKey}`, PANCHANG_TTL, JSON.stringify(panchangData)) } catch {}
+
   const { error: upsertError } = await supabaseAdmin
     .from('panchang_cache')
     .upsert({
@@ -78,15 +96,12 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
     }, { onConflict: 'cache_key' })
 
   if (upsertError) {
-    // Non-fatal — log but still return data
     console.error('panchang_cache upsert error:', upsertError.message)
   }
 
   // ── Merge festivals ────────────────────────────────────────────────
   const festivals = await fetchFestivals(dateParam)
-  const result = { ...panchangData, festivals }
-
-  return successResponse(result, { cached: false })
+  return successResponse({ ...panchangData, festivals }, { cached: false })
 })
 
 async function fetchFestivals(date: string) {

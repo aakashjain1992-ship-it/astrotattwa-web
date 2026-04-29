@@ -8,9 +8,11 @@ interface ChallengingPatternsProps {
   items: YogaDisplayCard[]
   allDoshas: DoshaResult[]
   emptyMessage: string | null
+  isLocked?: boolean
+  onSignIn?: () => void
 }
 
-export function ChallengingPatterns({ items, allDoshas, emptyMessage }: ChallengingPatternsProps) {
+export function ChallengingPatterns({ items, allDoshas, emptyMessage, isLocked, onSignIn }: ChallengingPatternsProps) {
   if (items.length === 0) {
     return (
       <section>
@@ -33,7 +35,7 @@ export function ChallengingPatterns({ items, allDoshas, emptyMessage }: Challeng
       </h3>
       <div className="space-y-2.5">
         {resolved.map(dosha => (
-          <DoshaCard key={dosha.id} dosha={dosha} />
+          <DoshaCard key={dosha.id} dosha={dosha} isLocked={isLocked} onSignIn={onSignIn} />
         ))}
       </div>
     </section>
