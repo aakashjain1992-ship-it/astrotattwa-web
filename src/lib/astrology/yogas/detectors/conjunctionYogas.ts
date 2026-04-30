@@ -241,7 +241,8 @@ function detectGuruChandal(ctx: YogaEngineInput): YogaResult {
     afflictionPenalty,
     cancellationPenalty,
   })
-  // Boost if Jupiter exalted — wisdom transformed rather than confused
+  // Reduce severity if Jupiter is exalted — its wisdom overpowers Rahu's confusion,
+  // making this challenging yoga less impactful than when Jupiter is weak.
   if (isExalted('Jupiter', jup)) breakdown.final = Math.max(0, breakdown.final - 8)
 
   return {

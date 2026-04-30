@@ -292,6 +292,10 @@ function detectParivartana(ctx: YogaEngineInput): YogaResult {
   else if ([best.aHouse, best.bHouse].some((h) => dustSet.has(h))) subtype = 'dainya'
   else if ([best.aHouse, best.bHouse].includes(3)) subtype = 'khala'
 
+  const afflictionPenalty = scoreAfflictionPenalty({
+    involvedDebilitated: isDebilitated(best.a, aData) || isDebilitated(best.b, bData),
+    involvedCombust: aData.combust || bData.combust,
+  })
   const breakdown = computeYogaScore({
     planetStrength,
     houseStrength,
@@ -299,7 +303,7 @@ function detectParivartana(ctx: YogaEngineInput): YogaResult {
     aspect,
     relationship,
     dasha,
-    afflictionPenalty: 0,
+    afflictionPenalty,
     cancellationPenalty: subtype === 'dainya' ? 8 : 0,
   })
   return {

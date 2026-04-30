@@ -450,6 +450,10 @@ export interface ChartData {
   saturnTransits?: EnhancedSaturnTransitAnalysis;
   /** Yoga & Dosha detection result — populated when Yogas tab opens */
   yogaAnalysis?: YogaAnalysisResponse;
+  /** Shadbala planetary strength — populated when Strength tab opens */
+  shadBala?: import('@/lib/astrology/shadbala').ShadbalaResult
+  /** Ashtakavarga transit scores — populated when Strength tab opens */
+  ashtakavarga?: import('@/lib/astrology/ashtakavarga').AshtakavargaResult
 }
 
 // ===== CONSTANTS =====

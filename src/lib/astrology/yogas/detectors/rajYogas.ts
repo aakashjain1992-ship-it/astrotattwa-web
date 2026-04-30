@@ -157,7 +157,7 @@ function empty(id: string): YogaResult {
 }
 
 function buildLordConnectionResult(
-  id: 'rajYoga9_10' | 'kendraTrikona' | 'dharmaKarmadhipati',
+  id: 'kendraTrikona' | 'dharmaKarmadhipati',
   lordA: PlanetKey,
   houseA: number,
   lordB: PlanetKey,
@@ -219,7 +219,7 @@ function buildLordConnectionResult(
       lordA, houseA, a.sign, aHouse,
       lordB, houseB, b.sign, bHouse,
       via,
-      narrativeType ?? (id === 'kendraTrikona' ? 'kendraTrikona' : id === 'dharmaKarmadhipati' ? 'dharmaKarma' : 'raj9_10'),
+      narrativeType ?? (id === 'kendraTrikona' ? 'kendraTrikona' : 'dharmaKarma'),
     ),
     planetsInvolved: lordA === lordB ? [lordA] : [lordA, lordB],
     housesInvolved: [houseA, houseB],
@@ -241,12 +241,6 @@ function lordConnectionVia(
   return { lordA, lordB, via: conn.via as ReadonlyArray<RelationshipKind> }
 }
 
-function detectRaj9_10(ctx: YogaEngineInput): YogaResult {
-  const conn = lordConnectionVia(ctx, 9, 10)
-  if (!conn) return empty('rajYoga9_10')
-  return buildLordConnectionResult('rajYoga9_10', conn.lordA, 9, conn.lordB, 10, conn.via, ctx)
-}
-
 function detectDharmaKarmadhipati(ctx: YogaEngineInput): YogaResult {
   const conn = lordConnectionVia(ctx, 9, 10)
   if (!conn) return empty('dharmaKarmadhipati')
@@ -254,8 +248,8 @@ function detectDharmaKarmadhipati(ctx: YogaEngineInput): YogaResult {
 }
 
 function detectKendraTrikona(ctx: YogaEngineInput): YogaResult {
-  // Strong pairs only — exclude pure 1L self-link
-  const kendraSet = [4, 7, 10] as const
+  // All four Kendra lords — including 1st (Lagna lord) which forms powerful 1-5 and 1-9 Raj Yogas.
+  const kendraSet = [1, 4, 7, 10] as const
   const trikonaSet = [5, 9] as const
   let bestConn: {
     lordA: PlanetKey
@@ -270,8 +264,10 @@ function detectKendraTrikona(ctx: YogaEngineInput): YogaResult {
     for (const th of trikonaSet) {
       const conn = lordConnectionVia(ctx, kh, th)
       if (!conn) continue
-      // Use number of connection types as a tiebreaker
-      const s = conn.via.length
+      // Use relationship quality score as tiebreaker (conjunction > exchange > aspect)
+      // via.length is wrong here — ['oneAspectsOther','placedInOtherHouse'] (len=2)
+      // would beat a pure ['sameHouse'] conjunction (len=1) despite conjunction being stronger.
+      const s = scoreLordRelationship(conn.via)
       if (s > bestStrength) {
         bestStrength = s
         bestConn = { ...conn, houseA: kh, houseB: th }
@@ -300,14 +296,16 @@ function detectLakshmi(ctx: YogaEngineInput): YogaResult {
 
   const l9Dignity = getDignity(lord9, l9)
   const l1Dignity = getDignity(lord1, l1)
-  // Both must be at least friendly+ (or own/exalted/MT)
-  const strongDignities: ReadonlyArray<typeof l9Dignity> = [
+  // Classical BPHS Lakshmi Yoga: 9th lord must be in own or exalted sign (strict).
+  // Lagna lord may be friendly+ — it provides the channel for fortune to manifest.
+  const l9StrongDignities: ReadonlyArray<typeof l9Dignity> = ['exalted', 'mooltrikona', 'own']
+  const l1StrongDignities: ReadonlyArray<typeof l1Dignity> = [
     'exalted',
     'mooltrikona',
     'own',
     'friendly',
   ]
-  if (!strongDignities.includes(l9Dignity) || !strongDignities.includes(l1Dignity))
+  if (!l9StrongDignities.includes(l9Dignity) || !l1StrongDignities.includes(l1Dignity))
     return empty('lakshmi')
 
   const goodHouses = [1, 4, 5, 7, 9, 10]
@@ -334,6 +332,9 @@ function detectLakshmi(ctx: YogaEngineInput): YogaResult {
       ctx.currentDasha?.pratyantar === lord9 || ctx.currentDasha?.pratyantar === lord1,
     dashaUnavailable: !ctx.currentDasha,
   })
+  const afflictionPenalty = scoreAfflictionPenalty({
+    involvedCombust: l9.combust || l1.combust,
+  })
   const breakdown = computeYogaScore({
     planetStrength,
     houseStrength,
@@ -341,7 +342,7 @@ function detectLakshmi(ctx: YogaEngineInput): YogaResult {
     aspect,
     relationship,
     dasha,
-    afflictionPenalty: 0,
+    afflictionPenalty,
     cancellationPenalty: 0,
   })
   const involved: PlanetKey[] = lord9 === lord1 ? [lord9] : [lord9, lord1]
@@ -370,17 +371,19 @@ function detectAmala(ctx: YogaEngineInput): YogaResult {
 
   const fromLagna = getPlanetsInHouseFromLagna(10, ctx.ascendant, ctx.planets, ['Sun'])
   const fromMoon = getPlanetsInHouseFromMoon(10, moon, ctx.planets, ['Sun'])
-  // Find any benefic in either
+  // Classical BPHS Amala Yoga: Jupiter or Venus ONLY in the 10th from Lagna or Moon.
+  // Mercury and waxing Moon are contextual benefics but do NOT qualify for Amala.
+  const isAmalaQualifier = (k: PlanetKey): boolean => k === 'Jupiter' || k === 'Venus'
   const beneficsInTenth: PlanetKey[] = []
   let referenceLabel = ''
   for (const k of fromLagna) {
-    if (isContextualBenefic(k, ctx.planets[k], ctx.planets)) {
+    if (isAmalaQualifier(k)) {
       beneficsInTenth.push(k)
       referenceLabel = '10th from Lagna'
     }
   }
   for (const k of fromMoon) {
-    if (isContextualBenefic(k, ctx.planets[k], ctx.planets)) {
+    if (isAmalaQualifier(k)) {
       if (!beneficsInTenth.includes(k)) beneficsInTenth.push(k)
       if (!referenceLabel) referenceLabel = '10th from Moon'
     }
@@ -449,6 +452,10 @@ function countBeneficsInUpachayas(
       if (k === 'Ascendant') continue
       if (p.signNumber !== sign) continue
       const key = k as PlanetKey
+      // Classical Vasumati: natural benefics = Jupiter, Venus, Mercury.
+      // Waxing Moon is excluded — Moon's benefic nature is conditional and
+      // classical texts do not count Moon among the Vasumati qualifiers.
+      if (key === 'Moon' || key === 'Sun' || key === 'Rahu' || key === 'Ketu') continue
       if (!isContextualBenefic(key, p, ctx.planets)) continue
       if (seen.has(key)) continue
       seen.add(key)
@@ -524,7 +531,6 @@ function detectVasumati(ctx: YogaEngineInput): YogaResult {
 
 export function detectRajYogas(ctx: YogaEngineInput): YogaResult[] {
   return [
-    detectRaj9_10(ctx),
     detectKendraTrikona(ctx),
     detectDharmaKarmadhipati(ctx),
     detectLakshmi(ctx),

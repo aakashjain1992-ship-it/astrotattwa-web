@@ -47,12 +47,25 @@ export const YOGA_LIFE_AREAS: Record<string, LifeArea[]> = {
   shubhaKartari: ['emotional_life', 'health'],
   paapKartari: ['emotional_life', 'health'],
 
+  // Solar yogas
+  vesi: ['career', 'wealth'],
+  vosi: ['wealth', 'spirituality'],
+  ubhayachari: ['career', 'wealth'],
+
+  // Additional yogas
+  adhiYoga: ['career', 'wealth', 'education'],
+  chandraMangal: ['wealth', 'career'],
+  saraswati: ['education', 'career', 'spirituality'],
+
   // Doshas
   kaalSarp: ['emotional_life', 'spirituality', 'family'],
   mangal: ['marriage', 'emotional_life'],
   grahan: ['emotional_life', 'family'],
   angarak: ['emotional_life', 'wealth'],
   vish: ['emotional_life', 'health'],
+  shrapit: ['career', 'emotional_life', 'family'],
+  pitra: ['family', 'spirituality', 'career'],
+  gandanta: ['emotional_life', 'health', 'spirituality'],
 }
 
 export const ALL_LIFE_AREAS: readonly LifeArea[] = [

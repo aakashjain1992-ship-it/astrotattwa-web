@@ -14,6 +14,8 @@ import { detectConjunctionYogas } from './detectors/conjunctionYogas'
 import { detectVipreetRaj } from './detectors/vipreetRaj'
 import { detectRajYogas } from './detectors/rajYogas'
 import { detectSpecialYogas } from './detectors/specialYogas'
+import { detectSolarYogas } from './detectors/solarYogas'
+import { detectAdditionalYogas } from './detectors/additionalYogas'
 import { detectDoshas } from './detectors/doshas'
 
 import { applyDisplayRules } from './displayRules'
@@ -63,10 +65,12 @@ export function analyzeYogas(input: YogaEngineInput): YogaAnalysisResponse {
   const allRawYogas: YogaResult[] = [
     ...detectPanchaMahapurusha(input),
     ...detectMoonYogas(input),
+    ...detectSolarYogas(input),
     ...detectConjunctionYogas(input),
     ...detectVipreetRaj(input),
     ...detectRajYogas(input),
     ...detectSpecialYogas(input),
+    ...detectAdditionalYogas(input),
   ]
   const allRawDoshas: DoshaResult[] = detectDoshas(input)
 

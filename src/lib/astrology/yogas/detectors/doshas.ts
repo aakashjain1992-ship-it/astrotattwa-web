@@ -1,21 +1,27 @@
 /**
- * Doshas (5):
+ * Doshas (8):
  *   - Kaal Sarp
  *   - Mangal
  *   - Grahan
  *   - Angarak (Mars + Rahu)
  *   - Vish (Moon + Saturn)
+ *   - Shrapit (Saturn + Rahu)
+ *   - Pitra (Sun + 9th house affliction)
+ *   - Gandanta (planet/Lagna near water→fire sign junction)
  */
 
 import type { PlanetKey, PlanetData } from '@/types/astrology'
 import type { DoshaResult, YogaEngineInput } from '../types'
 import {
   KENDRA_HOUSES,
+  DUSTHANA_HOUSES,
+  UPACHAYA_HOUSES,
   getPlanetHouseFromLagna,
   getHouseFromReference,
   getHouseLord,
   getDignity,
   isExalted,
+  isDebilitated,
   planetAspectsPlanet,
   degreeDiff,
   ordinalSuffix,
@@ -31,11 +37,11 @@ import { DOSHA_MEANINGS } from '../meanings'
 function buildKaalSarpNarrative(
   rahuSign: string, rahuHouse: number,
   ketuSign: string, ketuHouse: number,
-  isFull: boolean, isReduced: boolean,
+  isReduced: boolean,
 ): string {
   const parts: string[] = []
   parts.push(
-    `In your chart, Rahu is in ${rahuSign} (${ordinalSuffix(rahuHouse)} house) and Ketu is in ${ketuSign} (${ordinalSuffix(ketuHouse)} house). ${isFull ? 'All seven visible planets fall on one side of the Rahu-Ketu axis' : 'Six of the seven visible planets fall on one side of the Rahu-Ketu axis (partial Kaal Sarp)'} — the condition for Kaal Sarp Yoga.`
+    `In your chart, Rahu is in ${rahuSign} (${ordinalSuffix(rahuHouse)} house) and Ketu is in ${ketuSign} (${ordinalSuffix(ketuHouse)} house). All seven visible planets fall on one side of the Rahu-Ketu axis — the classical condition for Kaal Sarp Dosha.`
   )
   parts.push(
     `This axis defines the primary tension in your chart between worldly ambition and spiritual release. Planets hemmed within this axis tend to experience their results more intensely — with periods of significant focus and momentum, as well as periods where things feel held back or directed by forces beyond your control. There can be a quality of fateful patterning in life events, particularly around the themes of the houses Rahu and Ketu occupy.`
@@ -221,15 +227,15 @@ function detectKaalSarp(ctx: YogaEngineInput): DoshaResult {
   }
 
   const total = visiblePlanets.length
+  // Classical rule: ALL 7 visible planets must be on one side of the Rahu-Ketu axis.
+  // One planet outside the axis breaks the formation — partial Kaal Sarp is a modern
+  // popularisation not found in classical texts and produces false positives.
   const isFull = inRahuKetuArc === total || inKetuRahuArc === total
-  const isPartial =
-    !isFull && (inRahuKetuArc === total - 1 || inKetuRahuArc === total - 1)
 
-  if (!isFull && !isPartial) return emptyDosha('kaalSarp')
+  if (!isFull) return emptyDosha('kaalSarp')
 
   // Cancellation factors
   let relief = 0
-  if (isPartial) relief += 12
   // Strong Lagna lord
   const lagnaLordKey = getHouseLord(1, ctx.ascendant)
   const lagnaLord = ctx.planets[lagnaLordKey]
@@ -245,8 +251,8 @@ function detectKaalSarp(ctx: YogaEngineInput): DoshaResult {
     if (ctx.planets.Moon && planetAspectsPlanet('Jupiter', jup, ctx.planets.Moon)) relief += 6
   }
 
-  const placement = isFull ? 18 : 10
-  const orbCloseness = isFull ? 12 : 6
+  const placement = 18
+  const orbCloseness = 12
   const intensity = 8
   const afflictionBoost = (() => {
     let b = 0
@@ -275,13 +281,11 @@ function detectKaalSarp(ctx: YogaEngineInput): DoshaResult {
     score: breakdown.final,
     severity: getSeverityLabel(breakdown.final),
     scoreBreakdown: breakdown,
-    technicalReason: isFull
-      ? 'All seven visible planets are on one side of the Rahu-Ketu axis.'
-      : `Six of seven visible planets are on one side of the Rahu-Ketu axis (partial).`,
+    technicalReason: 'All seven visible planets are on one side of the Rahu-Ketu axis.',
     chartNarrative: buildKaalSarpNarrative(
       rahu.sign, getPlanetHouseFromLagna(rahu, ctx.ascendant),
       ketu.sign, getPlanetHouseFromLagna(ketu, ctx.ascendant),
-      isFull, relief >= 12,
+      relief >= 12,
     ),
     planetsInvolved: ['Rahu', 'Ketu'],
     housesInvolved: [
@@ -292,7 +296,6 @@ function detectKaalSarp(ctx: YogaEngineInput): DoshaResult {
     currentlyActive:
       ctx.currentDasha?.mahadasha === 'Rahu' || ctx.currentDasha?.mahadasha === 'Ketu',
     isReduced: relief >= 12,
-    meta: { isFull, isPartial },
   }
 }
 
@@ -604,6 +607,578 @@ function detectVish(ctx: YogaEngineInput): DoshaResult {
   }
 }
 
+// ---------- Shrapit (Saturn + Rahu) ----------
+
+const SHRAPIT_HOUSE_THEME: Record<number, string> = {
+  1: 'the 1st house — the house of self, personality, and overall life direction',
+  4: 'the 4th house — the house of home, emotional roots, and family security',
+  5: 'the 5th house — the house of intelligence, creativity, and children',
+  7: 'the 7th house — the house of partnerships, marriage, and public dealings',
+  8: 'the 8th house — the house of deep transformation, hidden matters, and longevity',
+  10: 'the 10th house — the house of career, authority, and social standing',
+  11: 'the 11th house — the house of gains, aspirations, and long-term goals',
+}
+
+function buildShrapitNarrative(
+  satSign: string, rahuSign: string, house: number, orb: number,
+  isKendra: boolean, affectsLagnaMoon10: boolean,
+  isReduced: boolean,
+): string {
+  const parts: string[] = []
+  const houseTheme = SHRAPIT_HOUSE_THEME[house] ?? `the ${ordinalSuffix(house)} house`
+  parts.push(
+    `In your chart, Saturn and Rahu are conjunct in ${satSign} in ${houseTheme} (orb ${orb.toFixed(1)}°). This is the condition for Shrapit Dosha — the meeting of Saturn (discipline, karma, delay) and Rahu (amplification, ambition, restlessness) in the same sign.`
+  )
+  parts.push(
+    `This pattern shows a strong karmic pressure signature: Saturn's need for slow, steady effort meets Rahu's intense, boundary-crossing desire. In practical terms, this can manifest as a feeling of working harder than others for equivalent results, periods of delay before recognition, overthinking combined with high ambition, and a tendency to carry responsibility early in life. There can also be sudden shifts — periods of standstill followed by rapid movement.`
+  )
+  if (isKendra || affectsLagnaMoon10) {
+    parts.push(
+      `The placement in ${affectsLagnaMoon10 ? 'a personally sensitive area of your chart' : 'an angular house'} increases the visibility of this pattern — its influence is likely to be felt in how you present yourself, how your career unfolds, or how relationships and home life are structured.`
+    )
+  }
+  parts.push(
+    `The same combination that creates pressure also builds endurance. Over time, Saturn-Rahu can produce deep maturity, the ability to survive difficult circumstances, and — when Saturn is well-placed or Jupiter provides support — a steady, authoritative rise that comes from genuine perseverance rather than luck.`
+  )
+  if (isReduced) {
+    parts.push(
+      `Your chart has meaningful relief conditions — Jupiter's aspect, a strong Saturn, or Rahu in an upachaya house — which moderate the pressure of this combination. The pattern exists but operates in a softened form.`
+    )
+  }
+  return parts.join('\n\n')
+}
+
+function detectShrapit(ctx: YogaEngineInput): DoshaResult {
+  const m = DOSHA_MEANINGS.shrapit
+  const sat = ctx.planets.Saturn
+  const rahu = ctx.planets.Rahu
+  if (!sat || !rahu || sat.signNumber !== rahu.signNumber) return emptyDosha('shrapit')
+
+  const orb = degreeDiff(sat.longitude, rahu.longitude)
+  const house = getPlanetHouseFromLagna(sat, ctx.ascendant)
+
+  // Placement severity: where Saturn+Rahu sit
+  let placement: number
+  if (KENDRA_HOUSES.includes(house as 1 | 4 | 7 | 10)) placement = 18
+  else if (DUSTHANA_HOUSES.includes(house as 6 | 8 | 12)) placement = 12
+  else placement = 10
+
+  // Orb closeness
+  let orbCloseness: number
+  if (orb <= 3) orbCloseness = 15
+  else if (orb <= 6) orbCloseness = 12
+  else if (orb <= 12) orbCloseness = 8
+  else orbCloseness = 4
+
+  // Affliction boost — Lagna/Moon/10th are specifically sensitive per the spec
+  let afflictionBoost = 0
+  const isKendra = KENDRA_HOUSES.includes(house as 1 | 4 | 7 | 10)
+  const moonHouse = ctx.planets.Moon
+    ? getPlanetHouseFromLagna(ctx.planets.Moon, ctx.ascendant)
+    : -1
+  const affectsLagna = house === 1
+  const affectsMoon = house === moonHouse
+  const affects10th = house === 10
+  if (affectsLagna) afflictionBoost += 5
+  if (affectsMoon) afflictionBoost += 5
+  if (affects10th && !affectsLagna) afflictionBoost += 3
+  // Kendra positions (4 and 7) still get a smaller bump if not already covered
+  if (isKendra && !affectsLagna && !affects10th) afflictionBoost += 3
+  afflictionBoost = Math.min(15, afflictionBoost)
+
+  // Cancellation relief
+  let relief = 0
+  const jup = ctx.planets.Jupiter
+  if (jup) {
+    if (planetAspectsPlanet('Jupiter', jup, sat)) relief += 6
+    if (planetAspectsPlanet('Jupiter', jup, rahu)) relief += 4
+  }
+  // Rahu in upachaya (3/6/10/11) — Rahu is less destructive here
+  if (UPACHAYA_HOUSES.includes(house as 3 | 6 | 10 | 11)) relief += 4
+  // Saturn in own/exalted sign — disciplined, less chaotic
+  const satDignity = getDignity('Saturn', sat)
+  if (satDignity === 'exalted' || satDignity === 'own' || satDignity === 'mooltrikona') relief += 5
+  // Strong Lagna lord
+  const lagnaLordKey = getHouseLord(1, ctx.ascendant)
+  const lagnaLord = ctx.planets[lagnaLordKey]
+  if (lagnaLord) {
+    const d = getDignity(lagnaLordKey, lagnaLord)
+    if (d === 'exalted' || d === 'own' || d === 'mooltrikona') relief += 5
+  }
+
+  const breakdown = computeDoshaScore({
+    placementSeverity: placement,
+    orbCloseness,
+    planetIntensity: 8,
+    afflictionBoost,
+    lifeAreaImpact: 6,
+    cancellationRelief: relief,
+  })
+
+  // Minimum threshold per spec — very weak cases are not shown
+  if (breakdown.final < 35) return emptyDosha('shrapit')
+
+  return {
+    id: 'shrapit',
+    name: m.name,
+    category: 'dosha',
+    nature: 'challenging',
+    present: true,
+    score: breakdown.final,
+    severity: getSeverityLabel(breakdown.final),
+    scoreBreakdown: breakdown,
+    technicalReason: `Saturn conjunct Rahu in ${sat.sign} (${ordinalSuffix(house)} house, orb ${orb.toFixed(1)}°).`,
+    chartNarrative: buildShrapitNarrative(
+      sat.sign, rahu.sign, house, orb,
+      isKendra, affectsLagna || affectsMoon || affects10th,
+      relief >= 10,
+    ),
+    planetsInvolved: ['Saturn', 'Rahu'],
+    housesInvolved: [house],
+    lifeAreas: m.defaultLifeAreas,
+    currentlyActive:
+      ctx.currentDasha?.mahadasha === 'Saturn' || ctx.currentDasha?.mahadasha === 'Rahu',
+    isReduced: relief >= 10,
+    meta: { orb, house, isKendra, affectsLagna, affectsMoon, affects10th },
+  }
+}
+
+// ---------- Pitra (Sun + 9th house affliction) ----------
+
+function buildPitraNarrative(
+  sunSign: string, sunHouse: number,
+  sunNodeConj: boolean, conjNode: string | null, conjOrb: number | null,
+  sunAfflicted: boolean, afflictingPlanets: string[],
+  ninthLordSign: string, ninthLordHouse: number,
+  maleficsIn9th: string[],
+  isReduced: boolean,
+): string {
+  const parts: string[] = []
+
+  // Opening — what's in the chart
+  const sunSignals: string[] = []
+  if (sunNodeConj && conjNode) {
+    sunSignals.push(`Sun conjunct ${conjNode} in ${sunSign} (orb ${conjOrb?.toFixed(1)}°)`)
+  }
+  if (sunAfflicted && afflictingPlanets.length > 0) {
+    sunSignals.push(`Sun under the influence of ${afflictingPlanets.join(' and ')}`)
+  }
+  const ninthSignals: string[] = []
+  if (maleficsIn9th.length > 0) {
+    ninthSignals.push(`${maleficsIn9th.join(' and ')} in the 9th house`)
+  }
+  if (DUSTHANA_HOUSES.includes(ninthLordHouse as 6 | 8 | 12)) {
+    ninthSignals.push(`9th lord in the ${ordinalSuffix(ninthLordHouse)} house`)
+  }
+
+  parts.push(
+    `In your chart, this pattern is indicated by: ${[...sunSignals, ...ninthSignals].join('; ')}. Pitra Dosha is not a single planetary condition but a convergence — it requires both the Sun (representing the father, authority, and lineage) and the 9th house/lord (representing dharma, ancestors, and blessings) to be under stress simultaneously.`
+  )
+  parts.push(
+    `In real terms, this pattern can show as a complex or evolving relationship with the father or authority figures, a sense of carrying family responsibility, a disconnect from inherited traditions, or a feeling that you must build your own path rather than follow one that was laid out. It can also indicate a strong pull toward understanding your roots and lineage more consciously over time.`
+  )
+  parts.push(
+    `Different astrology traditions define this pattern differently — treat this as an indicative tendency, not a fixed outcome. Many people with this pattern go on to develop deep spiritual awareness, break generational cycles constructively, and build their own dharma that is more meaningful than the one they inherited.`
+  )
+  if (isReduced) {
+    parts.push(
+      `Jupiter's support — either aspecting the Sun, the 9th house, or the 9th lord — provides meaningful protection here. This is the classical relief condition for Pitra Dosha and significantly reduces the pattern's challenging dimension.`
+    )
+  }
+  return parts.join('\n\n')
+}
+
+function detectPitra(ctx: YogaEngineInput): DoshaResult {
+  const m = DOSHA_MEANINGS.pitra
+  const sun = ctx.planets.Sun
+  const rahu = ctx.planets.Rahu
+  const ketu = ctx.planets.Ketu
+  const jup = ctx.planets.Jupiter
+  if (!sun) return emptyDosha('pitra')
+
+  // ── Pillar 1: Sun disturbance ──────────────────────────────────────────────
+
+  // 1a. Sun conjunct Rahu or Ketu (same sign)
+  let sunNodeConj = false
+  let conjNode: PlanetKey | null = null
+  let conjOrb = 0
+  if (rahu && sun.signNumber === rahu.signNumber) {
+    sunNodeConj = true
+    conjNode = 'Rahu'
+    conjOrb = degreeDiff(sun.longitude, rahu.longitude)
+  } else if (ketu && sun.signNumber === ketu.signNumber) {
+    sunNodeConj = true
+    conjNode = 'Ketu'
+    conjOrb = degreeDiff(sun.longitude, ketu.longitude)
+  }
+
+  // 1b. Sun debilitated (Libra = signNumber 7)
+  const sunDebilitated = sun.signNumber === 7
+
+  // 1c. Malefic (Saturn or Mars) conjunct Sun or aspecting Sun
+  const MALEFIC_KEYS: PlanetKey[] = ['Saturn', 'Mars', 'Rahu', 'Ketu']
+  const afflictingPlanets: PlanetKey[] = []
+  for (const key of MALEFIC_KEYS) {
+    const p = ctx.planets[key]
+    if (!p) continue
+    if (p.signNumber === sun.signNumber) {
+      // Rahu/Ketu conjunct already captured above — avoid double-counting for affliction list
+      if (key !== 'Rahu' && key !== 'Ketu') afflictingPlanets.push(key)
+    } else if (key !== 'Rahu' && key !== 'Ketu' && planetAspectsPlanet(key, p, sun)) {
+      afflictingPlanets.push(key)
+    }
+  }
+  const sunAfflicted = sunDebilitated || afflictingPlanets.length > 0
+
+  const sunDisturbed = sunNodeConj || sunAfflicted
+
+  // ── Pillar 2: 9th house / 9th lord disturbance ────────────────────────────
+
+  // 2a. Malefics in the 9th house
+  const STRONG_MALEFICS: PlanetKey[] = ['Saturn', 'Mars', 'Rahu', 'Ketu']
+  const maleficsIn9th: PlanetKey[] = []
+  for (const key of STRONG_MALEFICS) {
+    const p = ctx.planets[key]
+    if (p && getPlanetHouseFromLagna(p, ctx.ascendant) === 9) {
+      maleficsIn9th.push(key)
+    }
+  }
+
+  // 2b. 9th lord placement and condition
+  const ninthLordKey = getHouseLord(9, ctx.ascendant)
+  const ninthLord = ctx.planets[ninthLordKey]
+  const ninthLordHouse = ninthLord ? getPlanetHouseFromLagna(ninthLord, ctx.ascendant) : 0
+  const ninthLordInDusthana = ninthLord
+    ? DUSTHANA_HOUSES.includes(ninthLordHouse as 6 | 8 | 12)
+    : false
+  const ninthLordDignity = ninthLord ? getDignity(ninthLordKey, ninthLord) : null
+  const ninthLordDebilitated = ninthLordDignity === 'debilitated'
+
+  // 2c. Is 9th lord conjunct a malefic?
+  let ninthLordConjMalefic = false
+  if (ninthLord) {
+    for (const key of STRONG_MALEFICS) {
+      const p = ctx.planets[key]
+      if (p && p.signNumber === ninthLord.signNumber) {
+        ninthLordConjMalefic = true
+        break
+      }
+    }
+  }
+
+  const ninthAfflicted =
+    maleficsIn9th.length >= 1 || ninthLordInDusthana || ninthLordDebilitated || ninthLordConjMalefic
+
+  // ── Must have BOTH pillars (per spec) ────────────────────────────────────
+  if (!sunDisturbed || !ninthAfflicted) return emptyDosha('pitra')
+
+  // ── Score ─────────────────────────────────────────────────────────────────
+
+  // placementSeverity: highest single primary signal
+  let placement: number
+  if (sunNodeConj) placement = 15
+  else if (ninthLordInDusthana) placement = 12
+  else placement = 8
+
+  // orbCloseness: based on Sun-node orb if conjunction present
+  let orbCloseness = 0
+  if (sunNodeConj) {
+    if (conjOrb <= 3) orbCloseness = 12
+    else if (conjOrb <= 6) orbCloseness = 10
+    else if (conjOrb <= 12) orbCloseness = 6
+    else orbCloseness = 3
+  }
+
+  // afflictionBoost: 9th house malefics (weighted by planet)
+  let afflictionBoost = 0
+  for (const key of maleficsIn9th) {
+    if (key === 'Ketu') afflictionBoost += 8        // Ketu in 9th = strongest Pitra signal
+    else if (key === 'Rahu') afflictionBoost += 6
+    else if (key === 'Saturn') afflictionBoost += 5
+    else if (key === 'Mars') afflictionBoost += 4
+  }
+  if (ninthLordDebilitated) afflictionBoost += 5
+  if (ninthLordConjMalefic) afflictionBoost += 4
+  if (sunDebilitated) afflictionBoost += 4
+  if (afflictingPlanets.length > 0) afflictionBoost += Math.min(6, afflictingPlanets.length * 3)
+  afflictionBoost = Math.min(15, afflictionBoost)
+
+  // Cancellation relief
+  let relief = 0
+  if (jup) {
+    // Jupiter in 9th house
+    if (getPlanetHouseFromLagna(jup, ctx.ascendant) === 9) relief += 10
+    // Jupiter aspects 9th lord
+    if (ninthLord && planetAspectsPlanet('Jupiter', jup, ninthLord)) relief += 8
+    // Jupiter aspects Sun
+    if (planetAspectsPlanet('Jupiter', jup, sun)) relief += 6
+  }
+  // 9th lord strong (own/exalted)
+  if (ninthLordDignity === 'exalted' || ninthLordDignity === 'own' || ninthLordDignity === 'mooltrikona') {
+    relief += 6
+  }
+  relief = Math.min(30, relief)
+
+  const breakdown = computeDoshaScore({
+    base: 20,  // lower base — medium/low confidence dosha
+    placementSeverity: placement,
+    orbCloseness,
+    planetIntensity: 6,
+    afflictionBoost,
+    lifeAreaImpact: 6,
+    cancellationRelief: relief,
+  })
+
+  // Minimum threshold per spec
+  if (breakdown.final < 35) return emptyDosha('pitra')
+
+  // currentlyActive: active when running Sun, Ketu (if Ketu triggered), or Saturn (if Saturn afflicted) MD
+  const activeMahadashas: Set<string> = new Set(['Sun'])
+  if (conjNode === 'Ketu' || maleficsIn9th.includes('Ketu')) activeMahadashas.add('Ketu')
+  if (maleficsIn9th.includes('Saturn') || afflictingPlanets.includes('Saturn')) activeMahadashas.add('Saturn')
+  const currentlyActive = !!ctx.currentDasha?.mahadasha &&
+    activeMahadashas.has(ctx.currentDasha.mahadasha)
+
+  const sunHouse = getPlanetHouseFromLagna(sun, ctx.ascendant)
+
+  return {
+    id: 'pitra',
+    name: m.name,
+    category: 'dosha',
+    nature: 'challenging',
+    present: true,
+    score: breakdown.final,
+    severity: getSeverityLabel(breakdown.final),
+    scoreBreakdown: breakdown,
+    technicalReason: [
+      sunNodeConj ? `Sun conjunct ${conjNode} (orb ${conjOrb.toFixed(1)}°)` : null,
+      sunDebilitated ? 'Sun debilitated in Libra' : null,
+      afflictingPlanets.length > 0 ? `Sun afflicted by ${afflictingPlanets.join(', ')}` : null,
+      maleficsIn9th.length > 0 ? `${maleficsIn9th.join(', ')} in 9th house` : null,
+      ninthLordInDusthana ? `9th lord in ${ordinalSuffix(ninthLordHouse)} house` : null,
+      ninthLordDebilitated ? '9th lord debilitated' : null,
+    ].filter(Boolean).join('; '),
+    chartNarrative: buildPitraNarrative(
+      sun.sign, sunHouse,
+      sunNodeConj, conjNode, conjOrb,
+      sunAfflicted, afflictingPlanets,
+      ninthLord?.sign ?? '', ninthLordHouse,
+      maleficsIn9th,
+      relief >= 10,
+    ),
+    planetsInvolved: Array.from(new Set<PlanetKey>([
+      'Sun',
+      ...(conjNode ? [conjNode] : []),
+      ...maleficsIn9th,
+      ...afflictingPlanets,
+    ])),
+    housesInvolved: Array.from(new Set([sunHouse, 9])),
+    lifeAreas: m.defaultLifeAreas,
+    currentlyActive,
+    isReduced: relief >= 10,
+    meta: {
+      sunNodeConj, conjNode, conjOrb,
+      sunDebilitated, afflictingPlanets,
+      maleficsIn9th, ninthLordHouse, ninthLordInDusthana,
+    },
+  }
+}
+
+// ---------- Gandanta (water→fire sign junction) ----------
+
+// Water signs whose last 3° are Gandanta: Cancer=4, Scorpio=8, Pisces=12
+const GANDANTA_WATER_SIGNS = new Set([4, 8, 12])
+// Fire signs whose first 3° are Gandanta: Aries=1, Leo=5, Sagittarius=9
+const GANDANTA_FIRE_SIGNS = new Set([1, 5, 9])
+const GANDANTA_ORB = 3 // degrees
+
+const GANDANTA_JUNCTION_NAME: Record<number, string> = {
+  4: 'Cancer/Leo (Ashlesha/Magha nakshatra junction)',
+  8: 'Scorpio/Sagittarius (Jyeshtha/Mula nakshatra junction)',
+  12: 'Pisces/Aries (Revati/Ashwini nakshatra junction)',
+  1: 'Pisces/Aries (Revati/Ashwini nakshatra junction)',
+  5: 'Cancer/Leo (Ashlesha/Magha nakshatra junction)',
+  9: 'Scorpio/Sagittarius (Jyeshtha/Mula nakshatra junction)',
+}
+
+interface GandantaItem {
+  label: string
+  key: string   // planet key or 'Lagna'
+  signNumber: number
+  degInSign: number
+  proximity: number // degrees from junction (lower = more severe)
+  isLuminary: boolean  // Sun, Moon, or Lagna
+}
+
+function getGandantaProximity(signNumber: number, longitude: number): number | null {
+  const degInSign = longitude % 30
+  if (GANDANTA_WATER_SIGNS.has(signNumber)) {
+    const proximity = 30 - degInSign   // distance to end of sign
+    if (proximity <= GANDANTA_ORB) return proximity
+  }
+  if (GANDANTA_FIRE_SIGNS.has(signNumber)) {
+    if (degInSign <= GANDANTA_ORB) return degInSign
+  }
+  return null
+}
+
+function buildGandantaNarrative(items: GandantaItem[], isReduced: boolean): string {
+  const parts: string[] = []
+  const labels = items.map((i) => {
+    const side = GANDANTA_WATER_SIGNS.has(i.signNumber) ? 'last' : 'first'
+    return `${i.label} at ${i.proximity.toFixed(1)}° from the junction (${side} degrees of the sign)`
+  })
+  const junction = GANDANTA_JUNCTION_NAME[items[0].signNumber] ?? 'a water-fire sign junction'
+  parts.push(
+    `${labels.join(', ')} ${items.length === 1 ? 'is' : 'are'} placed in the Gandanta zone — within ${GANDANTA_ORB}° of the ${junction}. In Vedic astrology, the junctions between water and fire signs are considered sensitive degree areas, where the energy shifts from dissolution (water sign's ending) to emergence (fire sign's beginning).`
+  )
+  parts.push(
+    `Planets or the Lagna in these degrees are said to occupy a point of transition rather than stable sign territory. This can describe qualities of inner complexity, a life that moves through significant phases of transformation, and at times a sense of standing between two states rather than being settled in one. The Moon and Lagna are most significant here; other planets carry weight proportional to their role in the chart.`
+  )
+  if (isReduced) {
+    parts.push(
+      `Jupiter's aspect on the Gandanta planet or Lagna provides meaningful protection — Jupiter's wisdom and stability can help navigate the sensitivity of these degrees constructively.`
+    )
+  }
+  return parts.join('\n\n')
+}
+
+function detectGandanta(ctx: YogaEngineInput): DoshaResult {
+  const m = DOSHA_MEANINGS.gandanta
+  const items: GandantaItem[] = []
+
+  // Check each classical planet
+  const planetChecks: Array<{ key: PlanetKey; label: string; isLuminary: boolean }> = [
+    { key: 'Sun', label: 'Sun', isLuminary: true },
+    { key: 'Moon', label: 'Moon', isLuminary: true },
+    { key: 'Mars', label: 'Mars', isLuminary: false },
+    { key: 'Mercury', label: 'Mercury', isLuminary: false },
+    { key: 'Jupiter', label: 'Jupiter', isLuminary: false },
+    { key: 'Venus', label: 'Venus', isLuminary: false },
+    { key: 'Saturn', label: 'Saturn', isLuminary: false },
+  ]
+  for (const { key, label, isLuminary } of planetChecks) {
+    const p = ctx.planets[key]
+    if (!p) continue
+    const proximity = getGandantaProximity(p.signNumber, p.longitude)
+    if (proximity !== null) {
+      items.push({ label, key, signNumber: p.signNumber, degInSign: p.longitude % 30, proximity, isLuminary })
+    }
+  }
+
+  // Check Lagna
+  const lagnaProximity = getGandantaProximity(ctx.ascendant.signNumber, ctx.ascendant.longitude)
+  if (lagnaProximity !== null) {
+    items.push({
+      label: 'Lagna',
+      key: 'Lagna',
+      signNumber: ctx.ascendant.signNumber,
+      degInSign: ctx.ascendant.longitude % 30,
+      proximity: lagnaProximity,
+      isLuminary: true,  // Lagna counts as luminary-level significance
+    })
+  }
+
+  if (items.length === 0) return emptyDosha('gandanta')
+
+  // Sort by severity: luminaries first, then by proximity (closer = more severe)
+  items.sort((a, b) => {
+    if (a.isLuminary !== b.isLuminary) return a.isLuminary ? -1 : 1
+    return a.proximity - b.proximity
+  })
+
+  const primary = items[0]
+  const minProximity = primary.proximity
+
+  // Placement severity based on what's in Gandanta
+  const hasLuminaryOrLagna = items.some((i) => i.isLuminary)
+  const luminaries = items.filter((i) => i.isLuminary)
+  let placementSeverity = 0
+  for (const item of items) {
+    if (item.key === 'Moon' || item.key === 'Lagna') placementSeverity += 8
+    else if (item.key === 'Sun') placementSeverity += 6
+    else placementSeverity += 3
+  }
+  placementSeverity = Math.min(20, placementSeverity)
+
+  // Orb closeness: closer to junction = more severe
+  let orbCloseness: number
+  if (minProximity <= 0.5) orbCloseness = 12
+  else if (minProximity <= 1) orbCloseness = 10
+  else if (minProximity <= 2) orbCloseness = 7
+  else orbCloseness = 4
+
+  // Planet intensity: luminaries in Gandanta are more significant
+  const planetIntensity = hasLuminaryOrLagna ? 8 : 4
+
+  // Extra boost for multiple planets in Gandanta
+  const afflictionBoost = Math.min(8, (items.length - 1) * 3)
+
+  // Life area impact
+  const lifeAreaImpact = hasLuminaryOrLagna ? 7 : 4
+
+  // Cancellation relief: Jupiter strongly placed and aspecting the primary Gandanta item
+  let relief = 0
+  const jup = ctx.planets.Jupiter
+  const jupNotInGandanta = jup && getGandantaProximity(jup.signNumber, jup.longitude) === null
+  if (jup && jupNotInGandanta) {
+    const primaryData = primary.key !== 'Lagna' ? ctx.planets[primary.key as PlanetKey] : null
+    if (primaryData && planetAspectsPlanet('Jupiter', jup, primaryData)) relief += 10
+    // Jupiter in Kendra
+    const jupHouse = getPlanetHouseFromLagna(jup, ctx.ascendant)
+    if (KENDRA_HOUSES.includes(jupHouse as 1 | 4 | 7 | 10)) relief += 5
+  }
+  relief = Math.min(15, relief)
+
+  const breakdown = computeDoshaScore({
+    base: 15,
+    placementSeverity,
+    orbCloseness,
+    planetIntensity,
+    afflictionBoost,
+    lifeAreaImpact,
+    cancellationRelief: relief,
+  })
+
+  // Suppress very weak cases (e.g. only an outer planet at 2.5° from junction)
+  if (breakdown.final < 20) return emptyDosha('gandanta')
+
+  // currentlyActive: during the Mahadasha of any Gandanta planet
+  const gandantaKeys = items.map((i) => i.key)
+  const currentlyActive =
+    (!!ctx.currentDasha?.mahadasha && gandantaKeys.includes(ctx.currentDasha.mahadasha)) ||
+    (primary.key === 'Lagna' && !!ctx.currentDasha?.mahadasha)
+
+  const planetsInvolved = items
+    .filter((i) => i.key !== 'Lagna')
+    .map((i) => i.key as PlanetKey)
+
+  return {
+    id: 'gandanta',
+    name: m.name,
+    category: 'dosha',
+    nature: 'challenging',
+    present: true,
+    score: breakdown.final,
+    severity: getSeverityLabel(breakdown.final),
+    scoreBreakdown: breakdown,
+    technicalReason: items
+      .map((i) => {
+        const side = GANDANTA_WATER_SIGNS.has(i.signNumber) ? 'last' : 'first'
+        return `${i.label} in ${side} ${i.proximity.toFixed(1)}° of sign ${i.signNumber}`
+      })
+      .join('; '),
+    chartNarrative: buildGandantaNarrative(items, relief >= 10),
+    planetsInvolved,
+    housesInvolved: planetsInvolved.map((k) =>
+      getPlanetHouseFromLagna(ctx.planets[k]!, ctx.ascendant),
+    ),
+    lifeAreas: m.defaultLifeAreas,
+    currentlyActive,
+    isReduced: relief >= 10,
+  }
+}
+
 export function detectDoshas(ctx: YogaEngineInput): DoshaResult[] {
   return [
     detectKaalSarp(ctx),
@@ -611,5 +1186,8 @@ export function detectDoshas(ctx: YogaEngineInput): DoshaResult[] {
     detectGrahan(ctx),
     detectAngarak(ctx),
     detectVish(ctx),
+    detectShrapit(ctx),
+    detectPitra(ctx),
+    detectGandanta(ctx),
   ]
 }

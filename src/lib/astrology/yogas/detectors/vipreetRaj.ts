@@ -118,6 +118,8 @@ function detectOne(spec: VipreetSpec, ctx: YogaEngineInput): YogaResult {
 
   const lordHouse = getPlanetHouseFromLagna(lordData, ctx.ascendant)
   if (!(DUSTHANA_HOUSES as readonly number[]).includes(lordHouse)) return empty(spec.id)
+  // Must be in a DIFFERENT dusthana — lord in its own house is not Vipreet Raj
+  if (lordHouse === spec.ruledHouse) return empty(spec.id)
 
   const dignity = getDignity(lord, lordData)
   const planetStrength = scorePlanetCondition({ dignity, combust: lordData.combust })

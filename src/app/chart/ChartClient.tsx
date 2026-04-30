@@ -24,6 +24,9 @@ import { SadeSatiTableView } from '@/components/chart/sadesati/SadeSatiTableView
 import { PlanetsTab } from '@/components/chart/PlanetsTab';
 import { YogasTab } from '@/components/chart/yogas/YogasTab';
 import type { YogaAnalysisResponse } from '@/lib/astrology/yogas/types';
+import { StrengthTab } from '@/components/chart/strength/StrengthTab';
+import type { ShadbalaResult } from '@/lib/astrology/shadbala';
+import type { AshtakavargaResult } from '@/lib/astrology/ashtakavarga';
 
 // Import proper types from astrology module
 import type {  PlanetData, AscendantData, ChartData, } from '@/types/astrology';
@@ -42,7 +45,7 @@ import { DeleteChartDialog } from '@/components/chart/DeleteChartDialog';
 
 
 
-type TabType = 'overview' | 'planets' | 'yogas' | 'dasha' | 'divisional' | 'sadesati';
+type TabType = 'overview' | 'planets' | 'yogas' | 'dasha' | 'divisional' | 'sadesati' | 'strength';
 type MobileSubTab = 'planets' | 'avakahada';
 
 // ============================================
@@ -241,6 +244,20 @@ export default function ChartClient() {
     });
   }, []);
 
+  const handleStrengthReady = useCallback(
+    (shadBala: ShadbalaResult, ashtakavarga: AshtakavargaResult) => {
+      setChartData((prev) => {
+        if (!prev) return prev;
+        const updated = { ...prev, shadBala, ashtakavarga };
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+        } catch {}
+        return updated;
+      });
+    },
+    [],
+  );
+
   // Modal state
   const [saveModalOpen, setSaveModalOpen] = useState(false);
   const [editLabelModalOpen, setEditLabelModalOpen] = useState(false);
@@ -253,7 +270,7 @@ export default function ChartClient() {
   const tabParam = searchParams.get('tab') as TabType | null;
 
   useEffect(() => {
-    if (tabParam === 'overview' || tabParam === 'planets' || tabParam === 'yogas' || tabParam === 'dasha' || tabParam === 'divisional' || tabParam === 'sadesati') {
+    if (tabParam === 'overview' || tabParam === 'planets' || tabParam === 'yogas' || tabParam === 'dasha' || tabParam === 'divisional' || tabParam === 'sadesati' || tabParam === 'strength') {
       setActiveTab(tabParam);
     } else {
       setActiveTab('overview');
@@ -684,6 +701,12 @@ export default function ChartClient() {
           {chartData.saturnTransits?.sadeSati.current.isActive && ( <span className="ml-2 inline-flex h-2 w-2 rounded-full bg-orange-500 animate-pulse" />
           )}
           </TabButton>
+          <TabButton
+            active={activeTab === 'strength'}
+            onClick={() => setTab('strength')}
+          >
+            Strength
+          </TabButton>
         </div>
 
         {/* Tab Content */}
@@ -751,7 +774,7 @@ export default function ChartClient() {
 
      {activeTab === 'sadesati' && (
   <div className="animate-fade-in">
-    <SadeSatiTableView 
+    <SadeSatiTableView
       analysis={chartData.saturnTransits}
       birthDate={new Date(chartData.calculated.localDateTime)}
       planets={chartData.planets}
@@ -764,7 +787,13 @@ export default function ChartClient() {
     />
   </div>
 )}
-        
+
+        {activeTab === 'strength' && (
+          <div className="animate-fade-in">
+            <StrengthTab chart={chartData} onStrengthReady={handleStrengthReady} />
+          </div>
+        )}
+
       </main>
 
       {/* Footer */}
