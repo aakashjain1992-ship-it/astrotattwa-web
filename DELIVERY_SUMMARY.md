@@ -50,13 +50,13 @@ Phase 1 of Astrotattwa is **100% complete** and **live in production**. The appl
 #### Tech Stack Implemented
 | Component | Technology | Version |
 |-----------|-----------|---------|
-| Framework | Next.js | 14.x |
+| Framework | Next.js | 16.x |
 | Language | TypeScript | 5.3.x (strict mode) |
 | Styling | Tailwind CSS | 3.4.x |
 | UI Library | shadcn/ui | Latest |
 | Database | Supabase PostgreSQL | 15 |
 | Calculations | Swiss Ephemeris | 0.5.17 |
-| State Management | Zustand | 4.5.x |
+| State Management | React Hooks (useState + custom hooks) | — |
 | Icons | Lucide React | Latest |
 
 #### Application Pages
@@ -275,8 +275,8 @@ Phase 1 of Astrotattwa is **100% complete** and **live in production**. The appl
 
 ---
 
-#### GET /api/dasha/balance
-Calculate dasha balance at birth
+#### GET /api/dasha/mahadashas, /antardasha, /pratyantar, /sookshma, /current
+Dasha period queries (split by level to match UI navigation)
 
 #### GET /api/dasha/current
 Get current running dasha periods
@@ -314,9 +314,9 @@ Search cities with autocomplete
 - ✅ `test_cases` - Calculation verification data
 - ✅ `test_case_runs` - Test execution logs
 
-**Tables Planned (Not Created Yet):**
-- `reports` - AI-generated reports (P12)
-- `payments` - Razorpay transactions (P12)
+**Tables Added After Phase 1 (now exist in Supabase):**
+- `reports` - AI-generated reports
+- `payments` - PhonePe payment transactions (not Razorpay — payment gateway changed)
 
 **Security:**
 - ✅ Row Level Security (RLS) enabled

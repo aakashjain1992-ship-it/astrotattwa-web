@@ -1,8 +1,8 @@
 # Astrotattwa - Progress Tracker
 
-**Last Updated:** April 25, 2026
+**Last Updated:** May 2, 2026
 **Phase:** 3 (Feature Expansion) - In Progress
-**Overall Progress:** 91% Complete
+**Overall Progress:** 95% Complete
 
 ---
 
@@ -12,8 +12,8 @@
 |-------|--------|----------|----------|
 | Phase 1 - MVP | ✅ Complete | 100% | 6 weeks (Done) |
 | Phase 2 - Foundation | ✅ Complete | 100% | 4 weeks (Done) |
-| Phase 3 - Features | 🚧 In Progress | 89% (P4 ✅, P5 ⏳, P6 ✅, P7 ✅, P8 ✅, P9 🚧) | 6 weeks |
-| Phase 4 - Advanced | 🚧 Partial | 35% (Panchang ✅, Numerology ✅, Horoscope ✅, Payment 🚧, SEO 🚧, Redis 🚧) | 8+ weeks |
+| Phase 3 - Features | 🚧 In Progress | 94% (P4 ✅, P5 ⏳, P6 ✅, P7 ✅, P8 ✅, P9 🚧, P9b ✅, P9c ✅) | 6 weeks |
+| Phase 4 - Advanced | 🚧 Partial | 40% (Panchang ✅, Numerology ✅, Horoscope ✅, Payment 🚧, SEO 🚧, Redis ✅) | 8+ weeks |
 
 ---
 
@@ -412,6 +412,64 @@
 
 ---
 
+### P9b: Yogas & Doshas Engine + UI (100% ✅)
+**Completed:** April 27, 2026
+**Timeline:** Unplanned — built during Phase 3
+
+- [x] **Detection Engine** (`src/lib/astrology/yogas/`)
+  - [x] 26 yogas across 6 detector files (Pancha Mahapurusha, Moon Yogas, Conjunction, Vipreet Raj, Raj, Special)
+  - [x] 5 doshas (Kaal Sarp, Mangal, Grahan, Angarak, Vish)
+  - [x] Scoring 0–100, display priority, dedup rules, life area mapping
+  - [x] Chart-specific `chartNarrative` for all 26 yogas + 5 doshas (built from real planet data)
+  - [x] Neecha Bhanga detection via strength engine
+
+- [x] **API** (`/api/yogas` POST)
+  - [x] Guest + auth support; persists to `charts.yoga_analysis` if chartId + auth supplied
+  - [x] Standard rate limit
+
+- [x] **UI** (`src/components/chart/yogas/` — 11 components)
+  - [x] YogasTab, YogaCard, DoshaCard, YogaSummaryCard, YogaList
+  - [x] TopPositiveYogas + ChallengingPatterns (guest locked preview)
+  - [x] SignInModal (reusable across all chart tabs — 5 usages)
+  - [x] TechnicalDetailsAccordion, EmptyState, LifeAreaImpact
+  - [x] Sign-in gating across all chart tabs (Planets, Sade Sati, Dasha, Divisional, Yogas)
+
+**Progress:** 100% ✅
+
+---
+
+### P9c: Shadbala + Ashtakavarga Strength Engine (100% ✅)
+**Completed:** April 30, 2026
+**Timeline:** Unplanned — built during Phase 3
+
+- [x] **Strength Engine** (`src/lib/astrology/strength/` — 18 files)
+  - [x] Shadbala: 6 strength sources (Sthana, Dig, Kala, Chesta, Naisargika, Drik)
+  - [x] Ashtakavarga: 8-source benefic point system (all 8 planets contributing)
+
+- [x] **API Routes**
+  - [x] `/api/shadbala` POST — Shadbala for all 9 planets
+  - [x] `/api/ashtakavarga` POST — Ashtakavarga grid
+
+- [x] **UI** (`src/components/chart/strength/` — 3 components)
+  - [x] StrengthTab, ShadbalaTable, AshtakavargaTable
+
+**Progress:** 100% ✅
+
+---
+
+### P9d: Custom Google OAuth + One Tap (100% ✅)
+**Completed:** April 2026
+**Timeline:** Unplanned — replaces Supabase-hosted OAuth URL
+
+- [x] Custom OAuth flow (`/api/auth/google`, `/auth/google/callback`)
+- [x] Google One Tap auto-prompt (`GoogleOneTap` component in root layout)
+- [x] Shared `triggerGoogleOneTap()` utility (`src/lib/auth/googleOneTap.ts`)
+- [x] Nonce-based security (SHA-256 hash passed to Google, raw to Supabase)
+
+**Progress:** 100% ✅
+
+---
+
 ### P10: AI-Powered Insights (0%)
 **Timeline:** Future (after P8 completion)  
 **Effort:** 2 weeks
@@ -527,11 +585,11 @@
 ## 📊 Overall Statistics
 
 ### Code Metrics
-- **Total Lines:** ~55,000+ (TypeScript/TSX code only)
-- **TypeScript Files:** 300+ files
-- **Components:** 103 component files (101 active, 2 dead)
-- **API Routes:** 32 endpoints
-  - Auth: 3 (login, logout, me) + callback
+- **Total Lines:** ~61,000+ (TypeScript/TSX code only)
+- **TypeScript Files:** 359 files
+- **Components:** 117+ active component files (~6 dead code candidates)
+- **API Routes:** 38 endpoints
+  - Auth: 5 (login, logout, me, google, google/onetap) + callback
   - Core: 2 (calculate, avakahada)
   - Cities: 1 (search)
   - Dasha: 5 (mahadashas, current, antardasha, pratyantar, sookshma)
@@ -543,6 +601,9 @@
   - Payment: 3 (payment/initiate, payment/status, payment/webhook)
   - Festivals: 1 (festivals)
   - User: 1 (user/theme)
+  - Strength: 2 (shadbala, ashtakavarga)
+  - Yogas: 1 (yogas)
+  - Kundli Milan: 1 (kundli-milan — untracked, in-progress)
   - Test: 3 (run-calculations, history, delete-runs)
 - **Divisional Charts:** 20 (all D1-D60 complete)
 - **Test Cases:** Database-driven accuracy tests (test_cases table)
@@ -564,16 +625,18 @@
 
 ## 📝 Recent Updates
 
-### April 2026
-- ✅ **PM2 Cluster Mode** — switched to 2-worker cluster (`ecosystem.config.js`), rolling reload via `pm2 reload`
+### April–May 2026
+- ✅ **Yogas & Doshas Engine + Full UI** (Apr 27) — 26 yogas + 5 doshas; chart-specific narratives; sign-in gating across all chart tabs; 11 new components in chart/yogas/
+- ✅ **Shadbala + Ashtakavarga Engine + UI** (Apr 30) — Strength tab with ShadbalaTable + AshtakavargaTable; 3 new components in chart/strength/; 2 new API routes
+- ✅ **Custom Google OAuth + One Tap** — No Supabase-hosted URL; GoogleOneTap component; /api/auth/google + /api/auth/google/onetap; nonce-based security
+- ✅ **PM2 Cluster Mode** — switched to 4-worker cluster (`ecosystem.config.js`), rolling reload via `pm2 reload`
 - ✅ **Local Redis Rate Limiting** — replaced Upstash/stub with local Redis via ioredis; atomic Lua script for cluster safety
 - ✅ **SEO** — sitemap.ts (40 URLs), robots.txt, SSG for all 36 horoscope pages
 - ✅ **PhonePe Payment** — pg-sdk-node v2.0.3 integrated; account activated; ₹1000 live test passed (Apr 2026)
 - ✅ **ZodiacWheel** — added to landing/ but not yet wired to any page
 - ✅ **Galaxy canvas animation** — added to home hero (position: fixed, MutationObserver for theme, visibilitychange for CPU)
 - ✅ **Engine audit & rename** — `src/lib/astrology/kp/` → `core/`; `calculateKpChart` → `calculateBirthChart`; confirmed engine is Lahiri ayanamsa + Whole Sign (not KP system)
-- ✅ **House system confirmed** — Whole Sign throughout: D1 (`buildLagnaHouses`), all 20 divisional charts (D2–D60 via `buildDivisionalHouses`). Placidus cusps computed but only exposed as dev toggle on /chart for aakashjain1992@gmail.com
-- ✅ **Report engine readiness audit** — gaps identified: Shadbala, Ashtakavarga, yoga detection, dosha detection (see next actions)
+- ✅ **House system confirmed** — Whole Sign throughout: D1 (`buildLagnaHouses`), all 20 divisional charts (D2–D60 via `buildDivisionalHouses`). Placidus cusps computed but only exposed as dev toggle
 
 ### March 30, 2026
 - ✅ **P8 Complete: Chart Saving & My Chart**
@@ -669,7 +732,7 @@
 
 ## 🎯 Next Actions
 
-### Immediate Next (Late April–May 2026)
+### Immediate Next (May 2026)
 1. **Build paid report flow** — PhonePe activated and tested ✅; next step is report selection UI + order creation
 2. **Wire ZodiacWheel** — connect to home hero or delete if not needed
 3. **Complete P9 UX remaining** (37% left)
@@ -679,6 +742,7 @@
    - Multi-planet layout optimization
    - Dynamic font sizing
    - Mobile rendering fixes
+5. **Kundli Milan** — untracked feature (src/app/kundli-milan/, src/lib/astrology/kundliMilan/) — needs committing and wiring
 
 ### This Quarter (May–June 2026)
 1. 📋 P13: AI Report content (Career, Marriage, Finance reports) — PhonePe activated ✅, ready to build
@@ -712,6 +776,6 @@
 - ⏳ Pending
 - ❌ Blocked
 
-**Last Updated:** April 25, 2026
+**Last Updated:** May 2, 2026
 **Updated By:** Claude (automated audit)
-**Next Update:** May 2, 2026
+**Next Update:** May 9, 2026

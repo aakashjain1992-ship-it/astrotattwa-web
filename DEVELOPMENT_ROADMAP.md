@@ -1,8 +1,8 @@
 # Astrotattwa - Development Roadmap
 
-**Version:** 1.0  
-**Last Updated:** March 29, 2026
-**Status:** Phase 2 Complete | Phase 3 In Progress
+**Version:** 1.1
+**Last Updated:** May 2, 2026
+**Status:** Phase 3 ~95% Complete | Phase 4 ~40% Complete
 
 ---
 
@@ -45,13 +45,16 @@ This document outlines the complete development roadmap for Astrotattwa, organiz
 - P3: API Security (headers, CORS, rate limiting) ✅
 - P4: Database Migration Planning ✅
 
-### 🚧 Phase 3 - Feature Expansion (In Progress)
+### 🚧 Phase 3 - Feature Expansion (~95% Complete)
 - P4: All 20 Divisional Charts (D1-D60) ✅
+- P5: Diamond Chart Improvements ⏳ (still pending)
 - P6: Global City Search ✅
-- P7: Authentication System ✅
-- P9: UX Enhancements 🚧
-- P5: Diamond Chart Improvements ⏳
-- P8: Chart Saving & Dashboard ⏳
+- P7: Authentication System ✅ (custom Google OAuth + One Tap added Apr 2026)
+- P8: Chart Saving & My Chart ✅ (completed Mar 30; no dashboard — dropdown UX instead)
+- P9: UX Enhancements 🚧 (63% — landing page animations done; design system pending)
+- P9b: Yogas & Doshas Engine + UI ✅ (26 yogas + 5 doshas, Apr 27)
+- P9c: Shadbala + Ashtakavarga ✅ (Apr 30)
+- P9d: Custom Google OAuth + One Tap ✅ (Apr 2026)
 
 ### 🔮 Phase 4 - Advanced Features (Future)
 Focus: Predictions, compatibility, additional modules
@@ -471,16 +474,10 @@ Focus: Predictions, compatibility, additional modules
 
 ---
 
-### **P8: Chart Saving & Dashboard** (Week 5-6)
-**Priority:** Medium  
-**Effort:** 1 week  
-**User feature**
-
-#### Objectives
-- Save charts to database
-- User dashboard with saved charts
-- Chart CRUD operations
-- 10-chart limit per user
+### **P8: Chart Saving & My Chart** (Week 5-6) ✅ COMPLETE (Mar 30, 2026)
+**Priority:** Medium
+**Effort:** 1 week
+**Note:** Dashboard page was intentionally skipped — dropdown UX on chart page instead (avoids page bloat)
 
 #### Tasks
 1. **Backend API** (2 days)
@@ -601,22 +598,24 @@ Focus: Predictions, compatibility, additional modules
 
 ### **P11: Additional Modules** (Week 5-6)
 
-#### Panchang Module (Week 5)
-- [ ] Tithi, Nakshatra, Yoga, Karana
-- [ ] Daily panchang
-- [ ] Auspicious times (Muhurta)
-- [ ] Festival calendar
+#### Panchang Module ✅ COMPLETE (Mar–Apr 2026)
+- [x] Tithi, Nakshatra, Yoga, Karana (5 Pancha elements)
+- [x] Daily panchang with muhurta windows
+- [x] Auspicious times (Brahma, Abhijit, Vijaya, Rahu Kalam, etc.)
+- [x] Festival calendar (festival_calendar table)
+- [x] 3-tier cache (Redis hot → Supabase warm → compute)
+- [x] 20 Panchang display components
 
-#### Numerology Module (Week 6)
-- [ ] Name number calculation
-- [ ] Birth number calculation
-- [ ] Life path number
-- [ ] Compatibility numbers
+#### Numerology Module ✅ COMPLETE (Apr 2026)
+- [x] Lo Shu Grid numerology (Life Path, Destiny, etc.)
+- [x] Chaldean name numerology
+- [x] Compatibility engine (100-pt score)
+- [x] 15 numerology components; /numerology + /numerology/compatibility pages
 
 **Deliverables:**
-- [ ] Panchang calculator
-- [ ] Numerology calculator
-- [ ] Integration with main app
+- [x] Panchang calculator ✅
+- [x] Numerology calculator ✅
+- [x] Integration with main app ✅
 
 ---
 
@@ -644,11 +643,11 @@ Focus: Predictions, compatibility, additional modules
    - [ ] Add charts to PDF
    - [ ] Implement download
 
-3. **Payment Integration** (3 days)
-   - [ ] Razorpay setup
-   - [ ] Create payment flow
-   - [ ] Add webhook handler
-   - [ ] Implement refunds
+3. **Payment Integration** (Partial ✅)
+   - [x] PhonePe Standard Checkout — pg-sdk-node v2.0.3 integrated (Apr 2026)
+   - [x] /api/payment/initiate, /api/payment/status, /api/payment/webhook
+   - [x] Production account activated — ₹1000 live test passed
+   - [ ] Report selection UI + order flow (next step)
 
 4. **Report Management** (2 days)
    - [ ] Report history page
@@ -824,6 +823,6 @@ A feature is considered "done" when:
 
 ---
 
-**Last Updated:** February 7, 2026  
-**Next Review:** February 14, 2026  
-**Version:** 1.0
+**Last Updated:** May 2, 2026
+**Next Review:** June 7, 2026
+**Version:** 1.1

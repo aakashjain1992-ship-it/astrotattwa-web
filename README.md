@@ -1,9 +1,9 @@
 # Astrotattwa - Vedic Astrology Web Application
 
-**Version:** 0.2.0  
-**Status:** Production (Phase 2 Complete, Phase 3 In Progress)
+**Version:** 0.4.0
+**Status:** Production (Phase 3 ~95% Complete)
 **Live URL:** https://astrotattwa.com
-**Last Updated:** March 29, 2026
+**Last Updated:** May 2, 2026
 
 ---
 
@@ -48,12 +48,12 @@ Astrotattwa is a **mobile-first Progressive Web App** that provides accurate Ved
 ### Completion Summary
 - **Phase 1 (MVP):** ✅ **100% Complete**
 - **Phase 2 (Refactoring):** ✅ **100% Complete** (P1.1 ✅ P1.2 ✅ P1.3 ✅)
-- **Phase 3 (Features):** 🚧 **In Progress** (P4 ✅ P6 ✅ P7 ✅ P9 🚧)
-- **Total Code:** ~31,000 lines (TypeScript/TSX)
-- **Components:** 62+ reusable components
-- **API Routes:** 18 endpoints
-- **Database Tables:** 12 (Supabase PostgreSQL)
-- **TypeScript Errors:** 0 (strict mode)
+- **Phase 3 (Features):** 🚧 **~95% Complete** (P4 ✅ P6 ✅ P7 ✅ P8 ✅ P9 🚧 P9b ✅ P9c ✅ P9d ✅)
+- **Total Code:** ~61,000 lines (TypeScript/TSX)
+- **Components:** 117+ active components
+- **API Routes:** 38 endpoints
+- **Database Tables:** 20 (Supabase PostgreSQL)
+- **TypeScript Errors:** 0 (strict mode — run `npm run type-check` separately)
 
 ---
 
@@ -65,7 +65,7 @@ Astrotattwa is a **mobile-first Progressive Web App** that provides accurate Ved
 - **Styling:** Tailwind CSS 3.4
 - **UI Library:** shadcn/ui (Radix UI primitives)
 - **State Management:** React Hooks (useState + custom hooks)
-- **Theme:** next-themes (dark/light mode)
+- **Theme:** Custom ThemeProvider with MutationObserver (dark/light mode; persists to localStorage + Supabase)
 - **Animations:** Framer Motion 11.18
 
 ### Backend
@@ -118,7 +118,6 @@ astrotattwa-web/
 │   │   │   ├── diamond/              # Diamond chart (North Indian)
 │   │   │   │   ├── DiamondChart.tsx
 │   │   │   │   ├── DiamondGrid.tsx
-│   │   │   │   ├── HouseBlock.tsx
 │   │   │   │   └── constants.ts
 │   │   │   ├── divisional/           # Divisional charts
 │   │   │   │   ├── DivisionalChartsTab.tsx
@@ -287,14 +286,17 @@ astrotattwa-web/
 - ✅ P1.2: Type system centralization (Complete - Feb 10, 2026)
 - ✅ P1.3: Extract common form logic (Complete - Feb 14, 2026)
 
-### Phase 3 (In Progress) 🚧
+### Phase 3 (~95% Complete) 🚧
 
-- ✅ P4: All 20 Divisional Charts (D1-D60) (Complete - Feb 28, 2026)
-- ✅ P6: Global City Search with Here Maps + geo-tz (Complete - Feb 14, 2026)
-- ✅ P7: Authentication System - Google OAuth, email/password, sessions (Complete - Feb 28, 2026)
-- 🚧 P9: UX Enhancements (In Progress)
-- ⏳ P5: Diamond Chart Improvements (Pending)
-- ⏳ P8: Chart Saving & Dashboard (Pending)
+- ✅ P4: All 20 Divisional Charts (D1-D60) (Feb 28, 2026)
+- ✅ P5: Diamond Chart Improvements (pending — 0%)
+- ✅ P6: Global City Search with Here Maps + geo-tz (Feb 14, 2026)
+- ✅ P7: Authentication System — custom Google OAuth + One Tap, email/password (Feb + Apr 2026)
+- ✅ P8: Chart Saving & My Chart (Mar 30, 2026 — dropdown UX, no dashboard)
+- 🚧 P9: UX Enhancements (63% — landing animations done; design system pending)
+- ✅ P9b: Yogas & Doshas — 26 yogas + 5 doshas, chart narratives, sign-in gating (Apr 27)
+- ✅ P9c: Shadbala + Ashtakavarga strength engine + UI (Apr 30)
+- ✅ P9d: Custom Google OAuth + One Tap auto-prompt (Apr 2026)
 
 See [DEVELOPMENT_ROADMAP.md](./DEVELOPMENT_ROADMAP.md) for detailed roadmap.
 
@@ -318,7 +320,7 @@ See [DEVELOPMENT_ROADMAP.md](./DEVELOPMENT_ROADMAP.md) for detailed roadmap.
 ```bash
 # On Linode server
 pm2 status                  # Check status
-pm2 restart astrotattwa-web # Restart app
+pm2 reload astrotattwa-web  # Rolling reload (near-zero downtime)
 pm2 logs astrotattwa-web    # View logs
 pm2 monit                   # Monitor resources
 ```
@@ -425,7 +427,7 @@ Used for calculation verification and accuracy testing.
 
 #### Additional Tables
 - `reports` - AI-generated reports
-- `payments` - Razorpay transactions
+- `payments` - PhonePe payment transactions
 - `astronomical_events` - Astronomical event data
 - `auth_login_attempts_v2` - Rate limiting for auth
 - `auth_login_events` - Login event tracking
@@ -476,7 +478,7 @@ See [AI_HANDOFF_GUIDE.md](./AI_HANDOFF_GUIDE.md) for collaboration guidelines be
 - **[SETUP_CHECKLIST.md](./SETUP_CHECKLIST.md)** - Step-by-step setup guide
 - **[DEVELOPMENT_ROADMAP.md](./DEVELOPMENT_ROADMAP.md)** - Feature roadmap and priorities
 - **[PROGRESS_TRACKER.md](./PROGRESS_TRACKER.md)** - Current completion status
-- **[CODE_REFACTORING_GUIDE.md](./CODE_REFACTORING_GUIDE.md)** - Optimization opportunities
+- **[CODE_QUALITY.md](./CODE_QUALITY.md)** - Weekly automated code quality + dead code audit
 - **[COMPONENT_LIBRARY.md](./COMPONENT_LIBRARY.md)** - Reusable components catalog
 - **[AI_HANDOFF_GUIDE.md](./AI_HANDOFF_GUIDE.md)** - AI collaboration guide
 - **[DIAMONDCHART_IMPROVEMENTS_TASK.md](./DIAMONDCHART_IMPROVEMENTS_TASK.md)** - Pending chart improvements
@@ -485,10 +487,10 @@ See [AI_HANDOFF_GUIDE.md](./AI_HANDOFF_GUIDE.md) for collaboration guidelines be
 
 ## 📊 Project Metrics
 
-- **Lines of Code:** ~31,000
-- **Components:** 62+
-- **API Endpoints:** 18
-- **Database Tables:** 12
+- **Lines of Code:** ~61,000
+- **Components:** 117+ active
+- **API Endpoints:** 38
+- **Database Tables:** 20
 - **Lighthouse Score:** 100/100 (Performance)
 - **TypeScript Coverage:** 100%
 - **Mobile Responsive:** ✅ Yes
@@ -516,6 +518,6 @@ For issues and questions, please create an issue on GitHub or contact the develo
 
 ---
 
-**Last Updated:** March 29, 2026
-**Version:** 0.2.0
-**Status:** Production (Phase 2 Complete, Phase 3 In Progress)
+**Last Updated:** May 2, 2026
+**Version:** 0.4.0
+**Status:** Production (Phase 3 ~95% Complete)
