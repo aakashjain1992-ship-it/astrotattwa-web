@@ -17,7 +17,6 @@ import { UserDetailsCard } from '@/components/chart/UserDetailsCard';
 import { EditBirthDetailsForm } from '@/components/forms/EditBirthDetailsForm';
 import { PlanetaryTable } from '@/components/chart/PlanetaryTable';
 import { AvakhadaTable } from '@/components/chart/AvakhadaTable';
-import { ChartLegend } from '@/components/chart/ChartLegend';
 import { DashaNavigator } from '@/components/chart/DashaNavigator';
 import { buildLagnaHouses, buildMoonHouses, buildNavamsaHouses } from '@/lib/utils/chartHelpers';
 import { SadeSatiTableView } from '@/components/chart/sadesati/SadeSatiTableView';
@@ -567,7 +566,7 @@ export default function ChartClient() {
     {
       id: 'lagna',
       title: 'D1 - Lagna',
-      subtitle: `Ascendant: ${ascendant.sign} ${ascendant.degreeInSign.toFixed(2)}°`,
+      subtitle: `Ascendant: ${ascendant.sign}`,
       houses: houses,
       insights: [
         ...vargottamaInsights,  // ⭐ Vargottama first!
@@ -731,9 +730,6 @@ export default function ChartClient() {
 
             <ChartFocusMode charts={chartConfigs} />
 
-            <div className="max-w-2xl mx-auto">
-              <ChartLegend variant="accordion" />
-            </div>
           </div>
         )}
         {activeTab === 'planets' && (

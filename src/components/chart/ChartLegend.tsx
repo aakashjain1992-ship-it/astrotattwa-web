@@ -3,15 +3,19 @@
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { PLANET_SYMBOLS, PLANET_FULL_NAMES } from '@/types/astrology';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 
 interface ChartLegendProps {
   variant?: 'sidebar' | 'accordion';
   className?: string;
+  isOpen?: boolean;
+  onToggle?: () => void;
 }
 
-export function ChartLegend({ variant = 'sidebar', className }: ChartLegendProps) {
-  const [isOpen, setIsOpen] = useState(false);
+export function ChartLegend({ variant = 'sidebar', className, isOpen: isOpenProp, onToggle }: ChartLegendProps) {
+  const [isOpenInternal, setIsOpenInternal] = useState(false);
+  const isOpen = isOpenProp !== undefined ? isOpenProp : isOpenInternal;
+  const handleToggle = onToggle ?? (() => setIsOpenInternal(v => !v));
   
   const content = (
     <div className="space-y-4">
@@ -68,9 +72,9 @@ export function ChartLegend({ variant = 'sidebar', className }: ChartLegendProps
   if (variant === 'accordion') {
     return (
       <div className={cn('border rounded-lg', className)}>
-        <button type="button" onClick={() => setIsOpen(!isOpen)} className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-          <span className="font-semibold text-sm text-slate-700 dark:text-slate-300">Chart Legend</span>
-          {isOpen ? <ChevronUp className="h-4 w-4 text-slate-500" /> : <ChevronDown className="h-4 w-4 text-slate-500" />}
+        <button type="button" onClick={handleToggle} className="w-full flex items-center justify-between p-4 text-left hover:bg-accent/30 transition-colors">
+          <span className="font-semibold text-sm">Chart Legend</span>
+          <ChevronDown className={cn('h-4 w-4 text-muted-foreground transition-transform', isOpen && 'rotate-180')} />
         </button>
         {isOpen && <div className="p-4 pt-0 border-t">{content}</div>}
       </div>
