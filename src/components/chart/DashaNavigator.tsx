@@ -5,6 +5,8 @@ import { format, parseISO, isWithinInterval } from 'date-fns';
 import { ChevronRight, ChevronLeft, Loader2, Circle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/useAuth';
+import { SignInModal } from '@/components/chart/yogas/SignInModal';
 
 // ============================================
 // TYPE DEFINITIONS
@@ -316,6 +318,9 @@ export function DashaNavigator({
   const [mahadashasError, setMahadashasError] = useState<string | null>(null);
 
   
+  const { user } = useAuth();
+  const [signInOpen, setSignInOpen] = useState(false);
+
   // Navigation state
   const [currentLevel, setCurrentLevel] = useState<DashaLevel>('mahadasha');
   const [navigationPath, setNavigationPath] = useState<string[]>([]);
@@ -675,7 +680,13 @@ export function DashaNavigator({
                 period={period}
                 isCurrent={isCurrent}
                 showArrow={showArrow}
-                onClick={showArrow ? () => handlePeriodClick(currentLevel, period.planet) : undefined}
+                onClick={showArrow ? () => {
+                  if (!user && (currentLevel === 'antardasha' || currentLevel === 'pratyantar')) {
+                    setSignInOpen(true);
+                    return;
+                  }
+                  handlePeriodClick(currentLevel, period.planet);
+                } : undefined}
               />
             );
           })}
@@ -688,6 +699,13 @@ export function DashaNavigator({
           No dasha periods available
         </p>
       )}
+
+      <SignInModal
+        open={signInOpen}
+        onClose={() => setSignInOpen(false)}
+        title="Sign in to unlock deeper dashas"
+        description="Pratyantar and Sookshma sub-periods are available to signed-in users."
+      />
     </div>
   );
 }

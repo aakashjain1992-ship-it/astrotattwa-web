@@ -1,13 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Columns2, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, Columns2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DiamondChart } from '@/components/chart/diamond';
 import type { HouseInfo as HouseData } from '@/types/astrology';
 import { Button } from '@/components/ui/button';
 import { useSwipeable } from 'react-swipeable';
+import { ChartLegend } from '@/components/chart/ChartLegend';
 
 // ============================================
 // TYPE DEFINITIONS
@@ -57,23 +58,25 @@ function ChartThumbnail({
     <button
       onClick={onClick}
       className={cn(
-        "relative flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all",
-        "hover:border-primary/50 hover:bg-accent/50",
+        "relative flex flex-col items-center gap-2 p-3 rounded-lg border transition-all",
+        "hover:border-primary/40 hover:bg-accent/50",
         isActive && "border-primary bg-primary/10",
         !isActive && "border-border bg-card"
       )}
     >
-      {/* Thumbnail preview */}
-      <div className="w-20 h-20 flex items-center justify-center bg-background rounded border">
-        <div className="text-xs text-muted-foreground">
-          {chart.title}
-        </div>
+      {/* Mini chart preview */}
+      <div className="w-20 h-20 rounded overflow-hidden pointer-events-none">
+        <DiamondChart
+          houses={chart.houses}
+          size="sm"
+          showRashiNumbers={false}
+          showAscLabel={false}
+        />
       </div>
-      
-      {/* Chart info */}
+
+      {/* Chart label */}
       <div className="text-center">
         <div className="text-sm font-medium">{chart.title}</div>
-        <div className="text-xs text-muted-foreground">{planetCount} planets</div>
       </div>
       
       {/* Active indicator */}
@@ -99,83 +102,69 @@ function ChartThumbnail({
 
 interface InsightsPanelProps {
   chart: ChartConfig;
-  isCompareMode: boolean;
+  isOpen: boolean;
+  onToggle: () => void;
 }
 
-function ContextualInsightsPanel({ chart, isCompareMode }: InsightsPanelProps) {
-  if (isCompareMode) return null;
-  
+function ContextualInsightsPanel({ chart, isOpen, onToggle }: InsightsPanelProps) {
   const strengths = chart.insights.filter(i => i.type === 'strength');
   const challenges = chart.insights.filter(i => i.type === 'challenge');
   const highlights = chart.insights.filter(i => i.type === 'highlight');
-  
+
   return (
-    <motion.div
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: 20 }}
-      className="space-y-4 bg-card border rounded-lg p-4"
-    >
-      <div className="flex items-center gap-2">
-        <span className="text-lg">💡</span>
-        <h3 className="font-semibold">Key Insights</h3>
-      </div>
-      
-      {/* Strengths */}
-      {strengths.length > 0 && (
-        <div className="space-y-2">
-          <h4 className="text-sm font-medium text-green-600 dark:text-green-400">
-            ✨ Strengths
-          </h4>
-          {strengths.map((insight, i) => (
-            <div key={i} className="flex items-start gap-2 text-sm">
-              <span>{insight.icon}</span>
-              <span className="text-muted-foreground">{insight.text}</span>
+    <div className="border rounded-lg bg-card">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="w-full flex items-center justify-between p-4 text-left hover:bg-accent/30 transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-lg">💡</span>
+          <span className="font-semibold">Key Insights</span>
+        </div>
+        <ChevronDown className={cn('h-4 w-4 text-muted-foreground transition-transform', isOpen && 'rotate-180')} />
+      </button>
+
+      {isOpen && (
+        <div className="px-4 pb-4 space-y-4 border-t pt-4">
+          {strengths.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium text-green-600 dark:text-green-400">✨ Strengths</h4>
+              {strengths.map((insight, i) => (
+                <div key={i} className="flex items-start gap-2 text-sm">
+                  <span>{insight.icon}</span>
+                  <span className="text-muted-foreground">{insight.text}</span>
+                </div>
+              ))}
             </div>
-          ))}
+          )}
+
+          {challenges.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium text-orange-600 dark:text-orange-400">⚠️ Challenges</h4>
+              {challenges.map((insight, i) => (
+                <div key={i} className="flex items-start gap-2 text-sm">
+                  <span>{insight.icon}</span>
+                  <span className="text-muted-foreground">{insight.text}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {highlights.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium text-blue-600 dark:text-blue-400">🔍 Notable</h4>
+              {highlights.map((insight, i) => (
+                <div key={i} className="flex items-start gap-2 text-sm">
+                  <span>{insight.icon}</span>
+                  <span className="text-muted-foreground">{insight.text}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
-      
-      {/* Challenges */}
-      {challenges.length > 0 && (
-        <div className="space-y-2">
-          <h4 className="text-sm font-medium text-orange-600 dark:text-orange-400">
-            ⚠️ Challenges
-          </h4>
-          {challenges.map((insight, i) => (
-            <div key={i} className="flex items-start gap-2 text-sm">
-              <span>{insight.icon}</span>
-              <span className="text-muted-foreground">{insight.text}</span>
-            </div>
-          ))}
-        </div>
-      )}
-      
-      {/* Highlights */}
-      {highlights.length > 0 && (
-        <div className="space-y-2">
-          <h4 className="text-sm font-medium text-blue-600 dark:text-blue-400">
-            🔍 Notable
-          </h4>
-          {highlights.map((insight, i) => (
-            <div key={i} className="flex items-start gap-2 text-sm">
-              <span>{insight.icon}</span>
-              <span className="text-muted-foreground">{insight.text}</span>
-            </div>
-          ))}
-        </div>
-      )}
-      
-      {/* Quick actions */}
-      <div className="pt-4 border-t space-y-2">
-        <Button variant="outline" size="sm" className="w-full justify-start">
-          📊 View Detailed Analysis
-        </Button>
-        <Button variant="outline" size="sm" className="w-full justify-start">
-          📥 Download Chart
-        </Button>
-      </div>
-    </motion.div>
+    </div>
   );
 }
 
@@ -187,6 +176,7 @@ export function ChartFocusMode({ charts, className }: ChartFocusModeProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [compareMode, setCompareMode] = useState(false);
   const [compareIndices, setCompareIndices] = useState<number[]>([0]);
+  const [activePanel, setActivePanel] = useState<'insights' | 'legend'>('insights');
   
   const activeChart = charts[activeIndex];
   
@@ -235,30 +225,7 @@ export function ChartFocusMode({ charts, className }: ChartFocusModeProps) {
     delta: 50,
   });
   
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyPress = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowLeft' && activeIndex > 0 && !compareMode) {
-        setActiveIndex(activeIndex - 1);
-      }
-      if (e.key === 'ArrowRight' && activeIndex < charts.length - 1 && !compareMode) {
-        setActiveIndex(activeIndex + 1);
-      }
-      if (e.key === 'c' || e.key === 'C') {
-        toggleCompareMode();
-      }
-      if (e.key >= '1' && e.key <= String(charts.length)) {
-        const index = parseInt(e.key) - 1;
-        if (!compareMode) {
-          setActiveIndex(index);
-        }
-      }
-    };
-    
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [activeIndex, charts.length, compareMode]);
-  
+
   return (
     <div className={cn("space-y-6", className)}>
       {/* Thumbnail Bar + Compare Toggle */}
@@ -315,7 +282,7 @@ export function ChartFocusMode({ charts, className }: ChartFocusModeProps) {
           : "grid-cols-1 lg:grid-cols-3" // 3-column layout in normal mode
       )}>
         {/* Charts Area */}
-        <div 
+        <div
           className={cn(
             compareMode ? "" : "lg:col-span-2"
           )}
@@ -413,16 +380,20 @@ export function ChartFocusMode({ charts, className }: ChartFocusModeProps) {
           )}
         </div>
         
-        {/* Enhancement #7: Contextual Insights Panel */}
+        {/* Right panel: Key Insights + Chart Legend (mutually exclusive accordions) */}
         {!compareMode && (
-          <div className="lg:col-span-1">
-            <AnimatePresence mode="wait">
-              <ContextualInsightsPanel
-                key={activeChart.id}
-                chart={activeChart}
-                isCompareMode={compareMode}
-              />
-            </AnimatePresence>
+          <div className="lg:col-span-1 space-y-2">
+            <ContextualInsightsPanel
+              key={activeChart.id}
+              chart={activeChart}
+              isOpen={activePanel === 'insights'}
+              onToggle={() => setActivePanel('insights')}
+            />
+            <ChartLegend
+              variant="accordion"
+              isOpen={activePanel === 'legend'}
+              onToggle={() => setActivePanel('legend')}
+            />
           </div>
         )}
       </div>
@@ -454,12 +425,6 @@ export function ChartFocusMode({ charts, className }: ChartFocusModeProps) {
         </motion.div>
       )}
       
-      {/* Keyboard shortcuts hint */}
-      <div className="hidden md:block text-xs text-muted-foreground text-center bg-muted/30 rounded-lg py-2">
-        Keyboard: <kbd className="px-2 py-1 bg-background rounded">←</kbd> <kbd className="px-2 py-1 bg-background rounded">→</kbd> to navigate • 
-        <kbd className="px-2 py-1 bg-background rounded">C</kbd> to compare • 
-        <kbd className="px-2 py-1 bg-background rounded">1</kbd><kbd className="px-2 py-1 bg-background rounded">2</kbd><kbd className="px-2 py-1 bg-background rounded">3</kbd> to jump
-      </div>
     </div>
   );
 }

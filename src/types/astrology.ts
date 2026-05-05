@@ -16,6 +16,7 @@
 
 
 import type { EnhancedSaturnTransitAnalysis } from '@/lib/astrology/sadesati/types-enhanced';
+import type { YogaAnalysisResponse } from '@/lib/astrology/yogas/types';
 
 
 export type PlanetKey = 
@@ -447,6 +448,12 @@ export interface ChartData {
   };
   /** Saturn transit analysis — populated when Sade Sati tab opens */
   saturnTransits?: EnhancedSaturnTransitAnalysis;
+  /** Yoga & Dosha detection result — populated when Yogas tab opens */
+  yogaAnalysis?: YogaAnalysisResponse;
+  /** Shadbala planetary strength — populated when Strength tab opens */
+  shadBala?: import('@/lib/astrology/shadbala').ShadbalaResult
+  /** Ashtakavarga transit scores — populated when Strength tab opens */
+  ashtakavarga?: import('@/lib/astrology/ashtakavarga').AshtakavargaResult
 }
 
 // ===== CONSTANTS =====

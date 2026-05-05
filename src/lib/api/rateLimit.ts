@@ -1,32 +1,12 @@
 import { NextRequest } from 'next/server'
 import { rateLimitError } from '@/lib/api/errorHandling'
 import { logWarning } from '@/lib/monitoring/errorLogger'
-import Redis from 'ioredis'
+import { getRedis } from '@/lib/redis'
 
 export interface RateLimitConfig {
   maxRequests: number
   windowMs: number
   keyGenerator?: (req: NextRequest) => string
-}
-
-// Singleton Redis client — shared across all requests in this process
-let _redis: Redis | null = null
-
-function getRedis(): Redis {
-  if (!_redis) {
-    _redis = new Redis({
-      host: '127.0.0.1',
-      port: 6379,
-      maxRetriesPerRequest: 1,
-      enableOfflineQueue: false,
-      lazyConnect: false,
-    })
-    _redis.on('error', (err) => {
-      // Log but don't crash — fail open if Redis is down
-      console.error('[rateLimit] Redis error:', err.message)
-    })
-  }
-  return _redis
 }
 
 // Atomic Lua script: INCR + set EXPIRE only on first request

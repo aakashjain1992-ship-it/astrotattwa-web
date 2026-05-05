@@ -1,7 +1,7 @@
 # AI Handoff Guide - Claude & ChatGPT Collaboration
 
-**Version:** 1.0  
-**Last Updated:** February 14, 2026  
+**Version:** 1.1
+**Last Updated:** May 2, 2026  
 **Purpose:** Enable seamless collaboration between AI assistants
 
 **Current Status:** Phase 3 - Feature Expansion In Progress (Phase 2 100% Complete)
@@ -75,15 +75,17 @@ Astrotattwa - Vedic Astrology Web App
 **Phase 3: Feature Expansion (In Progress)**
 - Phase 2: ✅ Complete (P1 ✅, P2 ✅, P3 ✅, P4 ✅)
 - P4: All 20 Divisional Charts ✅ (Feb 28, 2026)
+- P5: Diamond Chart Improvements ⏳ (still pending)
 - P6: Global City Search ✅ (Feb 14, 2026)
-- P7: Authentication System ✅ (Feb 28, 2026)
-- P9: UX Enhancements 🚧 (In Progress)
-- P5: Diamond Chart Improvements ⏳
-- P8: Chart Saving & Dashboard ⏳
+- P7: Authentication System ✅ (custom Google OAuth + One Tap added Apr 2026)
+- P8: Chart Saving & My Chart ✅ (Mar 30, 2026 — no dashboard; dropdown UX instead)
+- P9: UX Enhancements 🚧 (63%)
+- P9b: Yogas & Doshas ✅ (Apr 27, 2026 — 26 yogas + 5 doshas, chart-specific narratives)
+- P9c: Shadbala + Ashtakavarga ✅ (Apr 30, 2026)
 
-**Note:** Saturn Transit/Sade Sati analysis and Planetary Strength engine are also implemented (src/lib/astrology/sadesati/, src/lib/astrology/strength/).
+**Completed engines:** `src/lib/astrology/sadesati/`, `src/lib/astrology/strength/`, `src/lib/astrology/yogas/`
 
-**Next Priority:** Complete P9 UX, then P8 Chart Saving & Dashboard
+**Next Priority:** P5 Diamond Chart Improvements, report selection UI (PhonePe live), Kundli Milan (untracked, in-progress)
 
 See `DEVELOPMENT_ROADMAP.md` for complete roadmap.
 
@@ -455,7 +457,7 @@ Should we:
 ### Task: Refactoring Code
 
 1. **Identify pattern:**
-   - Read `CODE_REFACTORING_GUIDE.md`
+   - Review CODE_QUALITY.md for current refactoring opportunities
    - Find priority item
 
 2. **Create branch:**
@@ -609,7 +611,7 @@ Should we:
 - `DEVELOPMENT_ROADMAP.md` - Priorities & timeline
 - `PROGRESS_TRACKER.md` - Current status
 - `COMPONENT_LIBRARY.md` - All components
-- `CODE_REFACTORING_GUIDE.md` - Refactoring tasks
+- `CODE_QUALITY.md` - Current refactoring opportunities (weekly audit doc)
 
 ### Reference
 - `PROJECT_OVERVIEW.md` - Architecture

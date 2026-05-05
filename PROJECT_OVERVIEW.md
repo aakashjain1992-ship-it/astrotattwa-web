@@ -1,8 +1,8 @@
 # Project Overview - Astrotattwa
 
-**Version:** 2.0  
-**Last Updated:** March 29, 2026
-**Status:** Production (Phase 2 Complete, Phase 3 In Progress)
+**Version:** 2.1
+**Last Updated:** May 2, 2026
+**Status:** Production (Phase 3 ~95% Complete)
 
 ---
 
@@ -56,7 +56,7 @@ Astrotattwa provides **accurate, free Vedic astrology calculations** with AI-pow
 │  │               (astrotattwa-web)                       │   │
 │  │                                                       │   │
 │  │  ┌────────────────────────────────────────────────┐  │   │
-│  │  │           Next.js 14 Server                    │  │   │
+│  │  │           Next.js 16 Server                    │  │   │
 │  │  │                                                │  │   │
 │  │  │  ┌─────────────────┐  ┌──────────────────┐   │  │   │
 │  │  │  │  Server Side    │  │  API Routes      │   │  │   │
@@ -117,7 +117,7 @@ Astrotattwa provides **accurate, free Vedic astrology calculations** with AI-pow
   - Accessible by default
 
 #### State Management
-- **Zustand 4.5** (minimal global state)
+- **React Hooks** (useState + custom hooks — no global store; Zustand removed)
 - **React Hook Form** (form state)
 - **Server State:** Fetched directly in Server Components
 
@@ -138,7 +138,7 @@ Astrotattwa provides **accurate, free Vedic astrology calculations** with AI-pow
 **Current:** Supabase (PostgreSQL 15)
 - Row Level Security (RLS)
 - Real-time subscriptions (not used yet)
-- Auth system (configured, not active)
+- Auth system (active — Google OAuth custom flow + One Tap, email/password)
 
 **Future:** Linode PostgreSQL (planned migration)
 - Better cost control
@@ -350,23 +350,24 @@ Astrotattwa provides **accurate, free Vedic astrology calculations** with AI-pow
 
 ---
 
-### Planned Security (P3)
+### Security Status (P3 Complete ✅)
 
 #### API Authentication
-- JWT tokens
-- Protected routes
-- Rate limiting (100 req/min per IP)
+- Supabase Auth active (Google OAuth custom flow, email/password)
+- Protected routes via middleware (`/settings`, `/reports`)
+- Rate limiting — local Redis, presets: strict (5/min), standard (20/min), lenient (60/min), auth (3/5min)
 
 #### Input Validation
-- Zod schemas on all API routes
-- Sanitize user input
-- XSS prevention
+- Zod schemas on all API routes ✅
+- XSS prevention via React's default encoding ✅
 
-#### Security Headers
+#### Security Headers (Applied ✅)
 - CSP (Content Security Policy)
-- X-Frame-Options
-- X-Content-Type-Options
+- HSTS (max-age=63072000; includeSubDomains; preload)
+- X-Frame-Options (SAMEORIGIN)
+- X-Content-Type-Options (nosniff)
 - Referrer-Policy
+- Permissions-Policy
 
 ---
 
@@ -459,7 +460,7 @@ GitHub Actions (CD)
     ├── git pull origin main
     ├── npm install
     ├── npm run build
-    ├── pm2 restart astrotattwa-web
+    ├── pm2 reload astrotattwa-web
     └── Health check
     │
     ▼
@@ -484,7 +485,7 @@ npm install
 npm run build
 
 # Restart PM2
-pm2 restart astrotattwa-web
+pm2 reload astrotattwa-web
 
 # Check status
 pm2 status
@@ -507,7 +508,7 @@ git reset --hard <commit-hash>
 
 # Rebuild and restart
 npm run build
-pm2 restart astrotattwa-web
+pm2 reload astrotattwa-web
 ```
 
 ---
@@ -630,36 +631,29 @@ CREATE INDEX idx_cities_search ON cities USING GIN(to_tsvector('english', search
 
 ---
 
-### Future Tables (Planned)
+### Additional Tables (Created — not in migrations file)
 
-#### reports (P12)
-```sql
-CREATE TABLE reports (
-  id UUID PRIMARY KEY,
-  user_id UUID REFERENCES profiles(id),
-  chart_id UUID REFERENCES charts(id),
-  report_type VARCHAR(50), -- 'career', 'marriage', etc.
-  content JSONB,
-  pdf_url TEXT,
-  amount_paid DECIMAL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-```
+The following tables exist in Supabase but were created directly (not via `supabase/migrations/`):
 
-#### payments (P12)
-```sql
-CREATE TABLE payments (
-  id UUID PRIMARY KEY,
-  user_id UUID REFERENCES profiles(id),
-  report_id UUID REFERENCES reports(id),
-  razorpay_order_id VARCHAR(255),
-  razorpay_payment_id VARCHAR(255),
-  amount DECIMAL NOT NULL,
-  currency VARCHAR(3) DEFAULT 'INR',
-  status VARCHAR(50), -- 'pending', 'success', 'failed'
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-```
+| Table | Purpose |
+|-------|---------|
+| `reports` | AI-generated report storage |
+| `payments` | PhonePe payment transactions (not Razorpay) |
+| `astronomical_events` | Astronomical event data |
+| `auth_login_attempts_v2` | Rate limiting for auth endpoints |
+| `auth_login_events` | Login event tracking |
+| `planet_daily_positions` | Daily planetary positions for transit data |
+| `planet_retrograde_periods` | Retrograde period tracking |
+| `planet_sign_transits` | Planet sign transit data |
+| `transit_generation_log` | Transit generation logs |
+| `panchang_cache` | Panchang API cache (24h TTL, keyed by date+coords) |
+| `festival_calendar` | Festival entries (fetched fresh on each request) |
+| `horoscopes` | Generated horoscopes (daily/weekly/monthly, 12 rashis) |
+| `horoscope_generation_log` | Per-run token usage, cost, duration |
+| `numerology_readings` | Saved user numerology readings |
+| `compatibility_readings` | Saved user compatibility readings |
+
+> Total tables: 20 (profiles, charts, cities, test_cases, test_case_runs + 15 above)
 
 ---
 
@@ -667,36 +661,16 @@ CREATE TABLE payments (
 
 ### Scalability Plans
 
-#### 1. **Caching Layer** (P15)
-```
-User Request
-    │
-    ▼
-Redis Cache
-    ├── Hit → Return cached
-    │
-    └── Miss
-        │
-        ▼
-    Calculate
-        │
-        ▼
-    Store in Redis
-        │
-        ▼
-    Return to user
-```
+#### 1. **Caching Layer** (Live ✅)
+Local Redis (`ioredis`, localhost:6379) is live. Used for:
+- Rate limiting (atomic Lua script, shared across 4 PM2 workers)
+- Panchang API cache (3-tier: Redis hot → Supabase warm → compute cold)
 
-#### 2. **Load Balancing** (When needed)
-```
-Cloudflare
-    │
-    ▼
-Nginx Load Balancer
-    ├── PM2 Instance 1
-    ├── PM2 Instance 2
-    └── PM2 Instance 3
-```
+Additional caching opportunities (scheduled calculations, transit data) still planned.
+
+#### 2. **Load Balancing** (Partial ✅)
+PM2 cluster mode with 4 workers is live. Rolling reload (`pm2 reload`) provides near-zero downtime.
+Nginx reverse proxy routes all traffic to the cluster. External load balancer not needed at current scale.
 
 #### 3. **Database Sharding** (When needed)
 - Shard by user_id
@@ -747,8 +721,8 @@ Search cities
 
 ---
 
-#### GET /api/dasha/balance
-Calculate dasha balance at birth
+#### GET /api/dasha/mahadashas, /antardasha, /pratyantar, /sookshma, /current
+Dasha period queries (split by level to match UI tab navigation)
 
 #### GET /api/avakahada
 Calculate Avakahada Chakra
@@ -769,6 +743,6 @@ Calculate Avakahada Chakra
 
 ---
 
-**Last Updated:** February 7, 2026  
-**Version:** 2.0  
-**Next Review:** March 7, 2026
+**Last Updated:** May 2, 2026
+**Version:** 2.1
+**Next Review:** June 7, 2026

@@ -18,8 +18,6 @@ interface DiamondChartProps {
   showRashiNumbers?: boolean;
   showAscLabel?: boolean;
   showHouseNumbers?: boolean;
-  onPlanetClick?: (planetKey: string) => void;
-  onHouseClick?: (houseNumber: number) => void;
   className?: string;
 }
 
@@ -124,8 +122,6 @@ export function DiamondChart({
   showRashiNumbers = true,
   showAscLabel = true,
   showHouseNumbers = false,
-  onPlanetClick,
-  onHouseClick,
   className,
 }: DiamondChartProps) {
   const sizeConfig = CHART_SIZES[size];
@@ -286,7 +282,6 @@ export function DiamondChart({
                   const gridPos = getPlanetGridPosition(index, house.planets.length);
                   const x = basePos.x + gridPos.offsetX;
                   const y = basePos.y + gridPos.offsetY;
-                  const isClickable = !!onPlanetClick;
 
                   const digbalaStatus = getDigbalaStatus(planet.statusFlags);
                   const otherFlags = getOtherFlags(planet.statusFlags);
@@ -294,10 +289,6 @@ export function DiamondChart({
                   return (
                     <g
                       key={`planet-${planet.key}`}
-                      onClick={() => onPlanetClick?.(planet.key)}
-                      style={{ cursor: isClickable ? 'pointer' : 'default' }}
-                      role={isClickable ? 'button' : undefined}
-                      tabIndex={isClickable ? 0 : undefined}
                       aria-label={`${planet.key} at ${planet.degree}°${planet.statusFlags.length > 0 ? `, ${planet.statusFlags.join(' ')}` : ''}`}
                     >
                      {/* Planet Symbol with arrow prefix */}
@@ -357,24 +348,6 @@ export function DiamondChart({
             );
           })}
 
-          {/* Clickable House Overlays */}
-          {onHouseClick && houses.map((house) => {
-            const pos = HOUSE_POSITIONS[house.houseNumber];
-            return (
-              <circle
-                key={`click-house-${house.houseNumber}`}
-                cx={pos.x}
-                cy={pos.y}
-                r="50"
-                fill="transparent"
-                onClick={() => onHouseClick(house.houseNumber)}
-                style={{ cursor: 'pointer' }}
-                role="button"
-                tabIndex={0}
-                aria-label={`House ${house.houseNumber}, ${house.rasiName}`}
-              />
-            );
-          })}
         </DiamondGrid>
       </div>
     </div>

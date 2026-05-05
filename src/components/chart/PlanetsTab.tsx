@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { useAuth } from '@/hooks/useAuth';
+import { SignInModal } from './yogas/SignInModal';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -1323,7 +1325,9 @@ function DrawerPanel({ r, pd, moonData, birthDateUtc, allPlanets, onClose }: {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export function PlanetsTab({ planets, ascendant, dashaInfo, birthDate }: PlanetsTabProps) {
+  const { user } = useAuth();
   const [selected, setSelected] = useState<string | null>(null);
+  const [signInOpen, setSignInOpen] = useState(false);
 
   const dashaContext = useMemo(() => ({
     currentMahadasha: dashaInfo?.currentMahadasha,
@@ -1375,13 +1379,20 @@ export function PlanetsTab({ planets, ascendant, dashaInfo, birthDate }: Planets
                 return (
                   <PlanetCard key={name} r={r} pd={pd}
                     isSelected={selected === name}
-                    onSelect={() => setSelected(p => p === name ? null : name)} />
+                    onSelect={() => user ? setSelected(p => p === name ? null : name) : setSignInOpen(true)} />
                 );
               })}
             </div>
           </div>
         );
       })}
+
+      <SignInModal
+        open={signInOpen}
+        onClose={() => setSignInOpen(false)}
+        title="Sign in to unlock planet insights"
+        description="See the full breakdown of how each planet works in your chart — placement, rulership, conjunctions, and timing."
+      />
 
       {/* Drawer — rendered outside the grid so it floats over the page */}
       {selected && (() => {

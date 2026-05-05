@@ -1,8 +1,8 @@
 # Component Library
 
-**Version:** 3.1
-**Last Updated:** April 25, 2026
-**Total Components:** 103 component files + 6 hooks + 32 API routes
+**Version:** 3.2
+**Last Updated:** May 2, 2026
+**Total Components:** 117 component files + 6 hooks + 38 API routes
 
 ---
 
@@ -29,7 +29,7 @@ This document catalogs all reusable components in the Astrotattwa codebase. Each
 
 ### Component Categories
 - **UI Components** - shadcn/ui primitives + custom (17 files: 15 shadcn/ui + 2 custom)
-- **Chart Components** - Astrology visualization (15 files; 12 active, 3 unused)
+- **Chart Components** - Astrology visualization (29 files across chart/, chart/diamond/, chart/divisional/, chart/sadesati/, chart/strength/, chart/yogas/)
 - **Form Components** - Input and validation (5 components, all active)
 - **Layout Components** - Page structure (3 components: Header, Footer, ThemeProvider)
 - **Landing Components** - Landing page features (6 components; 5 active, 1 unused — ZodiacWheel unwired)
@@ -46,7 +46,9 @@ src/components/
 ├── chart/           # Chart visualization
 │   ├── diamond/     # North Indian diamond chart
 │   ├── divisional/  # Divisional chart components
-│   └── sadesati/    # Saturn transit analysis
+│   ├── sadesati/    # Saturn transit analysis
+│   ├── strength/    # Shadbala + Ashtakavarga (StrengthTab, ShadbalaTable, AshtakavargaTable)
+│   └── yogas/       # Yogas & Doshas tab (11 files: YogasTab, YogaCard, DoshaCard, etc.)
 ├── forms/           # Form components
 ├── layout/          # Header, Footer
 ├── landing/         # Landing page components (Galaxy, Yantra, Particles, Glyphs, ZodiacWheel, NavagrahaSection)
@@ -58,7 +60,7 @@ src/components/
 src/app/
 ├── (auth)/          # Auth page forms (Login, Signup, etc.)
 ├── chart/           # Chart page + ChartClient orchestrator
-└── api/             # 32 API route handlers
+└── api/             # 38 API route handlers
 ```
 
 ---
@@ -751,6 +753,142 @@ interface PeriodDetailViewProps {
 
 ---
 
+## Strength Components (chart/strength/)
+
+*Added: April 30, 2026 — Shadbala + Ashtakavarga engine + UI*
+
+#### StrengthTab
+**File:** `src/components/chart/strength/StrengthTab.tsx`
+**Purpose:** Container tab that shows both Shadbala and Ashtakavarga tables for a chart
+**Used by:** ChartClient (as a tab panel)
+
+```typescript
+interface StrengthTabProps {
+  chartData: ChartData;
+}
+```
+
+---
+
+#### ShadbalaTable
+**File:** `src/components/chart/strength/ShadbalaTable.tsx`
+**Purpose:** Displays Shadbala (six-fold planetary strength) scores for all 9 planets
+**Used by:** StrengthTab
+
+---
+
+#### AshtakavargaTable
+**File:** `src/components/chart/strength/AshtakavargaTable.tsx`
+**Purpose:** Displays Ashtakavarga (8-source benefic point) grid for all planets
+**Used by:** StrengthTab
+
+---
+
+## Yogas & Doshas Components (chart/yogas/)
+
+*Added: April 27, 2026 — 26 yogas + 5 doshas engine + full UI*
+
+#### YogasTab
+**File:** `src/components/chart/yogas/YogasTab.tsx`
+**Purpose:** Container tab for Yogas & Doshas display; lazy-fetches from `/api/yogas`; gates deep content behind sign-in
+**Used by:** ChartClient (as a tab panel)
+
+```typescript
+interface YogasTabProps {
+  chartData: ChartData;
+  chartId?: string;
+  isGuest: boolean;
+}
+```
+
+---
+
+#### YogaCard
+**File:** `src/components/chart/yogas/YogaCard.tsx`
+**Purpose:** Card for a single yoga — collapsed header with strength badge + life area chips; expands to "Your Chart" narrative + "About" tab
+**Used by:** YogaList, TopPositiveYogas
+
+---
+
+#### DoshaCard
+**File:** `src/components/chart/yogas/DoshaCard.tsx`
+**Purpose:** Card for a single dosha (Kaal Sarp, Mangal, etc.) — same layout as YogaCard with severity color
+**Used by:** YogasTab, ChallengingPatterns
+
+---
+
+#### YogaSummaryCard
+**File:** `src/components/chart/yogas/YogaSummaryCard.tsx`
+**Purpose:** Summary overview — strength distribution bar + total counts
+**Used by:** YogasTab
+
+---
+
+#### YogaList
+**File:** `src/components/chart/yogas/YogaList.tsx`
+**Purpose:** Flat sorted list of all yogas (strength-sorted: exceptional → very_strong → strong → moderate → weak)
+**Used by:** YogasTab (logged-in view)
+
+---
+
+#### TopPositiveYogas
+**File:** `src/components/chart/yogas/TopPositiveYogas.tsx`
+**Purpose:** Guest preview — top 3 positive yogas with locked/blurred content
+**Used by:** YogasTab (guest view)
+
+---
+
+#### ChallengingPatterns
+**File:** `src/components/chart/yogas/ChallengingPatterns.tsx`
+**Purpose:** Guest preview — top 2 challenging patterns with locked content
+**Used by:** YogasTab (guest view)
+
+---
+
+#### SignInModal
+**File:** `src/components/chart/yogas/SignInModal.tsx`
+**Purpose:** Reusable sign-in gate modal — dynamic title + description; used across all chart tabs
+**Used by:** YogasTab, PlanetsTab, SadeSatiTableView, DashaNavigator, DivisionalChartsTab (5 usages)
+
+```typescript
+interface SignInModalProps {
+  open: boolean;
+  onClose: () => void;
+  title?: string;
+  description?: string;
+}
+```
+
+---
+
+#### TechnicalDetailsAccordion
+**File:** `src/components/chart/yogas/TechnicalDetailsAccordion.tsx`
+**Purpose:** Collapsible accordion showing raw technical details for a yoga/dosha
+**Used by:** YogaCard, DoshaCard
+
+```typescript
+interface TechnicalDetailsAccordionProps {
+  technicalReason: string;
+  noWrapper?: boolean;  // renders without extra card wrapper for inline use
+}
+```
+
+---
+
+#### EmptyState
+**File:** `src/components/chart/yogas/EmptyState.tsx`
+**Purpose:** Empty state display when no yogas/doshas are present
+**Used by:** YogaList, YogasTab, DoshaCard
+
+---
+
+#### LifeAreaImpact
+**File:** `src/components/chart/yogas/LifeAreaImpact.tsx`
+**Purpose:** Life area impact visualization (currently not shown in main UI; kept for future use)
+**Used by:** YogasTab (conditionally)
+
+---
+
 ## Form Components
 
 ### BirthDataForm
@@ -1390,12 +1528,25 @@ All in `src/components/numerology/`. `NumerologyReport` is embeddable — used b
 |--------|----------|---------|
 | GET | `/api/festivals` | Festival calendar data |
 
+### Planetary Strength
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| POST | `/api/shadbala` | Shadbala (six-fold strength) for all 9 planets |
+| POST | `/api/ashtakavarga` | Ashtakavarga (8-source benefic point) grid |
+
+### Yogas & Doshas
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| POST | `/api/yogas` | Detect yogas + doshas from chart payload; persists to `charts.yoga_analysis` if `chartId` + auth supplied |
+
 ### Authentication
 | Method | Endpoint | Purpose |
 |--------|----------|---------|
 | POST | `/api/auth/login` | Email/password login |
 | POST | `/api/auth/logout` | Logout |
 | GET | `/api/auth/me` | Current user info (server-to-server only — do not use in UI) |
+| GET | `/api/auth/google` | Initiate custom Google OAuth flow (generates CSRF state, redirects to Google) |
+| POST | `/api/auth/google/onetap` | Handle Google One Tap credential → `signInWithIdToken` → set session cookies |
 
 ### Testing (Admin Only)
 | Method | Endpoint | Purpose |

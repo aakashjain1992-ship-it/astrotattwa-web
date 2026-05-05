@@ -19,6 +19,8 @@ import { useState, useEffect } from 'react';
 import { ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/useAuth';
+import { SignInModal } from '@/components/chart/yogas/SignInModal';
 import {
   fmtDMY,
   fmtPass,
@@ -662,10 +664,12 @@ export function SadeSatiTableView({
   utcBirthDate,
 }: EnhancedSadeSatiViewProps) {
 
+  const { user } = useAuth();
   const [selectedPeriod, setSelectedPeriod] = useState<SelectedPeriod | null>(null);
   const [fetchedAnalysis, setFetchedAnalysis] = useState<EnhancedSaturnTransitAnalysis | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [signInOpen, setSignInOpen] = useState(false);
 
   // Fetch sadesati analysis from API when not provided via props
   // (chartData.saturnTransits is only populated after first load + localStorage save)
@@ -767,7 +771,10 @@ export function SadeSatiTableView({
     );
   }
 
-  const handleEventClick = (ev: any) => setSelectedPeriod(eventToSelectedPeriod(ev));
+  const handleEventClick = (ev: any) => {
+    if (!user) { setSignInOpen(true); return; }
+    setSelectedPeriod(eventToSelectedPeriod(ev));
+  };
 
   const { summary } = activeAnalysis;
   const isActive   = summary.currentStatus !== 'clear';
@@ -834,6 +841,12 @@ export function SadeSatiTableView({
           <SadeSatiDescription />
         </div>
       </CardContent>
+      <SignInModal
+        open={signInOpen}
+        onClose={() => setSignInOpen(false)}
+        title="Sign in to unlock Saturn analysis"
+        description="See the full period-by-period breakdown of your Saturn transit — effects, timing, and what to expect."
+      />
     </Card>
   );
 }
