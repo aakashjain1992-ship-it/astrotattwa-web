@@ -6,7 +6,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import { useTheme } from '@/components/theme-provider'
 import { createClient } from '@/lib/supabase/client'
 import { Logo } from '@/components/ui/Logo'
-import { LogOut, Settings, User, ChevronDown, Menu, X, Sun, Calendar, BookOpen, Star, Hash } from 'lucide-react'
+import { LogOut, Settings, User, ChevronDown, Menu, X, Sun, Calendar, BookOpen, Star, Hash, Compass } from 'lucide-react'
 import type { AuthUser } from '@/hooks/useAuth'
 import { performLogout } from '@/lib/auth/logout'
 import { useToast } from '@/hooks/use-toast'
@@ -246,6 +246,104 @@ function NumerologyDropdown({ pathname }: { pathname: string }) {
                   ? 'var(--blue)'
                   : 'var(--text2)',
                 fontWeight: (pathname === item.href || (pathname.startsWith(item.href) && item.href !== '/numerology')) ? 600 : 400,
+                textDecoration: 'none',
+                transition: 'background .12s',
+                background: 'transparent',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-subtle)' }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+            >
+              {item.label}
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Tools Nav Dropdown ───────────────────────────────────────────────────────
+
+function ToolsDropdown({ pathname }: { pathname: string }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const isActive = pathname.startsWith('/kundli') || pathname.startsWith('/muhurta')
+
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+    if (open) document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  const items = [
+    { label: 'Kundli', href: '/kundli' },
+    { label: 'Kundli Milan', href: '/kundli-milan' },
+    { label: 'Marriage Muhurta', href: '/muhurta/marriage' },
+  ]
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        onMouseEnter={() => setOpen(true)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 4,
+          background: 'transparent',
+          border: 'none',
+          cursor: 'pointer',
+          fontSize: '13.5px',
+          fontWeight: 500,
+          color: isActive ? 'var(--blue)' : 'var(--text2)',
+          padding: '6px 10px',
+          borderRadius: 8,
+          transition: 'color .15s',
+        }}
+        onMouseLeave={() => {/* keep open while hovering panel */}}
+      >
+        Tools
+        <ChevronDown
+          size={13}
+          style={{
+            transform: open ? 'rotate(180deg)' : 'rotate(0)',
+            transition: 'transform .2s',
+          }}
+        />
+      </button>
+
+      {open && (
+        <div
+          onMouseEnter={() => setOpen(true)}
+          onMouseLeave={() => setOpen(false)}
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 4px)',
+            left: 0,
+            minWidth: 160,
+            background: '#fff',
+            border: '1px solid var(--border2)',
+            borderRadius: 10,
+            boxShadow: '0 8px 24px rgba(0,0,0,.10)',
+            overflow: 'hidden',
+            zIndex: 300,
+          }}
+        >
+          {items.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={() => setOpen(false)}
+              style={{
+                display: 'block',
+                padding: '10px 16px',
+                fontSize: 13,
+                color: (pathname === item.href || pathname.startsWith(item.href + '/')) ? 'var(--blue)' : 'var(--text2)',
+                fontWeight: (pathname === item.href || pathname.startsWith(item.href + '/')) ? 600 : 400,
                 textDecoration: 'none',
                 transition: 'background .12s',
                 background: 'transparent',
@@ -515,10 +613,11 @@ function MobileDrawer({
   onMyChartClick: () => void
 }) {
   const [horoscopeOpen, setHoroscopeOpen] = useState(false)
+  const [toolsOpen, setToolsOpen] = useState(false)
   const [numerologyOpen, setNumerologyOpen] = useState(false)
 
   useEffect(() => {
-    if (!open) { setHoroscopeOpen(false); setNumerologyOpen(false) }
+    if (!open) { setHoroscopeOpen(false); setToolsOpen(false); setNumerologyOpen(false) }
   }, [open])
 
   if (!open) return null
@@ -569,6 +668,39 @@ function MobileDrawer({
                 { label: 'Monthly', href: '/horoscope/monthly/aries' },
               ].map(item => {
                 const active = pathname.startsWith(item.href.replace('/aries', ''))
+                return (
+                  <Link key={item.href} href={item.href} onClick={onClose} style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '10px 24px 10px 57px',
+                    fontSize: 14.5, fontWeight: active ? 500 : 400,
+                    color: active ? 'var(--blue)' : 'var(--text2)',
+                    textDecoration: 'none',
+                  }}>
+                    {active && <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--blue)', flexShrink: 0, marginLeft: -13 }} />}
+                    {item.label}
+                  </Link>
+                )
+              })}
+            </div>
+          )}
+
+          {/* Divider */}
+          <div style={{ height: 1, background: 'var(--border)', margin: '4px 24px' }} />
+
+          {/* Tools accordion */}
+          <button onClick={() => setToolsOpen(o => !o)} style={mainRow(pathname.startsWith('/kundli') || pathname.startsWith('/muhurta'))}>
+            <Compass size={19} style={{ color: iconColor(pathname.startsWith('/kundli') || pathname.startsWith('/muhurta')), flexShrink: 0 }} />
+            <span style={{ flex: 1 }}>Tools</span>
+            <ChevronDown size={15} style={{ color: 'var(--text3)', flexShrink: 0, transform: toolsOpen ? 'rotate(180deg)' : 'none', transition: 'transform .22s' }} />
+          </button>
+          {toolsOpen && (
+            <div style={{ paddingBottom: 4 }}>
+              {[
+                { label: 'Kundli',           href: '/kundli' },
+                { label: 'Kundli Milan',     href: '/kundli-milan' },
+                { label: 'Marriage Muhurta', href: '/muhurta/marriage' },
+              ].map(item => {
+                const active = pathname === item.href || pathname.startsWith(item.href + '/')
                 return (
                   <Link key={item.href} href={item.href} onClick={onClose} style={{
                     display: 'flex', alignItems: 'center', gap: 8,
@@ -893,6 +1025,7 @@ export function Header({ showNav = true }: HeaderProps) {
               className="header-desktop-nav"
             >
               <HoroscopeDropdown pathname={pathname} />
+              <ToolsDropdown pathname={pathname} />
               <NavLink href="/panchang" label="Panchang" pathname={pathname} />
               <NavLink href="/festival" label="Festival" pathname={pathname} />
               <NumerologyDropdown pathname={pathname} />

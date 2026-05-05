@@ -168,7 +168,7 @@ export default function HomePage() {
               boxShadow: 'var(--shadow-md)',
             }}>
               <BirthDataFormWrapper />
-             </div>  
+             </div>
           </div>
 
         </section>

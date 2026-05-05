@@ -8,10 +8,15 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date()
 
   const staticPages: MetadataRoute.Sitemap = [
-    { url: BASE_URL,                          lastModified: now, changeFrequency: 'daily',   priority: 1.0 },
-    { url: `${BASE_URL}/panchang`,            lastModified: now, changeFrequency: 'daily',   priority: 0.9 },
-    { url: `${BASE_URL}/numerology`,          lastModified: now, changeFrequency: 'weekly',  priority: 0.7 },
-    { url: `${BASE_URL}/numerology/compatibility`, lastModified: now, changeFrequency: 'weekly', priority: 0.6 },
+    { url: BASE_URL,                               lastModified: now, changeFrequency: 'daily',   priority: 1.0 },
+    { url: `${BASE_URL}/kundli`,                   lastModified: now, changeFrequency: 'weekly',  priority: 0.95 },
+    { url: `${BASE_URL}/kundli-milan`,             lastModified: now, changeFrequency: 'weekly',  priority: 0.90 },
+    { url: `${BASE_URL}/muhurta/marriage`,         lastModified: now, changeFrequency: 'monthly', priority: 0.85 },
+    { url: `${BASE_URL}/panchang`,                 lastModified: now, changeFrequency: 'daily',   priority: 0.9 },
+    { url: `${BASE_URL}/festival`,                 lastModified: now, changeFrequency: 'monthly', priority: 0.7 },
+    { url: `${BASE_URL}/numerology`,               lastModified: now, changeFrequency: 'weekly',  priority: 0.7 },
+    { url: `${BASE_URL}/numerology/compatibility`, lastModified: now, changeFrequency: 'weekly',  priority: 0.6 },
+    { url: `${BASE_URL}/book-consultancy`,         lastModified: now, changeFrequency: 'monthly', priority: 0.5 },
   ]
 
   const horoscopePages: MetadataRoute.Sitemap = HOROSCOPE_TYPES.flatMap(type =>

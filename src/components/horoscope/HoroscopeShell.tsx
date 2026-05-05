@@ -2,10 +2,11 @@
 
 import { useState, useCallback, useTransition, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { RashiSelector } from './RashiSelector'
 import { SignTypeToggle } from './SignTypeToggle'
-import { LanguageToggle } from './LanguageToggle'
+import { LanguageToggle } from '@/components/ui/LanguageToggle'
 import { HoroscopeContent } from './HoroscopeContent'
 import { HoroscopeLoading } from './HoroscopeLoading'
 import { getRashiBySlug } from '@/lib/horoscope/rashiMap'
@@ -192,6 +193,48 @@ export function HoroscopeShell({ initialType, initialRashi, initialData, today }
         )}
 
       </div>
+
+      {/* ── Kundli cross-link ── */}
+      <div style={{
+        marginTop: 32,
+        padding: '20px 24px',
+        borderRadius: 14,
+        border: '1px solid var(--border)',
+        background: 'hsl(var(--card))',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: 16,
+      }}>
+        <div>
+          <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: '0 0 4px' }}>
+            Want a personalised reading?
+          </p>
+          <p style={{ fontSize: 13.5, color: 'var(--text2)', margin: 0 }}>
+            Your horoscope is based on your Moon sign. A full Kundli goes much deeper.
+          </p>
+        </div>
+        <Link
+          href="/kundli"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '9px 20px',
+            background: 'var(--blue)',
+            color: '#fff',
+            borderRadius: 8,
+            fontSize: 14,
+            fontWeight: 600,
+            textDecoration: 'none',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          Generate free Kundli →
+        </Link>
+      </div>
+
     </div>
   )
 }
